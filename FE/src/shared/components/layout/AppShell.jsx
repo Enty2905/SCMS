@@ -15,10 +15,10 @@ import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 
 const navItems = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Orders', href: '/', icon: ClipboardList },
-  { label: 'Inventory', href: '/', icon: Boxes },
-  { label: 'Settings', href: '/', icon: Settings },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Orders', href: '/dashboard', icon: ClipboardList },
+  { label: 'Inventory', href: '/dashboard', icon: Boxes },
+  { label: 'Settings', href: '/dashboard', icon: Settings },
 ]
 
 export function AppShell() {
@@ -28,7 +28,7 @@ export function AppShell() {
 
   function handleLogout() {
     dispatch(logout())
-    navigate('/login')
+    navigate('/')
   }
 
   return (

@@ -6,11 +6,11 @@ import { AppShell } from '@/shared/components/layout/AppShell.jsx'
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
+    path: '/',
     element: <LoginPage />,
   },
   {
-    path: '/',
+    path: '/dashboard',
     element: <AppShell />,
     children: [
       {

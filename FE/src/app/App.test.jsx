@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { App } from './App.jsx'
 
 describe('App', () => {
-  it('renders the dashboard route', () => {
+  it('renders the login route first', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: /supply chain overview/i }),
+      screen.getByRole('heading', { name: /đăng nhập hệ thống/i }),
     ).toBeInTheDocument()
   })
 })

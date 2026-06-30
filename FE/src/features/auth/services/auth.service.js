@@ -6,7 +6,7 @@ export async function loginService(credentials) {
     user: {
       id: 'demo-user',
       name: 'Operations Lead',
-      email: credentials.email,
+      email: credentials.username || 'ops@scms.local',
     },
   }
 }
