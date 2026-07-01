@@ -1,7 +1,7 @@
 server:
-  port: 8080
+  port: 8081
   servlet:
-    context-path: /api
+    context-path: /scms/api
 
 spring:
   datasource:
@@ -30,10 +30,10 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
 
-app:
-  jwt:
-    secret: scms-super-secret-key-supply-chain-management-system-2024
-    expiration: 86400000 # 24 hours in ms
+jwt:
+  signerKey: scms-super-secret-key-supply-chain-management-system-2024-very-long-for-hs512-at-least-64bytes
+  valid-duration: 3600        # 1 giờ (giây)
+  refreshable-duration: 604800 # 7 ngày (giây)
 
 logging:
   level:

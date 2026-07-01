@@ -18,6 +18,10 @@ public enum ErrorCode {
     USER_EXISTED(1001, "User already exists", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1002, "User not found", HttpStatus.NOT_FOUND),
     USERNAME_ALREADY_EXISTS(1003, "Username already exists", HttpStatus.BAD_REQUEST),
+    ACCOUNT_DISABLED(1004, "Account is disabled", HttpStatus.FORBIDDEN),
+    TOKEN_INVALID(1005, "Token is invalid or expired", HttpStatus.UNAUTHORIZED),
+    EMPLOYEE_NOT_FOUND(1006, "Employee not found", HttpStatus.NOT_FOUND),
+    EMPLOYEE_ALREADY_HAS_ACCOUNT(1007, "Employee already has an account", HttpStatus.BAD_REQUEST),
 
     // Lỗi thiết bị (Equipment)
     EQUIPMENT_NOT_FOUND(2001, "Equipment not found", HttpStatus.NOT_FOUND),
