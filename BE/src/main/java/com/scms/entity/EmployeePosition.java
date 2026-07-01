@@ -26,3 +26,4 @@ public class EmployeePosition {
     @Column(name = "description", columnDefinition = "TEXT")
     String description;
 }
+

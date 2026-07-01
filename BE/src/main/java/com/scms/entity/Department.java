@@ -26,3 +26,4 @@ public class Department {
     @Column(name = "department_code", length = 50, unique = true)
     String departmentCode;
 }
+

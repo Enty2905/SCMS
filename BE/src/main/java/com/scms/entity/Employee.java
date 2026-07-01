@@ -41,3 +41,4 @@ public class Employee {
     @Column(name = "work_location", length = 200)
     String workLocation;
 }
+
