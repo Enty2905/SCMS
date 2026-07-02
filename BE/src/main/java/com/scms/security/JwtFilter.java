@@ -48,7 +48,13 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token = authHeader.substring(7).trim();
+        // Bulletproof: Nếu user lỡ gõ dư chữ "Bearer " trong Swagger UI dẫn đến "Bearer Bearer eyJ..."
+        if (token.toLowerCase().startsWith("bearer ")) {
+            token = token.substring(7).trim();
+        }
+        // Xóa dấu ngoặc kép nếu user lỡ copy thừa
+        token = token.replace("\"", "");
 
         try {
             SignedJWT signedJWT = authenticationService.verifyToken(token, false);
