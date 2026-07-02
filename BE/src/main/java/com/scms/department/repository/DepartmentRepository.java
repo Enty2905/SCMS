@@ -1,6 +1,6 @@
-package com.scms.user.repository;
+package com.scms.department.repository;
 
-import com.scms.employee.entity.Department;
+import com.scms.department.entity.Department;
 import com.scms.employee.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

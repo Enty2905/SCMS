@@ -1,5 +1,6 @@
 package com.scms.employee.entity;
 
+import com.scms.department.entity.Department;
 import com.scms.user.entity.EmployeeRole;
 import jakarta.persistence.*;
 import lombok.*;

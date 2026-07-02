@@ -1,4 +1,4 @@
-package com.scms.auth.dto.response;
+package com.scms.hr.dto.response;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,15 +14,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserAccountResponse {
-    UUID userId;
-    String username;
-    Boolean active;
-    LocalDateTime createdAt;
-    UUID employeeId;
-    String employeeName;
-    String phone;
+public class DepartmentResponse {
+    UUID departmentId;
+    String departmentCode;
     String departmentName;
-    String positionName;
-    String workLocation;
+    Long employeeCount;
 }

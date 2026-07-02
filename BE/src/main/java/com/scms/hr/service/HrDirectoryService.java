@@ -1,12 +1,12 @@
-package com.scms.auth.service;
+package com.scms.hr.service;
 
-import com.scms.auth.dto.response.DepartmentResponse;
-import com.scms.auth.dto.response.EmployeeResponse;
 import com.scms.auth.repository.UserRepository;
-import com.scms.employee.entity.Department;
+import com.scms.department.entity.Department;
+import com.scms.department.repository.DepartmentRepository;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
-import com.scms.user.repository.DepartmentRepository;
+import com.scms.hr.dto.response.DepartmentResponse;
+import com.scms.hr.dto.response.EmployeeResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

@@ -1,9 +1,9 @@
-package com.scms.auth.controller;
+package com.scms.hr.controller;
 
-import com.scms.auth.dto.response.DepartmentResponse;
-import com.scms.auth.dto.response.EmployeeResponse;
-import com.scms.auth.service.HrDirectoryService;
 import com.scms.common.response.ApiResponse;
+import com.scms.hr.dto.response.DepartmentResponse;
+import com.scms.hr.dto.response.EmployeeResponse;
+import com.scms.hr.service.HrDirectoryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

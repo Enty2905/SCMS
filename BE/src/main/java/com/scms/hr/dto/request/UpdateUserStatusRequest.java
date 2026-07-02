@@ -1,5 +1,6 @@
-package com.scms.auth.dto.response;
+package com.scms.hr.dto.request;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,16 +8,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.util.UUID;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class DepartmentResponse {
-    UUID departmentId;
-    String departmentCode;
-    String departmentName;
-    Long employeeCount;
+public class UpdateUserStatusRequest {
+
+    @NotNull(message = "INVALID_KEY")
+    Boolean active;
 }

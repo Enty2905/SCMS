@@ -1,15 +1,15 @@
-package com.scms.auth.service;
+package com.scms.hr.service;
 
-import com.scms.auth.dto.request.CreateUserAccountRequest;
-import com.scms.auth.dto.request.UpdateUserStatusRequest;
-import com.scms.auth.dto.response.EmployeeAccountOptionResponse;
-import com.scms.auth.dto.response.UserAccountResponse;
 import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
+import com.scms.hr.dto.request.CreateUserAccountRequest;
+import com.scms.hr.dto.request.UpdateUserStatusRequest;
+import com.scms.hr.dto.response.EmployeeAccountOptionResponse;
+import com.scms.hr.dto.response.UserAccountResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

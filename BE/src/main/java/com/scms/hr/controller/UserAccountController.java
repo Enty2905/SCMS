@@ -1,11 +1,11 @@
-package com.scms.auth.controller;
+package com.scms.hr.controller;
 
-import com.scms.auth.dto.request.CreateUserAccountRequest;
-import com.scms.auth.dto.request.UpdateUserStatusRequest;
-import com.scms.auth.dto.response.EmployeeAccountOptionResponse;
-import com.scms.auth.dto.response.UserAccountResponse;
-import com.scms.auth.service.UserAccountService;
 import com.scms.common.response.ApiResponse;
+import com.scms.hr.dto.request.CreateUserAccountRequest;
+import com.scms.hr.dto.request.UpdateUserStatusRequest;
+import com.scms.hr.dto.response.EmployeeAccountOptionResponse;
+import com.scms.hr.dto.response.UserAccountResponse;
+import com.scms.hr.service.UserAccountService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
