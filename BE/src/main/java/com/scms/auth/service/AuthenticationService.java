@@ -1,21 +1,29 @@
 package com.scms.auth.service;
 
-import com.nimbusds.jose.*;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.Payload;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.scms.auth.dto.request.*;
-import com.scms.auth.dto.response.LoginResponse;
+import com.scms.auth.dto.request.IntrospectRequest;
+import com.scms.auth.dto.request.LoginRequest;
+import com.scms.auth.dto.request.LogoutRequest;
+import com.scms.auth.dto.request.RefreshRequest;
 import com.scms.auth.dto.response.IntrospectResponse;
-import com.scms.user.entity.EmployeeRole;
+import com.scms.auth.dto.response.LoginResponse;
 import com.scms.auth.entity.InvalidatedToken;
 import com.scms.auth.entity.User;
-import com.scms.common.exception.AppException;
-import com.scms.common.exception.ErrorCode;
-import com.scms.user.repository.EmployeeRoleRepository;
 import com.scms.auth.repository.InvalidatedTokenRepository;
 import com.scms.auth.repository.UserRepository;
+import com.scms.common.exception.AppException;
+import com.scms.common.exception.ErrorCode;
+import com.scms.user.entity.EmployeeRole;
+import com.scms.user.repository.EmployeeRoleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -57,9 +65,8 @@ public class AuthenticationService {
     @Value("${jwt.refreshable-duration}")
     long REFRESHABLE_DURATION;
 
-    // ── LOGIN ─────────────────────────────────────────────────
     public LoginResponse authenticate(LoginRequest request) {
-        var user = userRepository.findByUsername(request.getUsername())
+        var user = userRepository.findByUsernameWithDetails(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         if (!user.getIsActive()) {
@@ -67,7 +74,9 @@ public class AuthenticationService {
         }
 
         boolean matched = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
-        if (!matched) throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (!matched) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         return LoginResponse.builder()
                 .token(generateToken(user))
@@ -76,7 +85,6 @@ public class AuthenticationService {
                 .build();
     }
 
-    // ── INTROSPECT ────────────────────────────────────────────
     public IntrospectResponse introspect(IntrospectRequest request) {
         try {
             verifyToken(request.getToken(), false);
@@ -86,7 +94,6 @@ public class AuthenticationService {
         }
     }
 
-    // ── REFRESH TOKEN ─────────────────────────────────────────
     public LoginResponse refreshToken(RefreshRequest request)
             throws ParseException, JOSEException {
 
@@ -94,13 +101,12 @@ public class AuthenticationService {
         var jit = signedJWT.getJWTClaimsSet().getJWTID();
         var expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-        // Blacklist refresh token cũ
         invalidatedTokenRepository.save(
                 InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build()
         );
 
         var username = signedJWT.getJWTClaimsSet().getSubject();
-        var user = userRepository.findByUsername(username)
+        var user = userRepository.findByUsernameWithDetails(username)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         return LoginResponse.builder()
@@ -110,9 +116,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    // ── LOGOUT ────────────────────────────────────────────────
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
-        // Blacklist access token
         try {
             var accessJwt = verifyToken(request.getToken(), false);
             invalidatedTokenRepository.save(InvalidatedToken.builder()
@@ -123,7 +127,6 @@ public class AuthenticationService {
             log.info("Access token already invalid, skipping blacklist");
         }
 
-        // Blacklist refresh token nếu có
         if (request.getRefreshToken() != null) {
             try {
                 var refreshJwt = verifyToken(request.getRefreshToken(), true);
@@ -137,7 +140,6 @@ public class AuthenticationService {
         }
     }
 
-    // ── VERIFY TOKEN (dùng nội bộ) ────────────────────────────
     public SignedJWT verifyToken(String token, boolean isRefresh)
             throws ParseException, JOSEException {
 
@@ -161,7 +163,6 @@ public class AuthenticationService {
         return signedJWT;
     }
 
-    // ── GENERATE ACCESS TOKEN ─────────────────────────────────
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -186,7 +187,6 @@ public class AuthenticationService {
         }
     }
 
-    // ── GENERATE REFRESH TOKEN ────────────────────────────────
     public String generateRefreshToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -210,7 +210,6 @@ public class AuthenticationService {
         }
     }
 
-    // ── BUILD SCOPE (danh sách ROLE_ từ employee_role) ────────
     private String buildScope(User user) {
         List<EmployeeRole> employeeRoles = employeeRoleRepository
                 .findByEmployeeId(user.getEmployee().getEmployeeId());
