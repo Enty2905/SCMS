@@ -159,11 +159,15 @@ public class UserService {
     }
 
     // ── All authenticated: Xem thông tin bản thân ─────────────
+    @Transactional(readOnly = true)
     public UserResponse getMyInfo() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         var currentUser = (User) authentication.getPrincipal();
-        log.info("Fetching info for user: {}", currentUser.getUsername());
-        return toUserResponse(currentUser);
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        log.info("Fetching info for user: {}", user.getUsername());
+        return toUserResponse(user);
     }
 
     // ── ADMIN: Cập nhật trạng thái và role của user ────────────
@@ -195,8 +199,10 @@ public class UserService {
     public UserResponse updateMyProfile(ProfileUpdateRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         var currentUser = (User) authentication.getPrincipal();
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        Employee employee = currentUser.getEmployee();
+        Employee employee = user.getEmployee();
 
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             employee.setPhone(request.getPhone());
@@ -206,8 +212,8 @@ public class UserService {
         }
 
         employeeRepository.save(employee);
-        log.info("Profile updated for user: {}", currentUser.getUsername());
-        return toUserResponse(currentUser);
+        log.info("Profile updated for user: {}", user.getUsername());
+        return toUserResponse(user);
     }
 
     // ── All authenticated: Đổi mật khẩu bản thân ──────────────
@@ -215,18 +221,20 @@ public class UserService {
     public void changePassword(ChangePasswordRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         var currentUser = (User) authentication.getPrincipal();
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
             throw new AppException(ErrorCode.WRONG_PASSWORD);
         }
 
-        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
             throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
         }
 
-        currentUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(currentUser);
-        log.info("Password changed for user: {}", currentUser.getUsername());
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        log.info("Password changed for user: {}", user.getUsername());
     }
 
     // ── ADMIN: Soft delete – vô hiệu hóa tài khoản ────────────
