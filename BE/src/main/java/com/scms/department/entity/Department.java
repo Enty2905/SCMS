@@ -1,4 +1,4 @@
-package com.scms.employee.entity;
+package com.scms.department.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

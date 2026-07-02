@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -18,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Optional<User> findByUsername(String username);
 
     boolean existsByUsername(String username);
+
+    boolean existsByEmployeeEmployeeId(UUID employeeId);
 
     Optional<User> findByEmployee(Employee employee);
 
@@ -42,4 +45,13 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
         WHERE u.username = :username
     """)
     Optional<User> findByUsernameWithDetails(@Param("username") String username);
+
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        JOIN FETCH u.employee e
+        LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.position
+        ORDER BY u.createdAt DESC
+    """)
+    List<User> findAllWithEmployeeDetails();
 }
