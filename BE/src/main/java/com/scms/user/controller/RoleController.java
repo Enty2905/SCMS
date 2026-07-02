@@ -24,10 +24,24 @@ public class RoleController {
 
     RoleService roleService;
 
-    @Operation(summary = "Lấy tất cả roles (ADMIN, HR)")
-    @GetMapping
-    public ApiResponse<List<RoleResponse>> getAllRoles() {
-        return ApiResponse.success(roleService.getAllRoles());
+    @GetMapping(produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Lấy tất cả roles", description = "Chỉ ADMIN và HR được phép xem")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Lấy danh sách role thành công",
+                    content = @io.swagger.v3.oas.annotations.media.Content(
+                            mediaType = "application/json",
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Chưa đăng nhập"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Không có quyền")
+    })
+    public org.springframework.http.ResponseEntity<ApiResponse<List<RoleResponse>>> getAllRoles() {
+        return org.springframework.http.ResponseEntity.ok(
+                ApiResponse.success(roleService.getAllRoles())
+        );
     }
 
     @Operation(summary = "Lấy chi tiết role theo ID (ADMIN)")

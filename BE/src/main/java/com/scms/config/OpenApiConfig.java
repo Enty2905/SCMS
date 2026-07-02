@@ -52,12 +52,7 @@ public class OpenApiConfig {
                                 .name("SCMS Team")
                                 .email("scms-team@example.com"))
                 )
-                // ── Server URL ───────────────────────────────────────
-                .servers(List.of(
-                        new Server()
-                                .url("http://localhost:" + port + contextPath)
-                                .description("Development Server")
-                ))
+
                 // ── Cấu hình Bearer Token ────────────────────────────
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))
                 .components(new Components()
