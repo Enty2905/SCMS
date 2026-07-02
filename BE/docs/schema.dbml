@@ -1,0 +1,501 @@
+// ============================================================
+// SCMS - System Control & Maintenance Management System
+// Database Schema - DBML for dbdiagram.io
+// Version: Updated theo feedback Tech Lead
+// PK: UUID | FK: uuid
+// ============================================================
+
+
+// ============================================================
+// 1. AUTH & NHÂN SỰ
+// ============================================================
+
+Table role {
+  role_id     uuid         [primary key, default: `uuid()`]
+  role_name   varchar(100) [not null]
+  role_code   varchar(50)  [not null, unique]
+  description varchar(255)
+}
+
+Table department {
+  department_id   uuid         [primary key, default: `uuid()`]
+  department_name varchar(150) [not null]
+  department_code varchar(50)  [unique]
+}
+
+Table employee_position {
+  position_id   uuid         [primary key, default: `uuid()`]
+  position_name varchar(150) [not null]
+  description   text
+}
+
+Table employee {
+  employee_id    uuid         [primary key, default: `uuid()`]
+  name           varchar(150) [not null]
+  phone          varchar(20)
+  avatar_url     varchar(500)
+  department_id  uuid
+  position_id    uuid         [note: 'Chức vụ: tổ trưởng, kỹ thuật viên, thủ kho...']
+  work_location  varchar(200) [note: 'Vị trí/nơi làm việc: PXVH, PXSCC, kho vật tư...']
+}
+
+// Một nhân sự có thể đảm nhận nhiều role
+Table employee_role {
+  id          uuid      [primary key, default: `uuid()`]
+  employee_id uuid     [not null]
+  role_id     uuid     [not null]
+  assigned_at timestamp [default: `now()`]
+}
+
+Table user {
+  user_id       uuid         [primary key, default: `uuid()`]
+  username      varchar(100) [not null, unique]
+  password_hash varchar(255) [not null]
+  employee_id   uuid         [not null, unique, note: 'Tài khoản được cấp cho một nhân viên']
+  is_active     boolean      [not null, default: true]
+  created_at    timestamp    [default: `now()`]
+}
+
+
+// ============================================================
+// 2. THIẾT BỊ
+// ============================================================
+
+Table equipment_system {
+  system_id        uuid         [primary key, default: `uuid()`]
+  system_name      varchar(200) [not null]
+  system_code      varchar(50)  [unique]
+  description      text
+  parent_system_id uuid         [note: 'Hệ thống cha nếu có phân cấp']
+}
+
+Table equipment {
+  equipment_id uuid         [primary key, default: `uuid()`]
+  kks_code     varchar(100) [not null, unique, note: 'Mã định danh thiết bị theo tiêu chuẩn KKS']
+  name         varchar(200) [not null]
+  type         varchar(100) [not null, note: 'Cơ khí | Điện | CI']
+  status       varchar(20)  [not null, default: 'active', note: 'active | inactive | maintenance | broken']
+  location     varchar(200) [note: 'Vị trí lắp đặt trong nhà máy']
+  system_id    uuid
+}
+
+// Một thiết bị có thể có nhiều ảnh
+Table equipment_image {
+  image_id     uuid         [primary key, default: `uuid()`]
+  equipment_id uuid         [not null]
+  image_url    varchar(500) [not null]
+  caption      varchar(255) [note: 'Mô tả ảnh: góc chụp, vị trí, tình trạng...']
+  uploaded_by  uuid
+  uploaded_at  timestamp    [default: `now()`]
+}
+
+// Danh mục tên thông số kỹ thuật
+// Bao gồm cả các thông tin như: Model, Serial, Năm sản xuất, Ngày sản xuất, Nơi sản xuất...
+Table technical_param {
+  param_id   uuid         [primary key, default: `uuid()`]
+  param_name varchar(150) [not null, unique, note: 'VD: Lưu lượng, Áp suất, Model, Serial, Năm SX...']
+  data_type  varchar(30)  [not null, default: 'text', note: 'text | number | date']
+}
+
+// Danh mục đơn vị đo
+Table unit {
+  unit_id   uuid         [primary key, default: `uuid()`]
+  symbol    varchar(50)  [not null, unique, note: 'VD: kW, bar, m3/h, rpm, V, A...']
+  full_name varchar(100)
+}
+
+// Giá trị thông số kỹ thuật của từng thiết bị
+Table technical_spec {
+  spec_id      uuid         [primary key, default: `uuid()`]
+  equipment_id uuid         [not null]
+  param_id     uuid         [not null]
+  param_value  varchar(255) [note: 'Giá trị thông số, lưu dạng text để linh hoạt']
+  unit_id      uuid         [note: 'Có thể null nếu thông số không có đơn vị, ví dụ Model/Serial']
+}
+
+
+// ============================================================
+// 3. YÊU CẦU SỬA CHỮA & PHIẾU CÔNG TÁC
+// ============================================================
+
+Table repair_request {
+  request_id   uuid        [primary key, default: `uuid()`]
+  equipment_id uuid        [not null, note: 'Một request chỉ gắn với một thiết bị']
+  created_by   uuid        [not null, note: 'User tạo request']
+  description  text        [not null]
+  priority     varchar(20) [not null, default: 'medium', note: 'low | medium | high | critical']
+  status       varchar(20) [not null, default: 'pending', note: 'pending | confirmed | in_progress | done | cancelled']
+  created_at   timestamp   [default: `now()`]
+}
+
+// Một repair_request có thể tạo nhiều phiếu công tác
+Table work_order {
+  order_id     uuid        [primary key, default: `uuid()`]
+  order_number varchar(50) [not null, unique, note: 'Số phiếu công tác']
+  request_id   uuid        [not null]
+
+  content      text
+  status       varchar(20) [not null, default: 'draft', note: 'draft | open | extended | locked']
+
+  start_date   timestamp
+  end_date     timestamp
+
+  // Các nhân sự chính của phiếu công tác
+  // Sau khi tạo phiếu, các trường này nên khóa ở tầng backend, không cho sửa tuỳ tiện
+  work_leader_id        uuid [note: 'Người lãnh đạo công việc - employee']
+  direct_commander_id   uuid [note: 'Người chỉ huy trực tiếp - employee, tạo rồi không nên sửa']
+  safety_supervisor_id  uuid [note: 'Người giám sát an toàn - employee']
+
+  created_by   uuid      [note: 'User tạo phiếu công tác']
+  created_at   timestamp [default: `now()`]
+}
+
+// Một phiếu công tác có thể kéo dài nhiều ngày
+// Trưởng ca/kíp mở và đóng phiếu theo từng ngày
+Table work_order_daily_log {
+  log_id     uuid      [primary key, default: `uuid()`]
+  order_id   uuid      [not null]
+  date       date      [not null, note: 'Ngày làm việc']
+  opened_by  uuid      [not null, note: 'User mở phiếu trong ngày']
+  opened_at  timestamp [not null]
+  closed_by  uuid      [note: 'User đóng phiếu, null nếu chưa đóng']
+  closed_at  timestamp [note: 'Thời điểm đóng phiếu, null nếu chưa đóng']
+  note       text
+}
+
+// Danh sách nhân viên tham gia phiếu công tác
+// Bỏ role_in_order theo feedback Tech Lead
+Table work_order_member {
+  id           uuid      [primary key, default: `uuid()`]
+  order_id     uuid      [not null]
+  employee_id  uuid      [not null]
+  check_in_at  timestamp [note: 'Giờ vào phiếu']
+  check_out_at timestamp [note: 'Giờ ra phiếu']
+  added_at     timestamp [default: `now()`]
+}
+
+Table repair_history {
+  history_id   uuid      [primary key, default: `uuid()`]
+  equipment_id uuid      [not null]
+  order_id     uuid
+  description  text
+  repaired_at  timestamp [default: `now()`]
+  repaired_by  uuid      [note: 'User ghi nhận lịch sử sửa chữa']
+}
+
+
+// ============================================================
+// 4. BIÊN BẢN ĐÁNH GIÁ KỸ THUẬT
+// ============================================================
+
+// Biên bản đánh giá kỹ thuật độc lập theo thiết bị
+// Không dùng làm yêu cầu sửa chữa
+// Một thiết bị có thể có nhiều biên bản đánh giá
+Table technical_assessment {
+  assessment_id      uuid      [primary key, default: `uuid()`]
+  equipment_id       uuid      [not null]
+  damage_description text
+  proposed_action    text
+
+  repair_signed_by    uuid      [note: 'Nhân viên bên sửa chữa ký']
+  repair_signed_at    timestamp
+
+  operation_signed_by uuid      [note: 'Nhân viên bên vận hành ký']
+  operation_signed_at timestamp
+
+  pdf_url     varchar(500) [note: 'File PDF biên bản đã ký']
+  created_by  uuid         [not null, note: 'Employee tạo biên bản']
+  created_at  timestamp    [default: `now()`]
+}
+
+
+// ============================================================
+// 5A. VẬT TƯ TIÊU HAO
+// Không dùng material_stock/material_transaction
+// Tồn kho được tính từ tổng nhập - tổng xuất
+// ============================================================
+
+Table consumable {
+  consumable_id uuid         [primary key, default: `uuid()`]
+  code          varchar(50)  [not null, unique]
+  name          varchar(200) [not null]
+  unit          varchar(50)
+  min_quantity  int          [not null, default: 0, note: 'Ngưỡng cảnh báo tồn kho thấp']
+  note          text
+}
+
+// Phiếu yêu cầu cấp vật tư tiêu hao
+Table consumable_request {
+  req_id     uuid        [primary key, default: `uuid()`]
+  req_number varchar(50) [unique, note: 'Số phiếu yêu cầu cấp vật tư tiêu hao']
+  order_id   uuid        [note: 'Phiếu công tác liên quan']
+  status     varchar(20) [not null, default: 'pending', note: 'pending | approved | issued | rejected']
+  pdf_url    varchar(500)
+  created_by uuid        [note: 'User tạo phiếu yêu cầu']
+  created_at timestamp   [default: `now()`]
+}
+
+Table consumable_request_item {
+  item_id            uuid [primary key, default: `uuid()`]
+  req_id             uuid [not null]
+  consumable_id      uuid [not null]
+  quantity_requested int  [not null, default: 0]
+  quantity_issued    int  [not null, default: 0]
+}
+
+// Phiếu nhập kho vật tư tiêu hao
+// Một phiếu nhập có thể có nhiều vật tư
+Table consumable_import {
+  import_id     uuid        [primary key, default: `uuid()`]
+  import_number varchar(50) [not null, unique, note: 'Số phiếu nhập kho vật tư tiêu hao']
+  imported_by   uuid        [note: 'User nhập kho']
+  imported_at   timestamp   [default: `now()`]
+  note          text
+}
+
+Table consumable_import_item {
+  item_id       uuid [primary key, default: `uuid()`]
+  import_id     uuid [not null]
+  consumable_id uuid [not null]
+  quantity      int  [not null]
+  note          text
+}
+
+// Phiếu xuất kho vật tư tiêu hao
+// Có thể xuất theo phiếu yêu cầu hoặc theo phiếu công tác
+Table consumable_export {
+  export_id     uuid        [primary key, default: `uuid()`]
+  export_number varchar(50) [not null, unique, note: 'Số phiếu xuất kho vật tư tiêu hao']
+  req_id        uuid        [note: 'Phiếu yêu cầu cấp vật tư tiêu hao, có thể null']
+  order_id      uuid        [note: 'Phiếu công tác liên quan, có thể null nếu xuất ngoài PCT']
+  exported_by   uuid        [note: 'User xuất kho']
+  exported_at   timestamp   [default: `now()`]
+  note          text
+}
+
+Table consumable_export_item {
+  item_id       uuid [primary key, default: `uuid()`]
+  export_id     uuid [not null]
+  consumable_id uuid [not null]
+  quantity      int  [not null]
+  note          text
+}
+
+
+// ============================================================
+// 5B. VẬT TƯ THAY THẾ
+// Không liên kết với biên bản đánh giá kỹ thuật theo feedback
+// Không dùng material_stock/material_transaction
+// Tồn kho được tính từ tổng nhập - tổng xuất
+// ============================================================
+
+Table spare_part {
+  spare_part_id uuid         [primary key, default: `uuid()`]
+  code          varchar(50)  [not null, unique]
+  name          varchar(200) [not null]
+  unit          varchar(50)
+  min_quantity  int          [not null, default: 0, note: 'Ngưỡng cảnh báo tồn kho thấp']
+  note          text
+}
+
+// Phiếu yêu cầu cấp vật tư thay thế
+Table spare_part_request {
+  req_id     uuid        [primary key, default: `uuid()`]
+  req_number varchar(50) [unique, note: 'Số phiếu yêu cầu cấp vật tư thay thế']
+  order_id   uuid        [note: 'Phiếu công tác liên quan']
+  status     varchar(20) [not null, default: 'pending', note: 'pending | approved | issued | rejected']
+  pdf_url    varchar(500)
+  created_by uuid        [note: 'User tạo phiếu yêu cầu']
+  created_at timestamp   [default: `now()`]
+}
+
+Table spare_part_request_item {
+  item_id            uuid [primary key, default: `uuid()`]
+  req_id             uuid [not null]
+  spare_part_id      uuid [not null]
+  quantity_requested int  [not null, default: 0]
+  quantity_issued    int  [not null, default: 0]
+}
+
+// Phiếu nhập kho vật tư thay thế
+// Một phiếu nhập có thể có nhiều vật tư
+Table spare_part_import {
+  import_id     uuid        [primary key, default: `uuid()`]
+  import_number varchar(50) [not null, unique, note: 'Số phiếu nhập kho vật tư thay thế']
+  imported_by   uuid        [note: 'User nhập kho']
+  imported_at   timestamp   [default: `now()`]
+  note          text
+}
+
+Table spare_part_import_item {
+  item_id       uuid [primary key, default: `uuid()`]
+  import_id     uuid [not null]
+  spare_part_id uuid [not null]
+  quantity      int  [not null]
+  note          text
+}
+
+// Phiếu xuất kho vật tư thay thế
+Table spare_part_export {
+  export_id     uuid        [primary key, default: `uuid()`]
+  export_number varchar(50) [not null, unique, note: 'Số phiếu xuất kho vật tư thay thế']
+  req_id        uuid        [note: 'Phiếu yêu cầu cấp vật tư thay thế, có thể null']
+  order_id      uuid        [note: 'Phiếu công tác liên quan, có thể null nếu xuất ngoài PCT']
+  exported_by   uuid        [note: 'User xuất kho']
+  exported_at   timestamp   [default: `now()`]
+  note          text
+}
+
+Table spare_part_export_item {
+  item_id       uuid [primary key, default: `uuid()`]
+  export_id     uuid [not null]
+  spare_part_id uuid [not null]
+  quantity      int  [not null]
+  note          text
+}
+
+
+// ============================================================
+// 6. CÔNG CỤ DỤNG CỤ - CCDC
+// ============================================================
+
+Table tool {
+  tool_id            uuid         [primary key, default: `uuid()`]
+  name               varchar(200) [not null]
+  category           varchar(100)
+  total_quantity     int          [not null, default: 0]
+  available_quantity int          [not null, default: 0]
+  status             varchar(20)  [not null, default: 'available', note: 'available | low | out']
+  note               text
+}
+
+// Bỏ work_order theo feedback
+// Người mượn nối với employee vì không phải ai cũng có user
+Table tool_borrow {
+  borrow_id   uuid        [primary key, default: `uuid()`]
+  tool_id     uuid        [not null]
+  borrowed_by uuid        [not null, note: 'Employee mượn công cụ']
+  quantity    int         [not null, default: 1]
+  borrowed_at timestamp   [default: `now()`]
+  due_date    timestamp
+  returned_at timestamp
+  status      varchar(20) [not null, default: 'borrowing', note: 'borrowing | returned | overdue']
+  note        text
+}
+
+
+// ============================================================
+// 7. AUDIT LOG
+// ============================================================
+
+Table audit_log {
+  log_id     uuid         [primary key, default: `uuid()`]
+  user_id    uuid
+  action     varchar(100) [not null, note: 'LOGIN | CREATE | UPDATE | DELETE...']
+  table_name varchar(100)
+  record_id  uuid
+  detail     text
+  ip_address varchar(45)
+  created_at timestamp    [default: `now()`]
+}
+
+
+// ============================================================
+// RELATIONSHIPS
+// ============================================================
+
+// AUTH & NHÂN SỰ
+Ref: employee.department_id > department.department_id
+Ref: employee.position_id   > employee_position.position_id
+
+Ref: employee_role.employee_id > employee.employee_id
+Ref: employee_role.role_id     > role.role_id
+
+Ref: user.employee_id - employee.employee_id
+
+
+// THIẾT BỊ
+Ref: equipment_system.parent_system_id > equipment_system.system_id
+Ref: equipment.system_id               > equipment_system.system_id
+
+Ref: equipment_image.equipment_id > equipment.equipment_id
+Ref: equipment_image.uploaded_by  > user.user_id
+
+Ref: technical_spec.equipment_id > equipment.equipment_id
+Ref: technical_spec.param_id     > technical_param.param_id
+Ref: technical_spec.unit_id      > unit.unit_id
+
+
+// REQUEST & PHIẾU CÔNG TÁC
+Ref: repair_request.equipment_id > equipment.equipment_id
+Ref: repair_request.created_by   > user.user_id
+
+Ref: work_order.request_id > repair_request.request_id
+Ref: work_order.created_by > user.user_id
+
+Ref: work_order.work_leader_id       > employee.employee_id
+Ref: work_order.direct_commander_id  > employee.employee_id
+Ref: work_order.safety_supervisor_id > employee.employee_id
+
+Ref: work_order_daily_log.order_id  > work_order.order_id
+Ref: work_order_daily_log.opened_by > user.user_id
+Ref: work_order_daily_log.closed_by > user.user_id
+
+Ref: work_order_member.order_id    > work_order.order_id
+Ref: work_order_member.employee_id > employee.employee_id
+
+Ref: repair_history.equipment_id > equipment.equipment_id
+Ref: repair_history.order_id     > work_order.order_id
+Ref: repair_history.repaired_by  > user.user_id
+
+
+// BIÊN BẢN ĐÁNH GIÁ KỸ THUẬT
+Ref: technical_assessment.equipment_id        > equipment.equipment_id
+Ref: technical_assessment.created_by          > employee.employee_id
+Ref: technical_assessment.repair_signed_by    > employee.employee_id
+Ref: technical_assessment.operation_signed_by > employee.employee_id
+
+
+// VẬT TƯ TIÊU HAO
+Ref: consumable_request.order_id   > work_order.order_id
+Ref: consumable_request.created_by > user.user_id
+
+Ref: consumable_request_item.req_id        > consumable_request.req_id
+Ref: consumable_request_item.consumable_id > consumable.consumable_id
+
+Ref: consumable_import.imported_by > user.user_id
+Ref: consumable_import_item.import_id     > consumable_import.import_id
+Ref: consumable_import_item.consumable_id > consumable.consumable_id
+
+Ref: consumable_export.req_id      > consumable_request.req_id
+Ref: consumable_export.order_id    > work_order.order_id
+Ref: consumable_export.exported_by > user.user_id
+Ref: consumable_export_item.export_id     > consumable_export.export_id
+Ref: consumable_export_item.consumable_id > consumable.consumable_id
+
+
+// VẬT TƯ THAY THẾ
+Ref: spare_part_request.order_id   > work_order.order_id
+Ref: spare_part_request.created_by > user.user_id
+
+Ref: spare_part_request_item.req_id        > spare_part_request.req_id
+Ref: spare_part_request_item.spare_part_id > spare_part.spare_part_id
+
+Ref: spare_part_import.imported_by > user.user_id
+Ref: spare_part_import_item.import_id     > spare_part_import.import_id
+Ref: spare_part_import_item.spare_part_id > spare_part.spare_part_id
+
+Ref: spare_part_export.req_id      > spare_part_request.req_id
+Ref: spare_part_export.order_id    > work_order.order_id
+Ref: spare_part_export.exported_by > user.user_id
+Ref: spare_part_export_item.export_id     > spare_part_export.export_id
+Ref: spare_part_export_item.spare_part_id > spare_part.spare_part_id
+
+
+// CCDC
+Ref: tool_borrow.tool_id     > tool.tool_id
+Ref: tool_borrow.borrowed_by > employee.employee_id
+
+
+// AUDIT
+Ref: audit_log.user_id > user.user_id
