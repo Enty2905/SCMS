@@ -1,26 +1,12 @@
-import { apiClient } from '@/shared/api/httpClient.js'
-
-import { parseJwt, parseScope, persistAuthTokens } from './token.service.js'
-
 export async function loginService(credentials) {
-  const response = await apiClient.post('/auth/login', {
-    username: credentials.username?.trim(),
-    password: credentials.password,
-  })
-  const auth = response.data
-  const claims = parseJwt(auth.token)
-  const username = claims.sub || credentials.username?.trim()
-
-  persistAuthTokens(auth)
+  await new Promise((resolve) => setTimeout(resolve, 150))
 
   return {
-    token: auth.token,
-    refreshToken: auth.refreshToken,
+    token: 'demo-token',
     user: {
-      id: claims.userId,
-      name: username,
-      email: `${username}@scms.local`,
-      roles: parseScope(claims.scope),
+      id: 'demo-user',
+      name: 'Operations Lead',
+      email: credentials.username || 'ops@scms.local',
     },
   }
 }

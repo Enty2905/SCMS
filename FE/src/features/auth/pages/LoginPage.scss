@@ -10,10 +10,7 @@ $slate-400: #94a3b8;
 $slate-300: #cbd5e1;
 $slate-200: #e2e8f0;
 $slate-100: #f1f5f9;
-$amber-700: #b45309;
-$amber-50: #fffbeb;
 $rose-600: #e11d48;
-$rose-50: #fff1f2;
 
 .login-page {
   position: relative;
@@ -134,11 +131,6 @@ $rose-50: #fff1f2;
       background: #f5f3ff;
       color: #5b21b6;
     }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.58;
-    }
   }
 }
 
@@ -195,12 +187,6 @@ $rose-50: #fff1f2;
       background: #fff;
       box-shadow: 0 0 0 4px rgb(109 76 255 / 12%);
     }
-
-    &:disabled {
-      cursor: not-allowed;
-      background: #eef2f7;
-      color: $slate-500;
-    }
   }
 
   &__toggle {
@@ -225,43 +211,12 @@ $rose-50: #fff1f2;
       background: $slate-100;
       color: $slate-500;
     }
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.48;
-    }
   }
 
   &__error {
     margin: -0.25rem 0 0;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid #fecdd3;
-    border-radius: 0.65rem;
-    background: $rose-50;
     color: $rose-600;
     font-size: 0.9rem;
-  }
-
-  &__hint,
-  &__lock {
-    margin: -0.25rem 0 0;
-    padding: 0.72rem 0.85rem;
-    border-radius: 0.65rem;
-    font-size: 0.88rem;
-    line-height: 1.45;
-  }
-
-  &__hint {
-    border: 1px solid $slate-200;
-    background: $slate-100;
-    color: $slate-700;
-  }
-
-  &__lock {
-    border: 1px solid #fde68a;
-    background: $amber-50;
-    color: $amber-700;
-    font-weight: 700;
   }
 
   &__submit {

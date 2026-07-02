@@ -1,2 +1,0 @@
-export const MAX_LOGIN_ATTEMPTS = 5
-export const LOGIN_LOCK_DURATION_MS = 60_000
