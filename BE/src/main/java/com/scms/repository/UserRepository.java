@@ -16,6 +16,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByUsername(String username);
 
+    boolean existsByEmployeeEmployeeId(UUID employeeId);
+
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        JOIN FETCH u.employee e
+        LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.position
+        ORDER BY u.createdAt DESC
+    """)
+    java.util.List<User> findAllWithEmployeeDetails();
+
     // Fetch user kèm employee + employee_role + role để tránh N+1
     @Query("""
         SELECT DISTINCT u FROM User u

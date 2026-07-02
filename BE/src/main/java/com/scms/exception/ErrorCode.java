@@ -22,6 +22,7 @@ public enum ErrorCode {
     TOKEN_INVALID(1005, "Token is invalid or expired", HttpStatus.UNAUTHORIZED),
     EMPLOYEE_NOT_FOUND(1006, "Employee not found", HttpStatus.NOT_FOUND),
     EMPLOYEE_ALREADY_HAS_ACCOUNT(1007, "Employee already has an account", HttpStatus.BAD_REQUEST),
+    USER_ACCOUNT_NOT_FOUND(1008, "User account not found", HttpStatus.NOT_FOUND),
 
     // Lỗi thiết bị (Equipment)
     EQUIPMENT_NOT_FOUND(2001, "Equipment not found", HttpStatus.NOT_FOUND),
