@@ -67,7 +67,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 userRepository.findByUsername(username).ifPresentOrElse(user -> {
                     var authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(
                             scope != null ? scope.replace(" ", ",") : "");
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    var auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(auth);
                     logger.info("Authenticated user: " + username);
                 }, () -> logger.warn("User not found in DB: " + username));
