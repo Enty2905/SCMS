@@ -68,3 +68,4 @@ networks:
 
 volumes:
   db_data:
+  scms_logs:

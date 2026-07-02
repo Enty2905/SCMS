@@ -72,6 +72,36 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý lỗi không tìm thấy tài nguyên (NotFoundException)
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleNotFoundException(NotFoundException ex) {
+        return ResponseEntity.status(404).body(
+                ApiResponse.error(404, ex.getMessage())
+        );
+    }
+
+    /**
+     * Xử lý lỗi trùng lặp tài nguyên (DuplicateResourceException)
+     */
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<?>> handleDuplicateResourceException(DuplicateResourceException ex) {
+        return ResponseEntity.status(409).body(
+                ApiResponse.error(409, ex.getMessage())
+        );
+    }
+
+    /**
+     * Xử lý lỗi tham số không hợp lệ (IllegalArgumentException)
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(400, ex.getMessage())
+        );
+    }
+
+    /**
      * Bắt tất cả lỗi chưa xử lý khác (fallback)
      */
     @ExceptionHandler(Exception.class)
