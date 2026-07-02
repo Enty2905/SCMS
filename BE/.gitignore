@@ -38,4 +38,4 @@ build/
 .DS_Store
 
 ### Environment Variables ###
-.env.example
+.env
