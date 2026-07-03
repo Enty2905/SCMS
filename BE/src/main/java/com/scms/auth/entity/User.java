@@ -32,6 +32,8 @@ public class User {
     // Tài khoản được cấp cho một nhân viên (1-1)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false, unique = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Employee employee;
 
     @Column(name = "is_active", nullable = false)
