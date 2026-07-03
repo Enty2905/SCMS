@@ -44,8 +44,11 @@ public class OpenApiConfig {
                                 | admin | password | ADMIN |
                                 | hr | password | HR |
                                 | warehouse_mat | password | WAREHOUSE_MAT |
+                                | warehouse_tool | password | WAREHOUSE_TOOL |
+                                | ops_manager | password | OPS_MANAGER |
                                 | shift_leader | password | SHIFT_LEADER |
                                 | repair_manager | password | REPAIR_MANAGER |
+                                | team_leader | password | TEAM_LEADER |
                                 """)
                         .version("1.0.0")
                         .contact(new Contact()
