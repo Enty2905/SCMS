@@ -1,9 +1,10 @@
 import { useSelector } from 'react-redux'
-import { Navigate } from 'react-router-dom'
 
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { hasAnyRole, HR_ACCESS_ROLES, ROLES } from '@/features/auth/utils/roles.js'
 import { HrDashboardPage } from '@/features/hr/pages/HrDashboardPage.jsx'
+import { MaterialDashboardPage } from '@/features/inventory/pages/MaterialDashboardPage.jsx'
+import { ToolDashboardPage } from '@/features/inventory/pages/ToolDashboardPage.jsx'
 
 export function DashboardPage() {
   const user = useSelector(selectCurrentUser)
@@ -13,9 +14,14 @@ export function DashboardPage() {
     return <HrDashboardPage />
   }
 
-  // 2. Nhóm Kho vật tư / CCDC -> Bay vào trang quản lý kho chung (inventory)
-  if (hasAnyRole(user, [ROLES.WAREHOUSE_MAT, ROLES.WAREHOUSE_TOOL])) {
-    return <Navigate replace to="/dashboard/inventory" />
+  // 2. Thủ kho vật tư -> Dashboard vật tư
+  if (hasAnyRole(user, [ROLES.WAREHOUSE_MAT])) {
+    return <MaterialDashboardPage />
+  }
+
+  // 3. Thủ kho CCDC -> Dashboard CCDC
+  if (hasAnyRole(user, [ROLES.WAREHOUSE_TOOL])) {
+    return <ToolDashboardPage />
   }
 
   // 4. Mặc định cho các role khác chưa có màn hình Bảng tin riêng
