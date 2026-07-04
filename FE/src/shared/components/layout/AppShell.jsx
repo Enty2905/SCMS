@@ -1,11 +1,7 @@
 import {
   Bell,
-  BarChart3,
-  Building2,
   LayoutDashboard,
   LogOut,
-  UserRoundCog,
-  UsersRound,
   Zap,
 } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -92,7 +88,8 @@ export function AppShell() {
                     : 'text-slate-300 hover:bg-white/10 hover:text-white',
                 ].join(' ')
               }
-              key={item.label}
+              end={item.href === '/dashboard'}
+              key={item.label + item.href}
               to={item.href}
             >
               <item.icon size={18} />

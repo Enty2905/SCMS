@@ -1,8 +1,43 @@
-import { InventoryPage } from './pages/InventoryPage.jsx'
+import { RequireRole } from '@/app/RouteGuards.jsx'
+import { ROLES } from '@/features/auth/utils/roles.js'
+import { MaterialDashboardPage } from './pages/MaterialDashboardPage.jsx'
+import { MaterialListPage } from './pages/MaterialListPage.jsx'
+import { ToolDashboardPage } from './pages/ToolDashboardPage.jsx'
+import { ToolListPage } from './pages/ToolListPage.jsx'
 
 export const inventoryRoutes = [
+  // Thủ kho vật tư
   {
-    path: 'inventory',
-    element: <InventoryPage />,
-  }
+    path: 'inventory/dashboard-material',
+    element: (
+      <RequireRole roles={[ROLES.WAREHOUSE_MAT]}>
+        <MaterialDashboardPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'inventory/materials',
+    element: (
+      <RequireRole roles={[ROLES.WAREHOUSE_MAT]}>
+        <MaterialListPage />
+      </RequireRole>
+    ),
+  },
+  // Thủ kho CCDC
+  {
+    path: 'inventory/dashboard-tool',
+    element: (
+      <RequireRole roles={[ROLES.WAREHOUSE_TOOL]}>
+        <ToolDashboardPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'inventory/tools',
+    element: (
+      <RequireRole roles={[ROLES.WAREHOUSE_TOOL]}>
+        <ToolListPage />
+      </RequireRole>
+    ),
+  },
 ]
