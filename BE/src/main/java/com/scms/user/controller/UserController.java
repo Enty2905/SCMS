@@ -1,6 +1,5 @@
 package com.scms.user.controller;
 
-import com.scms.auth.dto.request.*;
 import com.scms.user.dto.request.*;
 import com.scms.common.response.ApiResponse;
 import com.scms.common.response.PagedResponse;
@@ -12,8 +11,6 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +25,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserController {
 
-    private static final Logger log = LoggerFactory.getLogger(UserController.class);
     UserService userService;
 
     // ADMIN/HR: Tạo tài khoản cho nhân viên

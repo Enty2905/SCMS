@@ -175,8 +175,8 @@ public class TechnicalAssessmentService {
                                         .setWidth(UnitValue.createPercentValue(100));
 
                         addInfoRow(eqTable, normalFont, boldFont, "Ma KKS:", eq != null ? eq.getKksCode() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Ten thiet bi:", eq != null ? eq.getName() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Loai:", eq != null ? eq.getType() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Ten thiet bi:", eq != null ? eq.getEquipmentName() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Loai:", eq != null ? eq.getEquipmentType() : "");
                         addInfoRow(eqTable, normalFont, boldFont, "Vi tri:", eq != null ? eq.getLocation() : "");
                         addInfoRow(eqTable, normalFont, boldFont, "Trang thai:", eq != null ? eq.getStatus() : "");
                         document.add(eqTable);
@@ -327,10 +327,10 @@ public class TechnicalAssessmentService {
                                 .pdfUrl(ta.getPdfUrl())
                                 .completionStatus(ta.getPdfUrl() != null ? "signed" : "draft")
                                 // Equipment
-                                .equipmentId(eq != null ? eq.getEquipmentId() : null)
+                                .equipmentId(eq != null ? eq.getId() : null)
                                 .equipmentKksCode(eq != null ? eq.getKksCode() : null)
-                                .equipmentName(eq != null ? eq.getName() : null)
-                                .equipmentType(eq != null ? eq.getType() : null)
+                                .equipmentName(eq != null ? eq.getEquipmentName() : null)
+                                .equipmentType(eq != null ? eq.getEquipmentType() : null)
                                 .equipmentLocation(eq != null ? eq.getLocation() : null)
                                 // Creator
                                 .createdByEmployeeId(creator != null ? creator.getEmployeeId() : null)

@@ -2,40 +2,44 @@ package com.scms.equipment.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "equipment")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
 public class Equipment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "equipment_id")
-    UUID equipmentId;
+    @Column(name = "equipment_id", columnDefinition = "BINARY(16)")
+    private UUID id;
 
-    // Mã định danh theo tiêu chuẩn KKS
-    @Column(name = "kks_code", length = 100, nullable = false, unique = true)
-    String kksCode;
+    // Mã định danh theo tiêu chuẩn KKS (NOT NULL trong DB)
+    @Column(name = "kks_code", nullable = false, length = 100)
+    private String kksCode;
 
-    @Column(name = "name", length = 200, nullable = false)
-    String name;
+    // Tên thiết bị — cột "name" trong DB (NOT NULL)
+    @Column(name = "name", nullable = false, length = 200)
+    private String equipmentName;
 
-    // Cơ khí | Điện | CI
-    @Column(name = "type", length = 100, nullable = false)
-    String type;
+    // Loại thiết bị — cột "type" trong DB (NOT NULL)
+    @Column(name = "type", nullable = false, length = 100)
+    private String equipmentType;
 
-    // active | inactive | maintenance | broken
-    @Column(name = "status", length = 20, nullable = false)
-    String status;
+    // Trạng thái: active | inactive | maintenance | broken
+    @Column(name = "status", nullable = false, length = 20)
+    private String status;
 
     // Vị trí lắp đặt trong nhà máy
     @Column(name = "location", length = 200)
-    String location;
+    private String location;
+
+    // Khóa ngoại tới equipment_system
+    @Column(name = "system_id", columnDefinition = "BINARY(16)")
+    private UUID systemId;
 }

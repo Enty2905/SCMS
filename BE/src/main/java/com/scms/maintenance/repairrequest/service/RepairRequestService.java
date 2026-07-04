@@ -55,10 +55,10 @@ public class RepairRequestService {
                 .createdByName(r.getCreatedBy() != null && r.getCreatedBy().getEmployee() != null
                         ? r.getCreatedBy().getEmployee().getName() : null)
                 // Thiết bị
-                .equipmentId(r.getEquipment() != null ? r.getEquipment().getEquipmentId() : null)
+                .equipmentId(r.getEquipment() != null ? r.getEquipment().getId() : null)
                 .equipmentKksCode(r.getEquipment() != null ? r.getEquipment().getKksCode() : null)
-                .equipmentName(r.getEquipment() != null ? r.getEquipment().getName() : null)
-                .equipmentType(r.getEquipment() != null ? r.getEquipment().getType() : null)
+                .equipmentName(r.getEquipment() != null ? r.getEquipment().getEquipmentName() : null)
+                .equipmentType(r.getEquipment() != null ? r.getEquipment().getEquipmentType() : null)
                 .equipmentLocation(r.getEquipment() != null ? r.getEquipment().getLocation() : null)
                 .equipmentStatus(r.getEquipment() != null ? r.getEquipment().getStatus() : null)
                 .build();

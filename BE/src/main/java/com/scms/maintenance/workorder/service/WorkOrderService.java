@@ -135,10 +135,10 @@ public class WorkOrderService {
                 .requestId(req != null ? req.getRequestId() : null)
                 .requestDescription(req != null ? req.getDescription() : null)
                 .requestPriority(req != null ? req.getPriority() : null)
-                .equipmentId(req != null && req.getEquipment() != null ? req.getEquipment().getEquipmentId() : null)
+                .equipmentId(req != null && req.getEquipment() != null ? req.getEquipment().getId() : null)
                 .equipmentKksCode(req != null && req.getEquipment() != null ? req.getEquipment().getKksCode() : null)
-                .equipmentName(req != null && req.getEquipment() != null ? req.getEquipment().getName() : null)
-                .equipmentType(req != null && req.getEquipment() != null ? req.getEquipment().getType() : null)
+                .equipmentName(req != null && req.getEquipment() != null ? req.getEquipment().getEquipmentName() : null)
+                .equipmentType(req != null && req.getEquipment() != null ? req.getEquipment().getEquipmentType() : null)
                 .equipmentLocation(req != null && req.getEquipment() != null ? req.getEquipment().getLocation() : null)
                 // Nhân sự
                 .workLeader(toEmployeeInfo(wo.getWorkLeader()))
