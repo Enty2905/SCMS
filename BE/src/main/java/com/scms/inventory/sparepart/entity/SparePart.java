@@ -1,4 +1,4 @@
-package com.scms.inventory.consumable.entity;
+package com.scms.inventory.sparepart.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,18 +7,18 @@ import lombok.experimental.FieldDefaults;
 import java.util.UUID;
 
 @Entity
-@Table(name = "consumable")
+@Table(name = "spare_part")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Consumable {
+public class SparePart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "consumable_id")
-    UUID consumableId;
+    @Column(name = "spare_part_id")
+    UUID sparePartId;
 
     @Column(name = "code", length = 50, nullable = false, unique = true)
     String code;

@@ -1,4 +1,4 @@
-package com.scms.inventory.consumable.dto.request;
+package com.scms.inventory.sparepart.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ConsumableRequest {
+public class SparePartRequest {
 
     @NotBlank(message = "Mã vật tư không được để trống")
     @Size(max = 50, message = "Mã vật tư tối đa 50 ký tự")

@@ -1,4 +1,4 @@
-package com.scms.inventory.consumable.dto.response;
+package com.scms.inventory.sparepart.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,8 +8,8 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ConsumableResponse {
-    String consumableId;
+public class SparePartResponse {
+    String sparePartId;
     String code;
     String name;
     String unit;

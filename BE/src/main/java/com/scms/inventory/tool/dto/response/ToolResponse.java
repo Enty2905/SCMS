@@ -1,4 +1,4 @@
-package com.scms.inventory.consumable.dto.response;
+package com.scms.inventory.tool.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,11 +8,12 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ConsumableResponse {
-    String consumableId;
-    String code;
+public class ToolResponse {
+    String toolId;
     String name;
-    String unit;
-    Integer minQuantity;
+    String category;
+    Integer totalQuantity;
+    Integer availableQuantity;
+    String status;
     String note;
 }
