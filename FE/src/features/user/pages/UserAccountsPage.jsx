@@ -1,9 +1,9 @@
 import {
-  Edit3,
   Lock,
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   Unlock,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -21,6 +21,7 @@ import {
 } from '../store/user-account.selectors.js'
 import {
   createUserAccount,
+  deleteUserAccount,
   fetchUserAccountPageData,
   updateUserAccountStatus,
 } from '../store/user-account.thunks.js'
@@ -85,6 +86,18 @@ export function UserAccountsPage() {
         active: !account.active,
       }),
     )
+  }
+
+  function handleDeleteAccount(account) {
+    const confirmed = window.confirm(
+      `Xoa tai khoan "${account.username}"? Nhan vien co the duoc cap lai tai khoan sau khi xoa.`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    dispatch(deleteUserAccount(account.userId))
   }
 
   return (
@@ -273,15 +286,28 @@ export function UserAccountsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
-                          <button className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-violet-600">
-                            <Edit3 size={16} />
-                          </button>
                           <button
-                            className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600"
+                            className={[
+                              'inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-bold transition',
+                              account.active
+                                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                            ].join(' ')}
                             disabled={saving}
                             onClick={() => handleStatusChange(account)}
+                            type="button"
                           >
                             {account.active ? <Lock size={16} /> : <Unlock size={16} />}
+                            {account.active ? 'Khoa' : 'Mo khoa'}
+                          </button>
+                          <button
+                            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-rose-50 px-3 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
+                            disabled={saving}
+                            onClick={() => handleDeleteAccount(account)}
+                            type="button"
+                          >
+                            <Trash2 size={16} />
+                            Xoa
                           </button>
                         </div>
                       </td>

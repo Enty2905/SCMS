@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit'
 
 import {
   createUserAccount,
+  deleteUserAccount,
   fetchUserAccountPageData,
   updateUserAccountStatus,
 } from './user-account.thunks.js'
@@ -71,6 +72,24 @@ const userAccountSlice = createSlice({
           : 'Da khoa tai khoan.'
       })
       .addCase(updateUserAccountStatus.rejected, (state, action) => {
+        state.saving = false
+        state.error = action.error.message
+      })
+      .addCase(deleteUserAccount.pending, (state) => {
+        state.saving = true
+        state.error = null
+        state.successMessage = null
+      })
+      .addCase(deleteUserAccount.fulfilled, (state, action) => {
+        state.saving = false
+        state.accounts = state.accounts.filter(
+          (account) => account.userId !== action.payload.userId,
+        )
+        state.employeesWithoutAccount =
+          action.payload.employeesWithoutAccount
+        state.successMessage = 'Da xoa tai khoan.'
+      })
+      .addCase(deleteUserAccount.rejected, (state, action) => {
         state.saving = false
         state.error = action.error.message
       })

@@ -2,6 +2,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit'
 
 import {
   createAccountService,
+  deleteAccountService,
   fetchAccountsService,
   fetchEmployeesWithoutAccountService,
   updateAccountStatusService,
@@ -32,4 +33,14 @@ export const createUserAccount = createAsyncThunk(
 export const updateUserAccountStatus = createAsyncThunk(
   'userAccounts/updateStatus',
   async ({ userId, active }) => updateAccountStatusService(userId, active),
+)
+
+export const deleteUserAccount = createAsyncThunk(
+  'userAccounts/delete',
+  async (userId) => {
+    await deleteAccountService(userId)
+    const employeesWithoutAccount = await fetchEmployeesWithoutAccountService()
+
+    return { userId, employeesWithoutAccount }
+  },
 )
