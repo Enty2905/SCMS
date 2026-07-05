@@ -1,9 +1,7 @@
 package com.scms.security;
 
-import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.auth.service.AuthenticationService;
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.text.ParseException;
 
 @Component
 @RequiredArgsConstructor

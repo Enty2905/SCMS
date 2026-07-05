@@ -6,12 +6,9 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
-import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 /**
  * Cấu hình Swagger / OpenAPI 3 cho SCMS
@@ -44,8 +41,11 @@ public class OpenApiConfig {
                                 | admin | password | ADMIN |
                                 | hr | password | HR |
                                 | warehouse_mat | password | WAREHOUSE_MAT |
+                                | warehouse_tool | password | WAREHOUSE_TOOL |
+                                | ops_manager | password | OPS_MANAGER |
                                 | shift_leader | password | SHIFT_LEADER |
                                 | repair_manager | password | REPAIR_MANAGER |
+                                | team_leader | password | TEAM_LEADER |
                                 """)
                         .version("1.0.0")
                         .contact(new Contact()

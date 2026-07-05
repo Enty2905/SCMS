@@ -30,7 +30,8 @@ public class GlobalExceptionHandler {
      * Xử lý các lỗi validate (ví dụ: @NotNull, @Size, @Email...)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(
+            MethodArgumentNotValidException exception) {
         String enumKey = exception.getFieldError().getDefaultMessage();
         ErrorCode errorCode;
         try {
@@ -57,8 +58,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.badRequest().body(
-                ApiResponse.error(ErrorCode.INVALID_KEY.getCode(), message)
-        );
+                ApiResponse.error(ErrorCode.INVALID_KEY.getCode(), message));
     }
 
     /**
@@ -67,8 +67,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<?>> handleAccessDeniedException(AccessDeniedException ex) {
         return ResponseEntity.status(ErrorCode.ACCESS_DENIED.getStatusCode()).body(
-                ApiResponse.error(ErrorCode.ACCESS_DENIED.getCode(), ErrorCode.ACCESS_DENIED.getMessage())
-        );
+                ApiResponse.error(ErrorCode.ACCESS_DENIED.getCode(), ErrorCode.ACCESS_DENIED.getMessage()));
     }
 
     /**
@@ -109,7 +108,7 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception occurred", exception);
 
         return ResponseEntity.internalServerError().body(
-                ApiResponse.error(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(), ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
-        );
+                ApiResponse.error(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                        ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()));
     }
 }
