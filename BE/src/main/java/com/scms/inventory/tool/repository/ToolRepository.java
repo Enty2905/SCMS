@@ -1,0 +1,23 @@
+package com.scms.inventory.tool.repository;
+
+import com.scms.inventory.tool.entity.Tool;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public interface ToolRepository extends JpaRepository<Tool, UUID> {
+
+    @Query("SELECT t FROM Tool t WHERE " +
+            "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+            "(:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%')))")
+    Page<Tool> searchByKeywordAndCategory(
+            @Param("keyword") String keyword,
+            @Param("category") String category,
+            Pageable pageable);
+}

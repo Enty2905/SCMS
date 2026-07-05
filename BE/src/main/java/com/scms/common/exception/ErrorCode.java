@@ -33,6 +33,7 @@ public enum ErrorCode {
     REPAIR_REQUEST_NOT_FOUND(3001, "Repair request not found", HttpStatus.NOT_FOUND),
     WORK_ORDER_NOT_FOUND(3002, "Work order not found", HttpStatus.NOT_FOUND),
     WORK_ORDER_INVALID_STATUS(3003, "Invalid status transition for work order", HttpStatus.BAD_REQUEST),
+    DUPLICATE_ORDER_NUMBER(3004, "Work order number already exists", HttpStatus.BAD_REQUEST),
 
     MATERIAL_NOT_FOUND(4001, "Material not found", HttpStatus.NOT_FOUND),
     NOT_ENOUGH_INVENTORY(4002, "Not enough inventory to issue", HttpStatus.BAD_REQUEST);

@@ -25,10 +25,13 @@ public class EmployeeRole {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Role role;
 
     @Column(name = "assigned_at")

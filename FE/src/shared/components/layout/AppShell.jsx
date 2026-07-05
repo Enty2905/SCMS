@@ -1,11 +1,7 @@
 import {
   Bell,
-  BarChart3,
-  Building2,
   LayoutDashboard,
   LogOut,
-  UserRoundCog,
-  UsersRound,
   Zap,
 } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -20,6 +16,10 @@ import {
   HR_ACCESS_ROLES,
 } from '@/features/auth/utils/roles.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { apiClient } from '@/shared/api/httpClient.js'
+
+import { hrNavItems } from '@/features/hr/hr.nav.js'
+import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 
 const navItems = [
   {
@@ -28,30 +28,8 @@ const navItems = [
     icon: LayoutDashboard,
     roles: HR_ACCESS_ROLES,
   },
-  {
-    label: 'Phòng ban',
-    href: '/dashboard/hr/departments',
-    icon: Building2,
-    roles: HR_ACCESS_ROLES,
-  },
-  {
-    label: 'Nhân viên',
-    href: '/dashboard/hr/employees',
-    icon: UsersRound,
-    roles: HR_ACCESS_ROLES,
-  },
-  {
-    label: 'Tài khoản',
-    href: '/dashboard/hr/accounts',
-    icon: UserRoundCog,
-    roles: HR_ACCESS_ROLES,
-  },
-  {
-    label: 'Báo cáo',
-    href: '/dashboard/hr/reports',
-    icon: BarChart3,
-    roles: HR_ACCESS_ROLES,
-  },
+  ...hrNavItems,
+  ...inventoryNavItems,
 ]
 
 export function AppShell() {
@@ -69,10 +47,21 @@ export function AppShell() {
   const roleLabel = getPrimaryRoleLabel(user)
   const initials = getInitials(user?.name)
 
-  function handleLogout() {
-    clearStoredAuth()
-    dispatch(logout())
-    navigate('/')
+  async function handleLogout() {
+    try {
+      const token = window.localStorage.getItem('scms.auth.token')
+      const refreshToken = window.localStorage.getItem('scms.auth.refreshToken')
+      
+      if (token || refreshToken) {
+        await apiClient.post('/auth/logout', { token, refreshToken })
+      }
+    } catch (e) {
+      console.error('Logout API failed', e)
+    } finally {
+      clearStoredAuth()
+      dispatch(logout())
+      navigate('/')
+    }
   }
 
   return (
@@ -99,7 +88,8 @@ export function AppShell() {
                     : 'text-slate-300 hover:bg-white/10 hover:text-white',
                 ].join(' ')
               }
-              key={item.label}
+              end={item.href === '/dashboard'}
+              key={item.label + item.href}
               to={item.href}
             >
               <item.icon size={18} />

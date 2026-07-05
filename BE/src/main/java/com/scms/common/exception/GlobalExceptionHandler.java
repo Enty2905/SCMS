@@ -30,7 +30,8 @@ public class GlobalExceptionHandler {
      * Xử lý các lỗi validate (ví dụ: @NotNull, @Size, @Email...)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(
+            MethodArgumentNotValidException exception) {
         String enumKey = exception.getFieldError().getDefaultMessage();
         ErrorCode errorCode;
         try {
@@ -57,8 +58,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.badRequest().body(
-                ApiResponse.error(ErrorCode.INVALID_KEY.getCode(), message)
-        );
+                ApiResponse.error(ErrorCode.INVALID_KEY.getCode(), message));
     }
 
     /**
@@ -67,7 +67,36 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<?>> handleAccessDeniedException(AccessDeniedException ex) {
         return ResponseEntity.status(ErrorCode.ACCESS_DENIED.getStatusCode()).body(
-                ApiResponse.error(ErrorCode.ACCESS_DENIED.getCode(), ErrorCode.ACCESS_DENIED.getMessage())
+                ApiResponse.error(ErrorCode.ACCESS_DENIED.getCode(), ErrorCode.ACCESS_DENIED.getMessage()));
+    }
+
+    /**
+     * Xử lý lỗi không tìm thấy tài nguyên (NotFoundException)
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleNotFoundException(NotFoundException ex) {
+        return ResponseEntity.status(404).body(
+                ApiResponse.error(404, ex.getMessage())
+        );
+    }
+
+    /**
+     * Xử lý lỗi trùng lặp tài nguyên (DuplicateResourceException)
+     */
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<?>> handleDuplicateResourceException(DuplicateResourceException ex) {
+        return ResponseEntity.status(409).body(
+                ApiResponse.error(409, ex.getMessage())
+        );
+    }
+
+    /**
+     * Xử lý lỗi tham số không hợp lệ (IllegalArgumentException)
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(400, ex.getMessage())
         );
     }
 
@@ -79,7 +108,7 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception occurred", exception);
 
         return ResponseEntity.internalServerError().body(
-                ApiResponse.error(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(), ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
-        );
+                ApiResponse.error(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                        ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()));
     }
 }
