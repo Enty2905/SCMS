@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,5 +59,11 @@ public class UserAccountController {
                 "Account status updated successfully",
                 userAccountService.updateAccountStatus(userId, request)
         );
+    }
+
+    @DeleteMapping("/accounts/{userId}")
+    public ApiResponse<Void> deleteAccount(@PathVariable UUID userId) {
+        userAccountService.deleteAccount(userId);
+        return ApiResponse.success("Account deleted successfully", null);
     }
 }

@@ -74,6 +74,13 @@ public class UserAccountService {
         return toUserAccountResponse(userRepository.save(user));
     }
 
+    public void deleteAccount(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_ACCOUNT_NOT_FOUND));
+
+        userRepository.delete(user);
+    }
+
     private UserAccountResponse toUserAccountResponse(User user) {
         Employee employee = user.getEmployee();
 

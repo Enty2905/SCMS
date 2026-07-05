@@ -21,3 +21,7 @@ export async function updateAccountStatusService(userId, active) {
   })
   return response.data
 }
+
+export async function deleteAccountService(userId) {
+  await apiClient.delete(`/hr/accounts/${userId}`)
+}
