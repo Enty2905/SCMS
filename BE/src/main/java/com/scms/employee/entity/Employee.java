@@ -34,10 +34,14 @@ public class Employee {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Department department;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "position_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     EmployeePosition position;
 
     // Vị trí/nơi làm việc: PXVH, PXSCC, kho vật tư...
@@ -46,5 +50,6 @@ public class Employee {
 
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
     @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     List<EmployeeRole> employeeRoles;
 }

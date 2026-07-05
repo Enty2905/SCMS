@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { LoginPage } from '@/features/auth/pages/LoginPage.jsx'
-import { HR_ACCESS_ROLES } from '@/features/auth/utils/roles.js'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage.jsx'
 import { hrRoutes } from '@/features/hr/hr.routes.jsx'
 import { inventoryRoutes } from '@/features/inventory/inventory.routes.jsx'
@@ -10,7 +9,6 @@ import { AppShell } from '@/shared/components/layout/AppShell.jsx'
 import {
   AccessDeniedPage,
   RequireAuth,
-  RequireRole,
 } from './RouteGuards.jsx'
 
 export const router = createBrowserRouter([
