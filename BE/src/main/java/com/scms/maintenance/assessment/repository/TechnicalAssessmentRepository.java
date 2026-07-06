@@ -6,8 +6,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 
 @Repository
 public interface TechnicalAssessmentRepository extends JpaRepository<TechnicalAssessment, UUID> {
@@ -30,4 +32,18 @@ public interface TechnicalAssessmentRepository extends JpaRepository<TechnicalAs
         WHERE ta.assessmentId = :id
     """)
     Optional<TechnicalAssessment> findByIdWithDetails(@Param("id") UUID id);
+
+    @Query("""
+        SELECT DISTINCT ta FROM TechnicalAssessment ta
+        LEFT JOIN FETCH ta.equipment
+        LEFT JOIN FETCH ta.createdBy cb
+        LEFT JOIN FETCH cb.position
+        LEFT JOIN FETCH ta.repairSignedBy rsb
+        LEFT JOIN FETCH rsb.position
+        LEFT JOIN FETCH ta.operationSignedBy osb
+        LEFT JOIN FETCH osb.position
+        ORDER BY ta.createdAt DESC
+    """)
+    List<TechnicalAssessment> findAllWithDetails();
 }
+

@@ -20,6 +20,7 @@ import { apiClient } from '@/shared/api/httpClient.js'
 
 import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
+import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
 
 const navItems = [
   {
@@ -30,6 +31,7 @@ const navItems = [
   },
   ...hrNavItems,
   ...inventoryNavItems,
+  ...maintenanceNavItems,
 ]
 
 export function AppShell() {

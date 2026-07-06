@@ -20,7 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/maintenance/assessments")
@@ -110,4 +112,39 @@ public class TechnicalAssessmentController {
         AssessmentResponse response = assessmentService.uploadSignedPdf(assessmentId, file);
         return ApiResponse.success("Upload PDF đã ký thành công. Biên bản đã hoàn thành.", response);
     }
+
+    /**
+     * Lấy toàn bộ danh sách biên bản kỹ thuật
+     * Quyền: ADMIN, TEAM_LEADER, REPAIR_MANAGER
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER', 'REPAIR_MANAGER')")
+    @Operation(summary = "Danh sách biên bản đánh giá kỹ thuật")
+    public ApiResponse<List<AssessmentResponse>> getAllAssessments() {
+
+        return ApiResponse.success("Danh sách biên bản loaded", assessmentService.getAllAssessments());
+    }
+
+    /**
+     * Tải xuống hoặc xem trực tiếp PDF đã ký
+     * Quyền: ADMIN, TEAM_LEADER, REPAIR_MANAGER
+     */
+    @GetMapping("/{assessmentId}/download-signed")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER', 'REPAIR_MANAGER')")
+    @Operation(summary = "Xem hoặc tải file PDF đã ký")
+    public ResponseEntity<byte[]> downloadSignedPdf(@PathVariable java.util.UUID assessmentId) {
+        byte[] pdfBytes = assessmentService.downloadSignedPdf(assessmentId);
+
+        String filename = "signed_" + assessmentId.toString().substring(0, 8) + ".pdf";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.inline().filename(filename).build()
+        );
+        headers.setContentLength(pdfBytes.length);
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+    }
 }
+
