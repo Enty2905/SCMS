@@ -74,8 +74,6 @@ public class TechnicalAssessmentService {
                                 .orElseThrow(() -> new AppException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
                 // 2. Xác định employee tạo biên bản
-                // Nếu request truyền createdByEmployeeId → dùng; không thì lấy employee từ user
-                // đăng nhập
                 Employee createdBy;
                 if (req.getCreatedByEmployeeId() != null) {
                         createdBy = employeeRepository.findById(req.getCreatedByEmployeeId())
@@ -86,8 +84,12 @@ public class TechnicalAssessmentService {
                         createdBy = currentUser.getEmployee();
                 }
 
-                // 3. Lưu biên bản
+                // 3. Tự sinh số biên bản đánh giá kỹ thuật (BB-DGKT-XXXX)
+                String assessmentNumber = generateAssessmentNumber();
+
+                // 4. Lưu biên bản
                 TechnicalAssessment assessment = TechnicalAssessment.builder()
+                                .assessmentNumber(assessmentNumber)
                                 .equipment(equipment)
                                 .damageDescription(req.getDamageDescription())
                                 .proposedAction(req.getProposedAction())
@@ -142,21 +144,13 @@ public class TechnicalAssessmentService {
                                         .setMarginBottom(4);
                         document.add(title);
 
-                        Paragraph subtitle = new Paragraph("(Technical Assessment Report)")
-                                        .setFont(normalFont)
-                                        .setFontSize(10)
-                                        .setTextAlignment(TextAlignment.CENTER)
-                                        .setMarginBottom(20);
-                        document.add(subtitle);
-
-                        // ── Thông tin biên bản ────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "I. THONG TIN BIET BAN");
+                        addSectionTitle(document, boldFont, "I. THONG TIN BIENT BAN");
 
                         Table infoTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
                                         .setWidth(UnitValue.createPercentValue(100));
 
                         addInfoRow(infoTable, normalFont, boldFont, "Ma bien ban:",
-                                        ta.getAssessmentId().toString().substring(0, 8).toUpperCase());
+                                        ta.getAssessmentNumber() != null ? ta.getAssessmentNumber() : "");
                         addInfoRow(infoTable, normalFont, boldFont, "Ngay lap:",
                                         ta.getCreatedAt() != null ? ta.getCreatedAt().format(dtf) : "");
                         addInfoRow(infoTable, normalFont, boldFont, "Nguoi lap:",
@@ -183,8 +177,13 @@ public class TechnicalAssessmentService {
 
                         // ── Nội dung đánh giá ─────────────────────────────────────────────
                         addSectionTitle(document, boldFont, "III. MO TA HU HONG");
-                        Paragraph damageDesc = new Paragraph(
-                                        ta.getDamageDescription() != null ? ta.getDamageDescription() : "")
+                        String damageVal = ta.getDamageDescription();
+                        if (damageVal == null || damageVal.trim().isEmpty()) {
+                                damageVal = "......................................................................................................................................\n" +
+                                            "......................................................................................................................................\n" +
+                                            "......................................................................................................................................";
+                        }
+                        Paragraph damageDesc = new Paragraph(damageVal)
                                         .setFont(normalFont)
                                         .setFontSize(11)
                                         .setBorder(new SolidBorder(ColorConstants.LIGHT_GRAY, 1))
@@ -193,8 +192,13 @@ public class TechnicalAssessmentService {
                         document.add(damageDesc);
 
                         addSectionTitle(document, boldFont, "IV. PHUONG AN XU LY DE XUAT");
-                        Paragraph proposedAction = new Paragraph(
-                                        ta.getProposedAction() != null ? ta.getProposedAction() : "Chua cap nhat")
+                        String actionVal = ta.getProposedAction();
+                        if (actionVal == null || actionVal.trim().isEmpty()) {
+                                actionVal = "......................................................................................................................................\n" +
+                                            "......................................................................................................................................\n" +
+                                            "......................................................................................................................................";
+                        }
+                        Paragraph proposedAction = new Paragraph(actionVal)
                                         .setFont(normalFont)
                                         .setFontSize(11)
                                         .setBorder(new SolidBorder(ColorConstants.LIGHT_GRAY, 1))
@@ -321,6 +325,7 @@ public class TechnicalAssessmentService {
 
                 return AssessmentResponse.builder()
                                 .assessmentId(ta.getAssessmentId())
+                                .assessmentNumber(ta.getAssessmentNumber())
                                 .damageDescription(ta.getDamageDescription())
                                 .proposedAction(ta.getProposedAction())
                                 .createdAt(ta.getCreatedAt())
@@ -369,5 +374,16 @@ public class TechnicalAssessmentService {
                                 .add(new Paragraph(value != null ? value : "").setFont(normalFont).setFontSize(10))
                                 .setBorder(Border.NO_BORDER)
                                 .setPaddingBottom(4));
+        }
+
+        private String generateAssessmentNumber() {
+                long count = assessmentRepository.count();
+                long next = count + 1;
+                String candidate;
+                do {
+                        candidate = String.format("BB-DGKT-%04d", next);
+                        next++;
+                } while (assessmentRepository.existsByAssessmentNumber(candidate));
+                return candidate;
         }
 }

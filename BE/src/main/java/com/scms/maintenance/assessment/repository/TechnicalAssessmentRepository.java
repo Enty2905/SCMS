@@ -12,6 +12,12 @@ import java.util.UUID;
 @Repository
 public interface TechnicalAssessmentRepository extends JpaRepository<TechnicalAssessment, UUID> {
 
+
+    boolean existsByAssessmentNumber(String assessmentNumber);
+
+    @Query("SELECT COUNT(ta) FROM TechnicalAssessment ta")
+    long countAllAssessments();
+
     @Query("""
         SELECT DISTINCT ta FROM TechnicalAssessment ta
         LEFT JOIN FETCH ta.equipment

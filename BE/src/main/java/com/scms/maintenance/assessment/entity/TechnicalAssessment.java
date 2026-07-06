@@ -23,6 +23,9 @@ public class TechnicalAssessment {
     @Column(name = "assessment_id")
     UUID assessmentId;
 
+    @Column(name = "assessment_number", unique = true)
+    String assessmentNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "equipment_id", nullable = false)
     Equipment equipment;

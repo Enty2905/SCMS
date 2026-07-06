@@ -18,7 +18,7 @@ import java.util.List;
 @RequestMapping("/hr")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+@PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU', 'REPAIR_MANAGER', 'TEAM_LEADER')")
 public class HrDirectoryController {
 
     HrDirectoryService hrDirectoryService;

@@ -10,7 +10,7 @@ services:
       - "3306:3306"
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,7 +38,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-#    image: your-dockerhub/scms-be:latest  # uncomment khi push lên Docker Hub
+    #    image: your-dockerhub/scms-be:latest  # uncomment khi push lên Docker Hub
     container_name: scms_be
     platform: linux/amd64
     ports:
