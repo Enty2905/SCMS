@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux'
+import { Navigate } from 'react-router-dom'
 
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { hasAnyRole, HR_ACCESS_ROLES, ROLES } from '@/features/auth/utils/roles.js'
@@ -8,6 +9,11 @@ import { ToolDashboardPage } from '@/features/inventory/pages/ToolDashboardPage.
 
 export function DashboardPage() {
   const user = useSelector(selectCurrentUser)
+
+  // Redirect ops_manager to equipment management page
+  if (hasAnyRole(user, [ROLES.OPS_MANAGER])) {
+    return <Navigate to="/dashboard/equipment" replace />
+  }
   
   // 1. Nhóm Admin & HR -> Vào xem Bảng tin Nhân sự
   if (hasAnyRole(user, HR_ACCESS_ROLES)) {

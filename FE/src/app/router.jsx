@@ -4,6 +4,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage.jsx'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage.jsx'
 import { hrRoutes } from '@/features/hr/hr.routes.jsx'
 import { inventoryRoutes } from '@/features/inventory/inventory.routes.jsx'
+import { equipmentRoutes } from '@/features/equipment/equipment.routes.jsx'
 import { AppShell } from '@/shared/components/layout/AppShell.jsx'
 
 import {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       },
       ...hrRoutes,
       ...inventoryRoutes,
+      ...equipmentRoutes,
       {
         path: 'access-denied',
         element: <AccessDeniedPage />,
