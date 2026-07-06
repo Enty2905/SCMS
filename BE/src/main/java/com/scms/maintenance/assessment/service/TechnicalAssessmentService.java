@@ -42,7 +42,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
+
 
 @Slf4j
 @Service
@@ -126,57 +128,69 @@ public class TechnicalAssessmentService {
                         Document document = new Document(pdf, PageSize.A4);
                         document.setMargins(40, 50, 40, 50);
 
-                        // Font: dùng Helvetica (built-in, không cần file font)
-                        // Nếu cần tiếng Việt đầy đủ, thay bằng font TTF khi có mẫu chính thức
-                        PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold", PdfEncodings.WINANSI,
-                                        PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
-                        PdfFont normalFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.WINANSI,
-                                        PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
+                        // Font: Load Arial từ thư mục Fonts của Windows để hỗ trợ tiếng Việt có dấu đầy đủ
+                        // Nếu không tìm thấy font hệ thống, sẽ fallback về Helvetica (không dấu)
+                        PdfFont boldFont;
+                        PdfFont normalFont;
+                        try {
+                                String fontPath = "C:/Windows/Fonts/arial.ttf";
+                                String boldFontPath = "C:/Windows/Fonts/arialbd.ttf";
+                                normalFont = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H,
+                                                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                                boldFont = PdfFontFactory.createFont(boldFontPath, PdfEncodings.IDENTITY_H,
+                                                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                        } catch (Exception e) {
+                                log.warn("Không tìm thấy font Arial hệ thống, fallback sang Helvetica", e);
+                                boldFont = PdfFontFactory.createFont("Helvetica-Bold", PdfEncodings.WINANSI,
+                                                PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
+                                normalFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.WINANSI,
+                                                PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
+                        }
 
                         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
                         // ── Tiêu đề ──────────────────────────────────────────────────────
-                        Paragraph title = new Paragraph("BIEN BAN DANH GIA KY THUAT")
+                        Paragraph title = new Paragraph("BIÊN BẢN ĐÁNH GIÁ KỸ THUẬT")
                                         .setFont(boldFont)
                                         .setFontSize(16)
                                         .setTextAlignment(TextAlignment.CENTER)
                                         .setMarginBottom(4);
                         document.add(title);
 
-                        addSectionTitle(document, boldFont, "I. THONG TIN BIENT BAN");
+                        addSectionTitle(document, boldFont, "I. THÔNG TIN BIÊN BẢN");
 
                         Table infoTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
                                         .setWidth(UnitValue.createPercentValue(100));
 
-                        addInfoRow(infoTable, normalFont, boldFont, "Ma bien ban:",
+                        addInfoRow(infoTable, normalFont, boldFont, "Mã biên bản:",
                                         ta.getAssessmentNumber() != null ? ta.getAssessmentNumber() : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Ngay lap:",
+                        addInfoRow(infoTable, normalFont, boldFont, "Ngày lập:",
                                         ta.getCreatedAt() != null ? ta.getCreatedAt().format(dtf) : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Nguoi lap:",
+                        addInfoRow(infoTable, normalFont, boldFont, "Người lập:",
                                         ta.getCreatedBy() != null ? ta.getCreatedBy().getName() : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Chuc vu:",
+                        addInfoRow(infoTable, normalFont, boldFont, "Chức vụ:",
                                         ta.getCreatedBy() != null && ta.getCreatedBy().getPosition() != null
-                                                        ? ta.getCreatedBy().getPosition().getPositionName()
-                                                        : "");
+                                                         ? ta.getCreatedBy().getPosition().getPositionName()
+                                                         : "");
                         document.add(infoTable);
 
                         // ── Thông tin thiết bị ────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "II. THONG TIN THIET BI");
+                        addSectionTitle(document, boldFont, "II. THÔNG TIN THIẾT BỊ");
 
                         Equipment eq = ta.getEquipment();
                         Table eqTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
                                         .setWidth(UnitValue.createPercentValue(100));
 
-                        addInfoRow(eqTable, normalFont, boldFont, "Ma KKS:", eq != null ? eq.getKksCode() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Ten thiet bi:", eq != null ? eq.getEquipmentName() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Loai:", eq != null ? eq.getEquipmentType() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Vi tri:", eq != null ? eq.getLocation() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Trang thai:", eq != null ? eq.getStatus() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Mã KKS:", eq != null ? eq.getKksCode() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Tên thiết bị:", eq != null ? eq.getEquipmentName() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Loại:", eq != null ? eq.getEquipmentType() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Vị trí:", eq != null ? eq.getLocation() : "");
+                        addInfoRow(eqTable, normalFont, boldFont, "Trạng thái:", eq != null ? eq.getStatus() : "");
                         document.add(eqTable);
 
                         // ── Nội dung đánh giá ─────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "III. MO TA HU HONG");
+                        addSectionTitle(document, boldFont, "III. MÔ TẢ HƯ HỎNG");
                         String damageVal = ta.getDamageDescription();
                         if (damageVal == null || damageVal.trim().isEmpty()) {
                                 damageVal = "......................................................................................................................................\n" +
@@ -191,7 +205,7 @@ public class TechnicalAssessmentService {
                                         .setMarginBottom(15);
                         document.add(damageDesc);
 
-                        addSectionTitle(document, boldFont, "IV. PHUONG AN XU LY DE XUAT");
+                        addSectionTitle(document, boldFont, "IV. PHƯƠNG ÁN XỬ LÝ ĐỀ XUẤT");
                         String actionVal = ta.getProposedAction();
                         if (actionVal == null || actionVal.trim().isEmpty()) {
                                 actionVal = "......................................................................................................................................\n" +
@@ -207,7 +221,7 @@ public class TechnicalAssessmentService {
                         document.add(proposedAction);
 
                         // ── Khung ký tên ──────────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "V. KY TEN XAC NHAN");
+                        addSectionTitle(document, boldFont, "V. KÝ TÊN XÁC NHẬN");
 
                         Table signTable = new Table(UnitValue.createPercentArray(new float[] { 50, 50 }))
                                         .setWidth(UnitValue.createPercentValue(100))
@@ -217,10 +231,10 @@ public class TechnicalAssessmentService {
                         Cell repairCell = new Cell()
                                         .setBorder(Border.NO_BORDER)
                                         .setPadding(10);
-                        repairCell.add(new Paragraph("BEN SUA CHUA").setFont(boldFont).setFontSize(11)
+                        repairCell.add(new Paragraph("BÊN SỬA CHỮA").setFont(boldFont).setFontSize(11)
                                         .setTextAlignment(TextAlignment.CENTER));
                         if (ta.getRepairSignedBy() != null) {
-                                repairCell.add(new Paragraph("Da ky: " + ta.getRepairSignedBy().getName())
+                                repairCell.add(new Paragraph("Đã ký: " + ta.getRepairSignedBy().getName())
                                                 .setFont(normalFont).setFontSize(10)
                                                 .setTextAlignment(TextAlignment.CENTER));
                                 repairCell.add(new Paragraph(
@@ -228,7 +242,7 @@ public class TechnicalAssessmentService {
                                                 .setFont(normalFont).setFontSize(9)
                                                 .setTextAlignment(TextAlignment.CENTER));
                         } else {
-                                repairCell.add(new Paragraph("\n\n\n\n(Chu ky va ho ten)").setFont(normalFont)
+                                repairCell.add(new Paragraph("\n\n\n\n(Chữ ký và họ tên)").setFont(normalFont)
                                                 .setFontSize(10).setTextAlignment(TextAlignment.CENTER));
                         }
                         signTable.addCell(repairCell);
@@ -237,10 +251,10 @@ public class TechnicalAssessmentService {
                         Cell opCell = new Cell()
                                         .setBorder(Border.NO_BORDER)
                                         .setPadding(10);
-                        opCell.add(new Paragraph("BEN VAN HANH").setFont(boldFont).setFontSize(11)
+                        opCell.add(new Paragraph("BÊN VẬN HÀNH").setFont(boldFont).setFontSize(11)
                                         .setTextAlignment(TextAlignment.CENTER));
                         if (ta.getOperationSignedBy() != null) {
-                                opCell.add(new Paragraph("Da ky: " + ta.getOperationSignedBy().getName())
+                                opCell.add(new Paragraph("Đã ký: " + ta.getOperationSignedBy().getName())
                                                 .setFont(normalFont).setFontSize(10)
                                                 .setTextAlignment(TextAlignment.CENTER));
                                 opCell.add(new Paragraph(
@@ -249,7 +263,7 @@ public class TechnicalAssessmentService {
                                                 .setFont(normalFont).setFontSize(9)
                                                 .setTextAlignment(TextAlignment.CENTER));
                         } else {
-                                opCell.add(new Paragraph("\n\n\n\n(Chu ky va ho ten)").setFont(normalFont)
+                                opCell.add(new Paragraph("\n\n\n\n(Chữ ký và họ tên)").setFont(normalFont)
                                                 .setFontSize(10).setTextAlignment(TextAlignment.CENTER));
                         }
                         signTable.addCell(opCell);
@@ -279,16 +293,16 @@ public class TechnicalAssessmentService {
 
                 // Validate file
                 if (file == null || file.isEmpty()) {
-                        throw new AppException(ErrorCode.INVALID_KEY);
+                        throw new IllegalArgumentException("File tải lên trống hoặc không hợp lệ!");
                 }
                 String originalFilename = file.getOriginalFilename();
                 if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
-                        throw new AppException(ErrorCode.INVALID_KEY);
+                        throw new IllegalArgumentException("Chỉ chấp nhận tệp định dạng PDF (.pdf)!");
                 }
 
                 try {
                         // Tạo thư mục nếu chưa có
-                        Path uploadPath = Paths.get(pdfUploadDir);
+                        Path uploadPath = Paths.get(pdfUploadDir).toAbsolutePath().normalize();
                         if (!Files.exists(uploadPath)) {
                                 Files.createDirectories(uploadPath);
                         }
@@ -296,8 +310,10 @@ public class TechnicalAssessmentService {
                         // Tên file = assessmentId + timestamp để tránh trùng
                         String fileName = "assessment_" + assessmentId + "_signed_" + System.currentTimeMillis()
                                         + ".pdf";
-                        Path targetPath = uploadPath.resolve(fileName);
-                        file.transferTo(targetPath.toFile());
+                        Path targetPath = uploadPath.resolve(fileName).toAbsolutePath().normalize();
+
+                        // Sử dụng Files.copy để ghi luồng đầu vào vào đường dẫn đích
+                        Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
                         // Cập nhật pdf_url vào DB
                         ta.setPdfUrl(pdfUploadDir + "/" + fileName);
@@ -309,15 +325,43 @@ public class TechnicalAssessmentService {
 
                         return toResponse(ta);
 
-                } catch (IOException e) {
+                } catch (Exception e) {
                         log.error("Lỗi khi lưu file PDF cho assessment {}", assessmentId, e);
-                        throw new RuntimeException("Không thể lưu file PDF: " + e.getMessage(), e);
+                        throw new IllegalArgumentException("Không thể lưu file PDF lên máy chủ: " + e.getMessage() + " (" + e.getClass().getSimpleName() + ")", e);
+                }
+        }
+
+        // ── Lấy danh sách biên bản ────────────────────────────────────────────────
+        @Transactional(readOnly = true)
+        public List<AssessmentResponse> getAllAssessments() {
+                return assessmentRepository.findAllWithDetails().stream()
+                                .map(this::toResponse)
+                                .toList();
+        }
+
+        // ── Tải PDF đã ký ────────────────────────────────────────────────────────
+        @Transactional(readOnly = true)
+        public byte[] downloadSignedPdf(UUID assessmentId) {
+                TechnicalAssessment ta = assessmentRepository.findByIdWithDetails(assessmentId)
+                                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+                if (ta.getPdfUrl() == null) {
+                        throw new AppException(ErrorCode.NOT_FOUND);
+                }
+
+                try {
+                        Path path = Paths.get(ta.getPdfUrl());
+                        return Files.readAllBytes(path);
+                } catch (IOException e) {
+                        log.error("Lỗi khi đọc file PDF đã ký {}", assessmentId, e);
+                        throw new RuntimeException("Không thể đọc file PDF đã ký: " + e.getMessage(), e);
                 }
         }
 
         // ── Mapping ──────────────────────────────────────────────────────────────
 
         private AssessmentResponse toResponse(TechnicalAssessment ta) {
+
                 Equipment eq = ta.getEquipment();
                 Employee creator = ta.getCreatedBy();
                 Employee repairSigner = ta.getRepairSignedBy();

@@ -21,6 +21,8 @@ import { apiClient } from '@/shared/api/httpClient.js'
 import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
+import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
+
 
 const navItems = [
   {
@@ -32,7 +34,9 @@ const navItems = [
   ...hrNavItems,
   ...inventoryNavItems,
   ...equipmentNavItems,
+  ...maintenanceNavItems,
 ]
+
 
 export function AppShell() {
   const dispatch = useDispatch()
@@ -53,7 +57,7 @@ export function AppShell() {
     try {
       const token = window.localStorage.getItem('scms.auth.token')
       const refreshToken = window.localStorage.getItem('scms.auth.refreshToken')
-      
+
       if (token || refreshToken) {
         await apiClient.post('/auth/logout', { token, refreshToken })
       }

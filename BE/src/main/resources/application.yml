@@ -22,6 +22,10 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 
 springdoc:
   api-docs:
@@ -42,8 +46,4 @@ logging:
     org.hibernate.SQL: DEBUG
 app:
   upload:
-    pdf-dir: uploads/pdf
-
-spring.servlet.multipart:
-  max-file-size: 20MB
-  max-request-size: 20MB
+    pdf-dir: uploads/pdf
