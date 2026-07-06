@@ -1,4 +1,4 @@
-import { Edit3, Filter, Plus, Search, Trash2, X } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import {
@@ -59,7 +59,36 @@ export function EquipmentListPage() {
   }
 
   useEffect(() => {
-    loadData()
+    let ignore = false
+
+    async function loadInitialData() {
+      try {
+        const [eqList, sysList] = await Promise.all([
+          fetchEquipments(),
+          fetchSystems(),
+        ])
+
+        if (!ignore) {
+          setEquipments(eqList)
+          setSystems(sysList)
+        }
+      } catch (err) {
+        console.error(err)
+        if (!ignore) {
+          setError(err.message || 'KhĂ´ng thá»ƒ táº£i dá»¯ liá»‡u thiáº¿t bá»‹. Vui lĂ²ng thá»­ láº¡i.')
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadInitialData()
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   // Filtered equipments
