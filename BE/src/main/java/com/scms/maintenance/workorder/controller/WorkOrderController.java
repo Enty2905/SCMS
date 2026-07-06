@@ -30,20 +30,18 @@ public class WorkOrderController {
      * Chức năng 2: Tạo phiếu công tác từ một repair request
      * Quyền: REPAIR_MANAGER, TEAM_LEADER, ADMIN
      *
-     * Authentication được inject từ Spring Security (JWT filter đã set principal = username)
+     * Authentication được inject từ Spring Security (JWT filter đã set principal =
+     * username)
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
-    @Operation(
-        summary = "Tạo phiếu công tác (PCT)",
-        description = "Tạo PCT từ một repair request. Cần cung cấp số PCT (orderNumber do người dùng nhập), " +
-                      "người lãnh đạo, chỉ huy trực tiếp, giám sát an toàn và danh sách nhân viên thi công."
-    )
+    @Operation(summary = "Tạo phiếu công tác (PCT)", description = "Tạo PCT từ một repair request. Cần cung cấp số PCT (orderNumber do người dùng nhập), "
+            +
+            "người lãnh đạo, chỉ huy trực tiếp, giám sát an toàn và danh sách nhân viên thi công.")
     public ApiResponse<WorkOrderResponse> createWorkOrder(
             @Valid @RequestBody CreateWorkOrderRequest request,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
         String username = authentication.getName();
         WorkOrderResponse response = workOrderService.createWorkOrder(request, username);
         return ApiResponse.created("Phiếu công tác đã được tạo thành công", response);

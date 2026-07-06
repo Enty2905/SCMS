@@ -17,7 +17,6 @@ public class CreateAssessmentRequest {
     @NotNull(message = "equipmentId không được để trống")
     UUID equipmentId;
 
-    @NotBlank(message = "Mô tả hư hỏng không được để trống")
     String damageDescription;
 
     // Phương án xử lý – có thể để trống ban đầu

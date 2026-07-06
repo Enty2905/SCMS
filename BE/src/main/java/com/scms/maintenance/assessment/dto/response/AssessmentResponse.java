@@ -14,6 +14,7 @@ import java.util.UUID;
 public class AssessmentResponse {
 
     UUID assessmentId;
+    String assessmentNumber;
     String damageDescription;
     String proposedAction;
     LocalDateTime createdAt;

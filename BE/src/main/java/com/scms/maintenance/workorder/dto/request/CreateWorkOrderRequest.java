@@ -1,6 +1,5 @@
 package com.scms.maintenance.workorder.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,11 +15,11 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateWorkOrderRequest {
 
-    @NotNull(message = "requestId không được để trống")
+    // requestId tuỳ chọn – PCT có thể tạo độc lập không cần liên kết request
     UUID requestId;
 
-    @NotBlank(message = "Số phiếu công tác không được để trống")
-    String orderNumber;
+    // orderNumber được sinh tự động bởi service (PCT-0001, PCT-0002, ...)
+    // Không nhận từ client nữa
 
     String content;
 

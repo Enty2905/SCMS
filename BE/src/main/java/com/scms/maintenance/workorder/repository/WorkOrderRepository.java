@@ -15,6 +15,14 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
     boolean existsByOrderNumber(String orderNumber);
 
     /**
+     * Đếm tổng số PCT đã tồn tại để sinh số thứ tự tiếp theo (PCT-0001, PCT-0002, ...)
+     */
+    @Query("SELECT COUNT(wo) FROM WorkOrder wo")
+    long countAllOrders();
+
+
+
+    /**
      * Lấy WorkOrder kèm toàn bộ quan hệ để tránh N+1 khi build response
      */
     @Query("""
