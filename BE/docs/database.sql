@@ -102,6 +102,7 @@ CREATE TABLE `equipment_system` (
   `system_code`      VARCHAR(50)  NULL,
   `description`      TEXT         NULL,
   `parent_system_id` BINARY(16)   NULL COMMENT 'Hệ thống cha nếu có phân cấp',
+  `is_deleted`       TINYINT(1)   NOT NULL DEFAULT 0,
   PRIMARY KEY (`system_id`),
   UNIQUE KEY `uq_system_code` (`system_code`),
   CONSTRAINT `fk_system_parent`
@@ -117,6 +118,7 @@ CREATE TABLE `equipment` (
   `status`       VARCHAR(20)  NOT NULL DEFAULT 'active' COMMENT 'active | inactive | maintenance | broken',
   `location`     VARCHAR(200) NULL COMMENT 'Vị trí lắp đặt trong nhà máy',
   `system_id`    BINARY(16)   NULL,
+  `is_deleted`   TINYINT(1)   NOT NULL DEFAULT 0,
   PRIMARY KEY (`equipment_id`),
   UNIQUE KEY `uq_equipment_kks` (`kks_code`),
   CONSTRAINT `fk_equipment_system`
