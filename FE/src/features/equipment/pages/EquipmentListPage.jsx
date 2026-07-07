@@ -32,6 +32,10 @@ export function EquipmentListPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
   const equipmentTypes = useMemo(() => {
     return [...new Set(equipments.map((eq) => eq.equipmentType).filter(Boolean))]
   }, [equipments])
@@ -148,6 +152,22 @@ export function EquipmentListPage() {
       return matchesKks && matchesName && matchesSystem && matchesType && matchesStatus
     })
   }, [equipments, searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter, allowedSystemIds])
+
+  // Reset to first page when search criteria changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter])
+
+  // Total pages calculation
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredEquipments.length / pageSize)
+  }, [filteredEquipments, pageSize])
+
+  // Get current page slice of equipments
+  const paginatedEquipments = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredEquipments.slice(startIndex, startIndex + pageSize)
+  }, [filteredEquipments, currentPage, pageSize])
 
   // System name mapping
   const systemMap = useMemo(() => {
@@ -378,7 +398,7 @@ export function EquipmentListPage() {
                 </tr>
               ) : null}
 
-              {!loading && filteredEquipments.map((eq) => (
+              {!loading && paginatedEquipments.map((eq) => (
                 <tr className="hover:bg-slate-50/80 transition-colors" key={eq.id}>
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {eq.kksCode}
@@ -423,6 +443,65 @@ export function EquipmentListPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 bg-slate-50/50 px-5 py-3.5">
+            <div className="text-xs text-slate-500 font-medium">
+              Hiển thị từ <span className="font-semibold text-slate-800">{Math.min((currentPage - 1) * pageSize + 1, filteredEquipments.length)}</span> đến{" "}
+              <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, filteredEquipments.length)}</span> trong tổng số{" "}
+              <span className="font-semibold text-slate-800">{filteredEquipments.length}</span> thiết bị
+            </div>
+            <div className="flex items-center gap-1.5 self-center sm:self-auto">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition cursor-pointer"
+              >
+                Trang đầu
+              </button>
+              
+              {/* Dynamic page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  return Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages
+                })
+                .reduce((acc, page, idx, arr) => {
+                  if (idx > 0 && page - arr[idx - 1] > 1) {
+                    acc.push('ellipsis-' + page)
+                  }
+                  acc.push(page)
+                  return acc
+                }, [])
+                .map((page) => {
+                  if (typeof page === 'string' && page.startsWith('ellipsis')) {
+                    return <span key={page} className="px-1 text-slate-400 text-xs font-semibold">...</span>
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-8 w-8 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer ${
+                        currentPage === page
+                          ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 border-none'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-955'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition cursor-pointer"
+              >
+                Trang cuối
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Add / Edit Modal */}
