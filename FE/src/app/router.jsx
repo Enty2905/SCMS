@@ -4,11 +4,8 @@ import { LoginPage } from '@/features/auth/pages/LoginPage.jsx'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage.jsx'
 import { hrRoutes } from '@/features/hr/hr.routes.jsx'
 import { inventoryRoutes } from '@/features/inventory/inventory.routes.jsx'
-<<<<<<< HEAD
 import { maintenanceRoutes } from '@/features/maintenance/maintenance.routes.jsx'
-=======
 import { equipmentRoutes } from '@/features/equipment/equipment.routes.jsx'
->>>>>>> f69937a9900c3e71ce48655c72057db40d48226f
 import { AppShell } from '@/shared/components/layout/AppShell.jsx'
 
 import {
@@ -35,11 +32,11 @@ export const router = createBrowserRouter([
       },
       ...hrRoutes,
       ...inventoryRoutes,
-<<<<<<< HEAD
-      ...maintenanceRoutes,
-=======
+      ...hrRoutes,
+      ...inventoryRoutes,
       ...equipmentRoutes,
->>>>>>> f69937a9900c3e71ce48655c72057db40d48226f
+      ...maintenanceRoutes,
+
       {
         path: 'access-denied',
         element: <AccessDeniedPage />,
