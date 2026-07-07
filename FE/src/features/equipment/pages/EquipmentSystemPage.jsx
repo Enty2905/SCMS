@@ -44,7 +44,32 @@ export function EquipmentSystemPage() {
   }
 
   useEffect(() => {
-    loadData()
+    let ignore = false
+
+    async function loadInitialData() {
+      try {
+        const data = await fetchSystems()
+
+        if (!ignore) {
+          setSystems(data)
+        }
+      } catch (err) {
+        console.error(err)
+        if (!ignore) {
+          setError(err.message || 'KhĂ´ng thá»ƒ táº£i danh sĂ¡ch há»‡ thá»‘ng. Vui lĂ²ng thá»­ láº¡i.')
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadInitialData()
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   // Filtered systems

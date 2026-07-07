@@ -16,7 +16,6 @@ import { Button } from '@/shared/components/ui/Button.jsx'
 import { apiClient } from '@/shared/api/httpClient.js'
 
 import {
-  selectAssessment,
   selectAssessments,
   selectAssessmentError,
   selectAssessmentLoading,
@@ -102,7 +101,6 @@ function PdfPreviewModal({ pdfUrl, onClose, onDownload, title }) {
 export function TechnicalAssessmentPage() {
   const dispatch = useDispatch()
   const assessments = useSelector(selectAssessments)
-  const assessment = useSelector(selectAssessment)
   const loading = useSelector(selectAssessmentLoading)
   const error = useSelector(selectAssessmentError)
 
@@ -118,7 +116,7 @@ export function TechnicalAssessmentPage() {
 
   // State for equipment searching
   const [equipments, setEquipments] = useState([])
-  const [equipmentsLoading, setEquipmentsLoading] = useState(false)
+  const [equipmentsLoading, setEquipmentsLoading] = useState(true)
   const [selectedType, setSelectedType] = useState('all')
   const [searchName, setSearchName] = useState('')
   const [showEqSuggestions, setShowEqSuggestions] = useState(false)
@@ -133,18 +131,28 @@ export function TechnicalAssessmentPage() {
 
   // Fetch assessments and equipments list on mount
   useEffect(() => {
+    let ignore = false
+
     dispatch(fetchAssessments())
-    setEquipmentsLoading(true)
+
     apiClient.get('/equipment')
       .then((res) => {
-        setEquipments(res.data || [])
+        if (!ignore) {
+          setEquipments(res.data || [])
+        }
       })
       .catch((err) => {
         console.error('Không thể lấy danh sách thiết bị', err)
       })
       .finally(() => {
-        setEquipmentsLoading(false)
+        if (!ignore) {
+          setEquipmentsLoading(false)
+        }
       })
+
+    return () => {
+      ignore = true
+    }
   }, [dispatch])
 
   // Auto-close suggestions dropdown when click outside

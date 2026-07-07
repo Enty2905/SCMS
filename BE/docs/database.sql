@@ -195,7 +195,7 @@ CREATE TABLE `repair_request` (
 CREATE TABLE `work_order` (
   `order_id`             BINARY(16)  NOT NULL,
   `order_number`         VARCHAR(50) NOT NULL COMMENT 'Số phiếu công tác',
-  `request_id`           BINARY(16)  NOT NULL COMMENT 'Một request có thể tạo nhiều PCT',
+  `request_id`           BINARY(16)  NULL COMMENT 'PCT có thể liên kết request hoặc tạo độc lập',
   `content`              TEXT        NULL,
   `status`               VARCHAR(20) NOT NULL DEFAULT 'draft' COMMENT 'draft | open | extended | locked',
   `start_date`           TIMESTAMP   NULL,
@@ -209,7 +209,8 @@ CREATE TABLE `work_order` (
   PRIMARY KEY (`order_id`),
   UNIQUE KEY `uq_order_number` (`order_number`),
   CONSTRAINT `fk_order_request`
-    FOREIGN KEY (`request_id`) REFERENCES `repair_request` (`request_id`),
+    FOREIGN KEY (`request_id`) REFERENCES `repair_request` (`request_id`)
+    ON DELETE SET NULL,
   CONSTRAINT `fk_order_created_by`
     FOREIGN KEY (`created_by`) REFERENCES `user` (`user_id`)
     ON DELETE SET NULL,

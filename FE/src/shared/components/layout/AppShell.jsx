@@ -13,7 +13,6 @@ import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import {
   getPrimaryRoleLabel,
   hasAnyRole,
-  HR_ACCESS_ROLES,
 } from '@/features/auth/utils/roles.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { apiClient } from '@/shared/api/httpClient.js'
@@ -29,7 +28,7 @@ const navItems = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
-    roles: HR_ACCESS_ROLES,
+    roles: [],
   },
   ...hrNavItems,
   ...inventoryNavItems,
