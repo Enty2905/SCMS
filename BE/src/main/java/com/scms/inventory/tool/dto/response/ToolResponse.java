@@ -14,6 +14,8 @@ public class ToolResponse {
     String category;
     Integer totalQuantity;
     Integer availableQuantity;
+    Integer borrowedQuantity;
+    Integer damagedQuantity;
     String status;
     String note;
 }

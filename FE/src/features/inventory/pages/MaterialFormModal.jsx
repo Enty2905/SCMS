@@ -13,7 +13,7 @@ export function MaterialFormModal({ item, onClose, onSuccess, tab }) {
   const isEdit = Boolean(item)
 
   const [form, setForm] = useState({
-    code: item?.code || '',
+
     name: item?.name || '',
     unit: item?.unit || '',
     minQuantity: item?.minQuantity ?? '',
@@ -31,9 +31,7 @@ export function MaterialFormModal({ item, onClose, onSuccess, tab }) {
 
   function validate() {
     const newErrors = {}
-    if (!form.code.trim()) {
-      newErrors.code = 'Mã vật tư không được để trống'
-    }
+
     if (!form.name.trim()) {
       newErrors.name = 'Tên vật tư không được để trống'
     }
@@ -49,7 +47,7 @@ export function MaterialFormModal({ item, onClose, onSuccess, tab }) {
     if (!validate()) return
 
     const data = {
-      code: form.code.trim(),
+
       name: form.name.trim(),
       unit: form.unit.trim() || null,
       minQuantity: form.minQuantity !== '' ? Number(form.minQuantity) : null,
@@ -87,14 +85,7 @@ export function MaterialFormModal({ item, onClose, onSuccess, tab }) {
 
         {/* Form */}
         <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
-          <FormField
-            error={errors.code}
-            label="Mã vật tư"
-            onChange={(value) => handleChange('code', value)}
-            placeholder="Nhập mã vật tư"
-            required
-            value={form.code}
-          />
+
           <FormField
             error={errors.name}
             label="Tên vật tư"

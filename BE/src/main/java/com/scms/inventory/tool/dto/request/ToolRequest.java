@@ -25,9 +25,10 @@ public class ToolRequest {
     @Min(value = 0, message = "Tổng số lượng phải >= 0")
     Integer totalQuantity;
 
-    @NotNull(message = "Số lượng khả dụng không được để trống")
-    @Min(value = 0, message = "Số lượng khả dụng phải >= 0")
-    Integer availableQuantity;
+    // Số lượng bị hỏng — bắt buộc, mặc định 0
+    @NotNull(message = "Số lượng hỏng không được để trống")
+    @Min(value = 0, message = "Số lượng hỏng phải >= 0")
+    Integer damagedQuantity;
 
     @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
     String note;
