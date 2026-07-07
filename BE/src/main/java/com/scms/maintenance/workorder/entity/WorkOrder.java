@@ -30,9 +30,9 @@ public class WorkOrder {
     @Column(name = "order_number", length = 50, nullable = false, unique = true)
     String orderNumber;
 
-    // Một repair_request có thể tạo nhiều PCT
+    // PCT có thể liên kết repair_request hoặc tạo độc lập
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "request_id", nullable = false)
+    @JoinColumn(name = "request_id")
     RepairRequest request;
 
     @Column(name = "content", columnDefinition = "TEXT")
