@@ -37,13 +37,14 @@ public class SparePartController {
     @Operation(summary = "Lấy danh sách vật tư thay thế (phân trang, tìm kiếm)")
     @GetMapping
     public ApiResponse<PagedResponse<SparePartResponse>> getSpareParts(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.<PagedResponse<SparePartResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách vật tư thay thế thành công")
-                .data(sparePartService.getSpareParts(keyword, page, size))
+                .data(sparePartService.getSpareParts(code, name, page, size))
                 .build();
     }
 

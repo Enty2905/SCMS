@@ -37,13 +37,14 @@ public class ConsumableController {
     @Operation(summary = "Lấy danh sách vật tư tiêu hao (phân trang, tìm kiếm)")
     @GetMapping
     public ApiResponse<PagedResponse<ConsumableResponse>> getConsumables(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.<PagedResponse<ConsumableResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách vật tư tiêu hao thành công")
-                .data(consumableService.getConsumables(keyword, page, size))
+                .data(consumableService.getConsumables(code, name, page, size))
                 .build();
     }
 

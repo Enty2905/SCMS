@@ -30,22 +30,30 @@ public class ToolService {
     // ── Thêm mới CCDC ────────────────────────────────────────
     @Transactional
     public ToolResponse createTool(ToolRequest request) {
-        validateQuantity(request);
+        int totalQuantity = request.getTotalQuantity();
+        int damagedQuantity = request.getDamagedQuantity();
 
-        String status = calculateStatus(request.getAvailableQuantity());
+        // Khi tạo mới, chưa có bản ghi mượn nào → borrowedQuantity = 0
+        int borrowedQuantity = 0;
+
+        validateQuantities(totalQuantity, borrowedQuantity, damagedQuantity);
+
+        int availableQuantity = totalQuantity - borrowedQuantity - damagedQuantity;
+        String status = calculateStatus(damagedQuantity, totalQuantity);
 
         Tool tool = Tool.builder()
                 .name(request.getName())
                 .category(request.getCategory())
-                .totalQuantity(request.getTotalQuantity())
-                .availableQuantity(request.getAvailableQuantity())
+                .totalQuantity(totalQuantity)
+                .availableQuantity(availableQuantity)
+                .damagedQuantity(damagedQuantity)
                 .status(status)
                 .note(request.getNote())
                 .build();
 
         tool = toolRepository.save(tool);
         log.info("Created tool: {} - category: {}", tool.getName(), tool.getCategory());
-        return toResponse(tool);
+        return toResponse(tool, borrowedQuantity);
     }
 
     // ── Lấy danh sách có phân trang, tìm theo tên và chủng loại ──
@@ -59,7 +67,10 @@ public class ToolService {
 
         return PagedResponse.<ToolResponse>builder()
                 .content(toolPage.getContent().stream()
-                        .map(this::toResponse)
+                        .map(tool -> {
+                            int borrowed = toolRepository.sumBorrowedQuantity(tool.getToolId());
+                            return toResponse(tool, borrowed);
+                        })
                         .toList())
                 .page(toolPage.getNumber())
                 .size(toolPage.getSize())
@@ -73,7 +84,8 @@ public class ToolService {
     public ToolResponse getToolById(UUID toolId) {
         Tool tool = toolRepository.findById(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
-        return toResponse(tool);
+        int borrowed = toolRepository.sumBorrowedQuantity(toolId);
+        return toResponse(tool, borrowed);
     }
 
     // ── Cập nhật CCDC ─────────────────────────────────────────
@@ -82,44 +94,62 @@ public class ToolService {
         Tool tool = toolRepository.findById(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
 
-        validateQuantity(request);
+        int totalQuantity = request.getTotalQuantity();
+        int damagedQuantity = request.getDamagedQuantity();
+        int borrowedQuantity = toolRepository.sumBorrowedQuantity(toolId);
 
-        String status = calculateStatus(request.getAvailableQuantity());
+        validateQuantities(totalQuantity, borrowedQuantity, damagedQuantity);
+
+        int availableQuantity = totalQuantity - borrowedQuantity - damagedQuantity;
+        String status = calculateStatus(damagedQuantity, totalQuantity);
 
         tool.setName(request.getName());
         tool.setCategory(request.getCategory());
-        tool.setTotalQuantity(request.getTotalQuantity());
-        tool.setAvailableQuantity(request.getAvailableQuantity());
+        tool.setTotalQuantity(totalQuantity);
+        tool.setAvailableQuantity(availableQuantity);
+        tool.setDamagedQuantity(damagedQuantity);
         tool.setStatus(status);
         tool.setNote(request.getNote());
 
         tool = toolRepository.save(tool);
         log.info("Updated tool: {} - status: {}", tool.getName(), tool.getStatus());
-        return toResponse(tool);
+        return toResponse(tool, borrowedQuantity);
     }
 
-    // ── Validate: availableQuantity <= totalQuantity ───────────
-    private void validateQuantity(ToolRequest request) {
-        if (request.getAvailableQuantity() > request.getTotalQuantity()) {
+    // ── Validate số lượng ─────────────────────────────────────
+    private void validateQuantities(int totalQuantity, int borrowedQuantity, int damagedQuantity) {
+        if (damagedQuantity < 0) {
+            throw new IllegalArgumentException("Số lượng hỏng không được âm");
+        }
+        int maxDamaged = totalQuantity - borrowedQuantity;
+        if (damagedQuantity > maxDamaged) {
             throw new IllegalArgumentException(
-                    "Số lượng khả dụng (" + request.getAvailableQuantity()
-                            + ") không được lớn hơn tổng số lượng (" + request.getTotalQuantity() + ")");
+                    "Số lượng hỏng (" + damagedQuantity + ") không được vượt quá "
+                            + "totalQuantity - borrowedQuantity (" + maxDamaged + ")");
+        }
+        int available = totalQuantity - borrowedQuantity - damagedQuantity;
+        if (available < 0) {
+            throw new IllegalArgumentException(
+                    "Số lượng khả dụng không được âm (tính ra: " + available + ")");
         }
     }
 
     // ── Tính status tự động ───────────────────────────────────
-    private String calculateStatus(int availableQuantity) {
-        return availableQuantity == 0 ? "out" : "available";
+    // damagedQuantity == totalQuantity → damaged; còn lại → available
+    private String calculateStatus(int damagedQuantity, int totalQuantity) {
+        return (damagedQuantity == totalQuantity) ? "damaged" : "available";
     }
 
     // ── Helper: Map Entity → Response ─────────────────────────
-    private ToolResponse toResponse(Tool tool) {
+    private ToolResponse toResponse(Tool tool, int borrowedQuantity) {
         return ToolResponse.builder()
                 .toolId(tool.getToolId().toString())
                 .name(tool.getName())
                 .category(tool.getCategory())
                 .totalQuantity(tool.getTotalQuantity())
                 .availableQuantity(tool.getAvailableQuantity())
+                .borrowedQuantity(borrowedQuantity)
+                .damagedQuantity(tool.getDamagedQuantity())
                 .status(tool.getStatus())
                 .note(tool.getNote())
                 .build();

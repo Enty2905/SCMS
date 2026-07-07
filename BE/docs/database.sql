@@ -536,7 +536,8 @@ CREATE TABLE `tool` (
   `category`           VARCHAR(100) NULL,
   `total_quantity`     INT          NOT NULL DEFAULT 0,
   `available_quantity` INT          NOT NULL DEFAULT 0,
-  `status`             VARCHAR(20)  NOT NULL DEFAULT 'available' COMMENT 'available | low | out',
+  `damaged_quantity`   INT          NOT NULL DEFAULT 0,
+  `status`             VARCHAR(20)  NOT NULL DEFAULT 'available' COMMENT 'available | damaged',
   `note`               TEXT         NULL,
   PRIMARY KEY (`tool_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
