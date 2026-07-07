@@ -154,17 +154,17 @@ export function ToolListPage() {
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-200/60 text-sm uppercase tracking-wide text-slate-900">
               <tr>
-                <th className="px-5 py-3 font-semibold">Tên CCDC</th>
-                <th className="px-5 py-3 font-semibold">Chủng loại</th>
-                <th className="px-5 py-3 font-semibold">Tổng SL</th>
-                <th className="px-5 py-3 font-semibold">Có sẵn</th>
-                <th className="px-5 py-3 font-semibold">Đang mượn</th>
-                <th className="px-5 py-3 font-semibold">Hư hỏng</th>
-                <th className="px-5 py-3 font-semibold">Trạng thái</th>
-                <th className="px-5 py-3 font-semibold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+                <th className="px-5 py-3 font-bold">Tên CCDC</th>
+                <th className="px-5 py-3 font-bold">Chủng loại</th>
+                <th className="px-5 py-3 text-right font-bold">Tổng SL</th>
+                <th className="px-5 py-3 text-right font-bold">Có sẵn</th>
+                <th className="px-5 py-3 text-right font-bold">Đang mượn</th>
+                <th className="px-5 py-3 text-right font-bold">Hư hỏng</th>
+                <th className="px-5 py-3 font-bold">Trạng thái</th>
+                <th className="px-5 py-3 font-bold">Ghi chú</th>
+                <th className="px-5 py-3 text-right font-bold">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -194,14 +194,14 @@ export function ToolListPage() {
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.category}</td>
-                        <td className="px-5 py-4 text-slate-600">{item.totalQuantity}</td>
-                        <td className="px-5 py-4 font-semibold text-emerald-600">
+                        <td className="px-5 py-4 text-right text-slate-600">{item.totalQuantity}</td>
+                        <td className="px-5 py-4 text-right font-semibold text-emerald-600">
                           {item.availableQuantity}
                         </td>
-                        <td className="px-5 py-4 font-semibold text-amber-600">
+                        <td className="px-5 py-4 text-right font-semibold text-amber-600">
                           {item.borrowedQuantity ?? 0}
                         </td>
-                        <td className="px-5 py-4 font-semibold text-rose-600">
+                        <td className="px-5 py-4 text-right font-semibold text-rose-600">
                           {item.damagedQuantity ?? 0}
                         </td>
                         <td className="px-5 py-4">
