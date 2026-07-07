@@ -174,14 +174,14 @@ export function MaterialListPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-200/60 text-sm uppercase tracking-wide text-slate-900">
               <tr>
-                <th className="px-5 py-3 font-semibold">Mã vật tư</th>
-                <th className="px-5 py-3 font-semibold">Tên vật tư</th>
-                <th className="px-5 py-3 font-semibold">Đơn vị</th>
-                <th className="px-5 py-3 font-semibold">Mức tối thiểu</th>
-                <th className="px-5 py-3 font-semibold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+                <th className="px-5 py-3 font-bold">Mã vật tư</th>
+                <th className="px-5 py-3 font-bold">Tên vật tư</th>
+                <th className="px-5 py-3 font-bold">Đơn vị</th>
+                <th className="px-5 py-3 text-right font-bold">Mức tối thiểu</th>
+                <th className="px-5 py-3 font-bold">Ghi chú</th>
+                <th className="px-5 py-3 text-right font-bold">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -213,7 +213,7 @@ export function MaterialListPage() {
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.unit}</td>
-                        <td className="px-5 py-4 text-slate-600">{item.minQuantity}</td>
+                        <td className="px-5 py-4 text-right text-slate-600">{item.minQuantity}</td>
                         <td className="px-5 py-4 text-slate-600">
                           <span 
                             className="line-clamp-2 max-w-xs" 
