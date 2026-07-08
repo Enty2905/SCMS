@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search } from 'lucide-react'
+import { Edit3, Plus, Search, AlertTriangle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
@@ -14,6 +14,7 @@ import {
 } from '../store/tool.selectors.js'
 import { fetchToolList } from '../store/tool.thunks.js'
 import { ToolFormModal } from './ToolFormModal.jsx'
+import { ToolDisposeDamagedModal } from './ToolDisposeDamagedModal.jsx'
 
 // Status badge mapping (giá trị từ BE: 'available' | 'damaged')
 const STATUS_LABELS = {
@@ -41,6 +42,7 @@ export function ToolListPage() {
 
   // Modal state
   const [formModal, setFormModal] = useState({ open: false, item: null })
+  const [disposeModal, setDisposeModal] = useState({ open: false, item: null })
 
   // Derive unique categories from current items for the filter dropdown
   const categories = [...new Set(items.map((item) => item.category).filter(Boolean))]
@@ -92,10 +94,23 @@ export function ToolListPage() {
     loadData()
   }
 
+  function openDisposeModal(item) {
+    setDisposeModal({ open: true, item })
+  }
+
+  function closeDisposeModal() {
+    setDisposeModal({ open: false, item: null })
+  }
+
+  function handleDisposeSuccess() {
+    closeDisposeModal()
+    loadData()
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-slate-950">Danh sách CCDC</h1>
+        <h1 className="text-xl font-bold text-slate-950">Quản lý CCDC</h1>
       </section>
 
       {/* Summary cards */}
@@ -221,6 +236,15 @@ export function ToolListPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2 text-slate-400">
+                            {item.availableQuantity > 0 && (
+                              <button
+                                className="rounded-md p-2 hover:bg-rose-50 hover:text-rose-600"
+                                onClick={() => openDisposeModal(item)}
+                                title="Báo hỏng"
+                              >
+                                <AlertTriangle size={16} />
+                              </button>
+                            )}
                             <button
                               className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600"
                               onClick={() => openEditModal(item)}
@@ -304,6 +328,14 @@ export function ToolListPage() {
           item={formModal.item}
           onClose={closeFormModal}
           onSuccess={handleFormSuccess}
+        />
+      ) : null}
+
+      {disposeModal.open ? (
+        <ToolDisposeDamagedModal
+          item={disposeModal.item}
+          onClose={closeDisposeModal}
+          onSuccess={handleDisposeSuccess}
         />
       ) : null}
     </div>

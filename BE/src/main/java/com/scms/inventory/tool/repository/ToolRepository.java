@@ -27,4 +27,15 @@ public interface ToolRepository extends JpaRepository<Tool, UUID> {
     @Query("SELECT COALESCE(SUM(tb.quantity), 0) FROM ToolBorrow tb " +
             "WHERE tb.toolId = :toolId AND tb.returnedAt IS NULL")
     int sumBorrowedQuantity(@Param("toolId") UUID toolId);
+
+    /**
+     * Lấy danh sách CCDC có damagedQuantity > 0 (có hư hỏng).
+     */
+    @Query("SELECT t FROM Tool t WHERE t.damagedQuantity > 0 AND " +
+            "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+            "(:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%')))")
+    Page<Tool> findDamagedTools(
+            @Param("keyword") String keyword,
+            @Param("category") String category,
+            Pageable pageable);
 }

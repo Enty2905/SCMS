@@ -1,7 +1,9 @@
 package com.scms.inventory.tool.service;
 
+import com.scms.common.exception.BadRequestException;
 import com.scms.common.exception.NotFoundException;
 import com.scms.common.response.PagedResponse;
+import com.scms.inventory.tool.dto.request.ToolDisposeRequest;
 import com.scms.inventory.tool.dto.request.ToolRequest;
 import com.scms.inventory.tool.dto.response.ToolResponse;
 import com.scms.inventory.tool.entity.Tool;
@@ -114,6 +116,79 @@ public class ToolService {
         tool = toolRepository.save(tool);
         log.info("Updated tool: {} - status: {}", tool.getName(), tool.getStatus());
         return toResponse(tool, borrowedQuantity);
+    }
+
+    // ── Huỷ CCDC bị hư hỏng ──────────────────────────────────
+    @Transactional
+    public ToolResponse disposeDamaged(UUID toolId, ToolDisposeRequest request) {
+        Tool tool = toolRepository.findById(toolId)
+                .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
+
+        int disposeQty = request.getQuantity();
+        if (disposeQty <= 0) {
+            throw new BadRequestException("Số lượng huỷ phải > 0");
+        }
+
+        // Kiểm tra không vượt quá số lượng khả dụng
+        int currentAvailable = tool.getAvailableQuantity();
+        if (disposeQty > currentAvailable) {
+            throw new BadRequestException("Số lượng huỷ vượt quá số lượng CCDC khả dụng");
+        }
+
+        int newDamaged = tool.getDamagedQuantity() + disposeQty;
+        // Kiểm tra không vượt totalQuantity
+        if (newDamaged > tool.getTotalQuantity()) {
+            throw new BadRequestException("Số lượng huỷ vượt quá số lượng CCDC khả dụng");
+        }
+
+        int newAvailable = tool.getTotalQuantity() - newDamaged;
+        String newStatus = (newDamaged == tool.getTotalQuantity()) ? "damaged" : "available";
+
+        // Nối thêm lý do huỷ vào note
+        String existingNote = tool.getNote() != null ? tool.getNote() : "";
+        String newNote;
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            newNote = existingNote.isBlank()
+                    ? request.getNote().trim()
+                    : existingNote + "; " + request.getNote().trim();
+        } else {
+            newNote = existingNote;
+        }
+
+        tool.setDamagedQuantity(newDamaged);
+        tool.setAvailableQuantity(newAvailable);
+        tool.setStatus(newStatus);
+        tool.setNote(newNote);
+
+        tool = toolRepository.save(tool);
+        log.info("Disposed damaged tool: {} - damaged: {}, available: {}", tool.getName(), newDamaged, newAvailable);
+
+        int borrowed = toolRepository.sumBorrowedQuantity(toolId);
+        return toResponse(tool, borrowed);
+    }
+
+    // ── Lấy danh sách CCDC có hư hỏng ───────────────────────
+    public PagedResponse<ToolResponse> getDamagedTools(String keyword, String category, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+
+        Page<Tool> toolPage = toolRepository.findDamagedTools(
+                (keyword != null && !keyword.isBlank()) ? keyword.trim() : null,
+                (category != null && !category.isBlank()) ? category.trim() : null,
+                pageable);
+
+        return PagedResponse.<ToolResponse>builder()
+                .content(toolPage.getContent().stream()
+                        .map(tool -> {
+                            int borrowed = toolRepository.sumBorrowedQuantity(tool.getToolId());
+                            return toResponse(tool, borrowed);
+                        })
+                        .toList())
+                .page(toolPage.getNumber())
+                .size(toolPage.getSize())
+                .totalElements(toolPage.getTotalElements())
+                .totalPages(toolPage.getTotalPages())
+                .last(toolPage.isLast())
+                .build();
     }
 
     // ── Validate số lượng ─────────────────────────────────────
