@@ -28,7 +28,7 @@ export const inventoryNavItems = [
   },
   {
     label: 'CCDC hư hỏng',
-    href: '/dashboard/inventory/tools/damaged',
+    href: '/dashboard/inventory/damaged-tools',
     icon: Wrench,
     roles: [ROLES.WAREHOUSE_TOOL],
   },

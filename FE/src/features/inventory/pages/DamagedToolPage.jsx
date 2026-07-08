@@ -1,7 +1,8 @@
-import { Search } from 'lucide-react'
+import { Search, Plus, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { fetchDamagedTools } from '../services/tool.service.js'
+import { ToolRemoveDamagedModal } from './ToolRemoveDamagedModal.jsx'
 
 const STATUS_LABELS = {
   available: 'Còn hàng',
@@ -17,6 +18,7 @@ export function DamagedToolPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [removeModal, setRemoveModal] = useState({ open: false, item: null })
   
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -73,7 +75,12 @@ export function DamagedToolPage() {
   return (
     <div className="mx-auto max-w-7xl">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5">
-        <h1 className="text-xl font-bold text-slate-950">CCDC hư hỏng</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-950">CCDC hư hỏng</h1>
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+            {totalElements} chờ xử lý
+          </span>
+        </div>
       </section>
       {/* Search + Filter */}
       <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -120,13 +127,11 @@ export function DamagedToolPage() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="px-5 py-3">Mã CCDC</th>
                 <th className="px-5 py-3">Tên CCDC</th>
-                <th className="px-5 py-3">Chủng loại</th>
-                <th className="px-5 py-3 text-right">Tổng SL</th>
-                <th className="px-5 py-3 text-right">Có sẵn</th>
-                <th className="px-5 py-3 text-right text-rose-600">Số lượng hỏng</th>
-                <th className="px-5 py-3">Trạng thái</th>
-                <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3">Mô tả hư hỏng</th>
+                <th className="px-5 py-3 text-center">SL</th>
+                <th className="px-5 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -148,32 +153,33 @@ export function DamagedToolPage() {
 
               {!loading
                 ? items.map((item) => {
-                    const statusLabel = STATUS_LABELS[item.status] || item.status
-                    const badgeClass = STATUS_BADGES[item.status] || 'bg-slate-100 text-slate-600'
                     return (
                       <tr className="hover:bg-slate-50/80" key={item.toolId}>
+                        <td className="px-5 py-4">
+                          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                            {item.toolId.substring(0, 8).toUpperCase()}
+                          </span>
+                        </td>
                         <td className="px-5 py-4 font-semibold text-slate-950">
                           {item.name}
                         </td>
-                        <td className="px-5 py-4 text-slate-600">{item.category}</td>
-                        <td className="px-5 py-4 text-right text-slate-600">{item.totalQuantity}</td>
-                        <td className="px-5 py-4 text-right font-semibold text-emerald-600">
-                          {item.availableQuantity}
+                        <td className="px-5 py-4 text-slate-600">
+                          <span className="line-clamp-2 max-w-xs" title={item.note || 'Không có mô tả'}>
+                            {item.note || 'Không có mô tả'}
+                          </span>
                         </td>
-                        <td className="px-5 py-4 text-right font-bold text-rose-600 bg-rose-50/50">
+                        <td className="px-5 py-4 text-center font-bold text-slate-700">
                           {item.damagedQuantity}
                         </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${badgeClass}`}
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setRemoveModal({ open: true, item })}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
                           >
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-slate-600">
-                          <span className="line-clamp-2 max-w-xs" title={item.note}>
-                            {item.note}
-                          </span>
+                            <Trash2 size={14} />
+                            Hủy CCDC
+                          </button>
                         </td>
                       </tr>
                     )
@@ -208,6 +214,18 @@ export function DamagedToolPage() {
           </div>
         ) : null}
       </section>
+
+      {/* Modal */}
+      {removeModal.open ? (
+        <ToolRemoveDamagedModal
+          item={removeModal.item}
+          onClose={() => setRemoveModal({ open: false, item: null })}
+          onSuccess={() => {
+            setRemoveModal({ open: false, item: null })
+            loadData()
+          }}
+        />
+      ) : null}
     </div>
   )
 }

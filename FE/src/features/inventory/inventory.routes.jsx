@@ -60,7 +60,7 @@ export const inventoryRoutes = [
     ),
   },
   {
-    path: 'inventory/tools/damaged',
+    path: 'inventory/damaged-tools',
     element: (
       <RequireRole roles={[ROLES.WAREHOUSE_TOOL]}>
         <DamagedToolPage />

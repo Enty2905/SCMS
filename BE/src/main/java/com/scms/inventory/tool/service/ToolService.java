@@ -129,20 +129,17 @@ public class ToolService {
             throw new BadRequestException("Số lượng huỷ phải > 0");
         }
 
-        // Kiểm tra không vượt quá số lượng khả dụng
-        int currentAvailable = tool.getAvailableQuantity();
-        if (disposeQty > currentAvailable) {
-            throw new BadRequestException("Số lượng huỷ vượt quá số lượng CCDC khả dụng");
+        // Kiểm tra không vượt quá số lượng CCDC đang bị hỏng
+        int currentDamaged = tool.getDamagedQuantity();
+        if (disposeQty > currentDamaged) {
+            throw new BadRequestException("Số lượng huỷ vượt quá số lượng CCDC đang bị hỏng");
         }
 
-        int newDamaged = tool.getDamagedQuantity() + disposeQty;
-        // Kiểm tra không vượt totalQuantity
-        if (newDamaged > tool.getTotalQuantity()) {
-            throw new BadRequestException("Số lượng huỷ vượt quá số lượng CCDC khả dụng");
-        }
+        int newTotal = tool.getTotalQuantity() - disposeQty;
+        int newDamaged = currentDamaged - disposeQty;
 
-        int newAvailable = tool.getTotalQuantity() - newDamaged;
-        String newStatus = (newDamaged == tool.getTotalQuantity()) ? "damaged" : "available";
+        int newAvailable = newTotal - newDamaged;
+        String newStatus = (newDamaged == newTotal) ? "damaged" : "available";
 
         // Nối thêm lý do huỷ vào note
         String existingNote = tool.getNote() != null ? tool.getNote() : "";
@@ -155,6 +152,7 @@ public class ToolService {
             newNote = existingNote;
         }
 
+        tool.setTotalQuantity(newTotal);
         tool.setDamagedQuantity(newDamaged);
         tool.setAvailableQuantity(newAvailable);
         tool.setStatus(newStatus);

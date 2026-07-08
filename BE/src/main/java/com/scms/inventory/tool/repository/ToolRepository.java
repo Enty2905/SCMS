@@ -13,7 +13,7 @@ import java.util.UUID;
 @Repository
 public interface ToolRepository extends JpaRepository<Tool, UUID> {
 
-    @Query("SELECT t FROM Tool t WHERE " +
+    @Query("SELECT t FROM Tool t WHERE t.totalQuantity > 0 AND " +
             "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
             "(:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%')))")
     Page<Tool> searchByKeywordAndCategory(
