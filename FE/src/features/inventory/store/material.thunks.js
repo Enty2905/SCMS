@@ -14,15 +14,15 @@ import {
 } from '../services/sparepart.service.js'
 
 /**
- * @param {{ tab: 'consumable'|'sparepart', keyword?: string, page?: number, size?: number }}
+ * @param {{ tab: 'consumable'|'sparepart', code?: string, name?: string, page?: number, size?: number }}
  */
 export const fetchMaterials = createAsyncThunk(
   'materials/fetchList',
-  async ({ tab, keyword, page = 0, size = 10 }) => {
+  async ({ tab, code, name, page = 0, size = 10 }) => {
     if (tab === 'sparepart') {
-      return fetchSpareParts(keyword, page, size)
+      return fetchSpareParts({ code, name, page, size })
     }
-    return fetchConsumables(keyword, page, size)
+    return fetchConsumables({ code, name, page, size })
   },
 )
 

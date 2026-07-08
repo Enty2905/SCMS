@@ -15,11 +15,15 @@ import {
 import { fetchToolList } from '../store/tool.thunks.js'
 import { ToolFormModal } from './ToolFormModal.jsx'
 
+// Status badge mapping (giá trị từ BE: 'available' | 'damaged')
+const STATUS_LABELS = {
+  available: 'Còn hàng',
+  damaged: 'Bị hỏng',
+}
+
 const STATUS_BADGES = {
-  'Còn hàng': 'bg-emerald-100 text-emerald-700',
-  'Đang mượn hết': 'bg-amber-100 text-amber-700',
-  'Hư hỏng': 'bg-rose-100 text-rose-700',
-  'Hết hàng': 'bg-slate-100 text-slate-600',
+  available: 'bg-emerald-100 text-emerald-700',
+  damaged: 'bg-rose-100 text-rose-700',
 }
 
 export function ToolListPage() {
@@ -41,11 +45,11 @@ export function ToolListPage() {
   // Derive unique categories from current items for the filter dropdown
   const categories = [...new Set(items.map((item) => item.category).filter(Boolean))]
 
-  // Compute summary stats from current page data
-  const totalQty = items.reduce((sum, item) => sum + (item.totalQuantity || 0), 0)
+  // Card thống kê: tổng loại CCDC, tổng availableQuantity, tổng borrowedQuantity, tổng damagedQuantity
+  const totalTypes = totalElements
   const availableQty = items.reduce((sum, item) => sum + (item.availableQuantity || 0), 0)
-  const borrowedQty = totalQty - availableQty
-  const damagedCount = items.filter((item) => item.status === 'Hư hỏng').length
+  const borrowedQty = items.reduce((sum, item) => sum + (item.borrowedQuantity || 0), 0)
+  const damagedQty = items.reduce((sum, item) => sum + (item.damagedQuantity || 0), 0)
 
   const loadData = useCallback(() => {
     dispatch(fetchToolList({ keyword, category, page: currentPage, size: 10 }))
@@ -96,10 +100,10 @@ export function ToolListPage() {
 
       {/* Summary cards */}
       <section className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard label="Tổng CCDC" value={totalElements} color="text-violet-600" />
+        <SummaryCard label="Tổng CCDC" value={totalTypes} color="text-violet-600" />
         <SummaryCard label="Có sẵn" value={availableQty} color="text-emerald-600" />
         <SummaryCard label="Đang mượn" value={borrowedQty} color="text-amber-600" />
-        <SummaryCard label="Hư hỏng" value={damagedCount} color="text-rose-600" />
+        <SummaryCard label="Hư hỏng" value={damagedQty} color="text-rose-600" />
       </section>
 
       {/* Search + Filter + Add button */}
@@ -149,23 +153,24 @@ export function ToolListPage() {
       {/* Table */}
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+            <thead className="bg-slate-200/60 text-sm uppercase tracking-wide text-slate-900">
               <tr>
-                <th className="px-5 py-3 font-semibold">Tên CCDC</th>
-                <th className="px-5 py-3 font-semibold">Chủng loại</th>
-                <th className="px-5 py-3 font-semibold">Tổng SL</th>
-                <th className="px-5 py-3 font-semibold">Có sẵn</th>
-                <th className="px-5 py-3 font-semibold">Đang mượn</th>
-                <th className="px-5 py-3 font-semibold">Trạng thái</th>
-                <th className="px-5 py-3 font-semibold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+                <th className="px-5 py-3 font-bold">Tên CCDC</th>
+                <th className="px-5 py-3 font-bold">Chủng loại</th>
+                <th className="px-5 py-3 text-right font-bold">Tổng SL</th>
+                <th className="px-5 py-3 text-right font-bold">Có sẵn</th>
+                <th className="px-5 py-3 text-right font-bold">Đang mượn</th>
+                <th className="px-5 py-3 text-right font-bold">Hư hỏng</th>
+                <th className="px-5 py-3 font-bold">Trạng thái</th>
+                <th className="px-5 py-3 font-bold">Ghi chú</th>
+                <th className="px-5 py-3 text-right font-bold">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -173,7 +178,7 @@ export function ToolListPage() {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Không có CCDC phù hợp.
                   </td>
                 </tr>
@@ -181,7 +186,7 @@ export function ToolListPage() {
 
               {!loading
                 ? items.map((item) => {
-                    const borrowed = (item.totalQuantity || 0) - (item.availableQuantity || 0)
+                    const statusLabel = STATUS_LABELS[item.status] || item.status
                     const badgeClass = STATUS_BADGES[item.status] || 'bg-slate-100 text-slate-600'
                     return (
                       <tr className="hover:bg-slate-50/80" key={item.toolId}>
@@ -189,23 +194,26 @@ export function ToolListPage() {
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.category}</td>
-                        <td className="px-5 py-4 text-slate-600">{item.totalQuantity}</td>
-                        <td className="px-5 py-4 font-semibold text-emerald-600">
+                        <td className="px-5 py-4 text-right text-slate-600">{item.totalQuantity}</td>
+                        <td className="px-5 py-4 text-right font-semibold text-emerald-600">
                           {item.availableQuantity}
                         </td>
-                        <td className="px-5 py-4 font-semibold text-amber-600">
-                          {borrowed}
+                        <td className="px-5 py-4 text-right font-semibold text-amber-600">
+                          {item.borrowedQuantity ?? 0}
+                        </td>
+                        <td className="px-5 py-4 text-right font-semibold text-rose-600">
+                          {item.damagedQuantity ?? 0}
                         </td>
                         <td className="px-5 py-4">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${badgeClass}`}
                           >
-                            {item.status}
+                            {statusLabel}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-slate-600">
-                          <span 
-                            className="line-clamp-2 max-w-xs" 
+                          <span
+                            className="line-clamp-2 max-w-xs"
                             title={item.note}
                           >
                             {item.note}
@@ -231,31 +239,63 @@ export function ToolListPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
-            <p className="text-sm text-slate-500">
-              Trang {page + 1} / {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                disabled={page === 0}
-                onClick={() => handlePageChange(page - 1)}
-                size="sm"
-                variant="secondary"
-              >
-                Trước
-              </Button>
-              <Button
-                disabled={page >= totalPages - 1}
-                onClick={() => handlePageChange(page + 1)}
-                size="sm"
-                variant="secondary"
-              >
-                Sau
-              </Button>
+        {totalPages > 1 ? (() => {
+          let startPage = Math.max(0, page - 2)
+          let endPage = Math.min(totalPages - 1, page + 2)
+
+          if (endPage - startPage < 4) {
+            if (startPage === 0) {
+              endPage = Math.min(totalPages - 1, startPage + 4)
+            } else if (endPage === totalPages - 1) {
+              startPage = Math.max(0, endPage - 4)
+            }
+          }
+
+          const pages = []
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+          }
+
+          return (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+              <p className="text-sm text-slate-500">
+                Hiển thị trang {page + 1} / {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={page === 0}
+                  onClick={() => handlePageChange(0)}
+                >
+                  Trang đầu
+                </button>
+                
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                      page === p
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => handlePageChange(p)}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => handlePageChange(totalPages - 1)}
+                >
+                  Trang cuối
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
+          )
+        })() : null}
       </section>
 
       {/* Modal */}

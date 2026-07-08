@@ -32,6 +32,10 @@ public class Tool {
     @Column(name = "available_quantity", nullable = false)
     Integer availableQuantity;
 
+    @Column(name = "damaged_quantity", nullable = false, columnDefinition = "INT NOT NULL DEFAULT 0")
+    Integer damagedQuantity;
+
+    // 'available' | 'damaged'
     @Column(name = "status", length = 20, nullable = false)
     String status;
 

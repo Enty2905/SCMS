@@ -17,7 +17,10 @@ public interface SparePartRepository extends JpaRepository<SparePart, UUID> {
     Optional<SparePart> findByCode(String code);
 
     @Query("SELECT s FROM SparePart s WHERE " +
-            "LOWER(s.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<SparePart> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+            "(:code IS NULL OR LOWER(s.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+            "(:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :name, '%')))")
+    Page<SparePart> searchByCodeAndName(@Param("code") String code, @Param("name") String name, Pageable pageable);
+
+    @Query("SELECT MAX(s.code) FROM SparePart s WHERE s.code LIKE 'VTTT-%'")
+    String findMaxCode();
 }

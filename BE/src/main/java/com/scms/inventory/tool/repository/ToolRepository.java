@@ -20,4 +20,11 @@ public interface ToolRepository extends JpaRepository<Tool, UUID> {
             @Param("keyword") String keyword,
             @Param("category") String category,
             Pageable pageable);
+
+    /**
+     * Tổng số lượng đang mượn của một tool (các bản ghi tool_borrow chưa trả).
+     */
+    @Query("SELECT COALESCE(SUM(tb.quantity), 0) FROM ToolBorrow tb " +
+            "WHERE tb.toolId = :toolId AND tb.returnedAt IS NULL")
+    int sumBorrowedQuantity(@Param("toolId") UUID toolId);
 }

@@ -28,16 +28,23 @@ public class SparePartService {
 
     SparePartRepository sparePartRepository;
 
-    // ── Thêm mới vật tư thay thế ─────────────────────────────
+    // ── Thêm mới vật tư thay thế ──────────────────────────────
     @Transactional
     public SparePartResponse createSparePart(SparePartRequest request) {
-        // Kiểm tra trùng mã
-        if (sparePartRepository.findByCode(request.getCode()).isPresent()) {
-            throw new DuplicateResourceException("SparePart", "code", request.getCode());
+        // Tự động tạo mã vật tư VTTT-(6 số)
+        String maxCode = sparePartRepository.findMaxCode();
+        int nextNumber = 1;
+        if (maxCode != null && maxCode.startsWith("VTTT-")) {
+            try {
+                nextNumber = Integer.parseInt(maxCode.substring(5)) + 1;
+            } catch (NumberFormatException e) {
+                log.warn("Invalid max code format: {}", maxCode);
+            }
         }
+        String newCode = String.format("VTTT-%06d", nextNumber);
 
         SparePart sparePart = SparePart.builder()
-                .code(request.getCode())
+                .code(newCode)
                 .name(request.getName())
                 .unit(request.getUnit())
                 .minQuantity(request.getMinQuantity())
@@ -50,12 +57,15 @@ public class SparePartService {
     }
 
     // ── Lấy danh sách có phân trang và tìm kiếm ──────────────
-    public PagedResponse<SparePartResponse> getSpareParts(String keyword, int page, int size) {
+    public PagedResponse<SparePartResponse> getSpareParts(String code, String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "code"));
 
+        String searchCode = (code != null && !code.isBlank()) ? code.trim() : null;
+        String searchName = (name != null && !name.isBlank()) ? name.trim() : null;
+
         Page<SparePart> sparePartPage;
-        if (keyword != null && !keyword.isBlank()) {
-            sparePartPage = sparePartRepository.searchByKeyword(keyword.trim(), pageable);
+        if (searchCode != null || searchName != null) {
+            sparePartPage = sparePartRepository.searchByCodeAndName(searchCode, searchName, pageable);
         } else {
             sparePartPage = sparePartRepository.findAll(pageable);
         }
@@ -85,15 +95,6 @@ public class SparePartService {
         SparePart sparePart = sparePartRepository.findById(sparePartId)
                 .orElseThrow(() -> new NotFoundException("SparePart", "id", sparePartId));
 
-        // Kiểm tra trùng mã với bản ghi khác
-        sparePartRepository.findByCode(request.getCode())
-                .ifPresent(existing -> {
-                    if (!existing.getSparePartId().equals(sparePartId)) {
-                        throw new DuplicateResourceException("SparePart", "code", request.getCode());
-                    }
-                });
-
-        sparePart.setCode(request.getCode());
         sparePart.setName(request.getName());
         sparePart.setUnit(request.getUnit());
         sparePart.setMinQuantity(request.getMinQuantity());
