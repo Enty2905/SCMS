@@ -174,14 +174,14 @@ export function MaterialListPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-            <thead className="bg-slate-200/60 text-sm uppercase tracking-wide text-slate-900">
+            <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
-                <th className="px-5 py-3 font-bold">Mã vật tư</th>
-                <th className="px-5 py-3 font-bold">Tên vật tư</th>
-                <th className="px-5 py-3 font-bold">Đơn vị</th>
-                <th className="px-5 py-3 text-right font-bold">Mức tối thiểu</th>
-                <th className="px-5 py-3 font-bold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-bold">Thao tác</th>
+                <th className="px-5 py-3">Mã vật tư</th>
+                <th className="px-5 py-3">Tên vật tư</th>
+                <th className="px-5 py-3">Đơn vị</th>
+                <th className="px-5 py-3 text-right">Mức tối thiểu</th>
+                <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
