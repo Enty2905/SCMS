@@ -24,7 +24,6 @@ import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
 import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
 import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 
-
 const navItems = [
   {
     label: 'Dashboard',
@@ -38,21 +37,35 @@ const navItems = [
   ...maintenanceNavItems,
 ]
 
-
+/**
+ * FILE HỌC TẬP: APP SHELL - GIAO DIỆN KHUNG CHÍNH CỦA HỆ THỐNG
+ * 
+ * Tại đây, chúng ta học cách:
+ * 1. Tích hợp menu chuông thông báo động ở thanh tiêu đề.
+ * 2. Gọi API định kỳ mỗi 30 giây để tự động cập nhật cảnh báo thiết bị bị hỏng/đang bảo dưỡng.
+ * 3. Chuyển hướng nhanh tới trang danh sách thiết bị của hệ thống khi click thông báo.
+ */
 export function AppShell() {
   const dispatch = useDispatch()
   const location = useLocation()
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
 
-  // State for dynamic notifications
+  // ==========================================
+  // HỌC TẬP: QUẢN LÝ THÔNG BÁO ĐỘNG (WARNING NOTIFICATIONS)
+  // ==========================================
+  // isNotifOpen: Bật/Tắt hiển thị dropdown thông báo
   const [isNotifOpen, setIsNotifOpen] = useState(false)
+  // notifications: Mảng danh sách thông báo lỗi/bảo dưỡng thực tế
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     async function loadNotifications() {
       try {
+        // Tải toàn bộ thiết bị đang có trên hệ thống
         const equipments = await fetchEquipments()
+
+        // Lọc ra các thiết bị gặp sự cố hoặc đang bảo trì
         const warnings = equipments
           .filter((eq) => {
             const statusLower = eq.status?.toLowerCase() || ''
@@ -84,15 +97,21 @@ export function AppShell() {
       }
     }
 
+    // Chạy tải dữ liệu lần đầu ngay khi mở web
     loadNotifications()
+    // Sử dụng setInterval thiết lập thời gian tự động quét dữ liệu mỗi 30 giây (30000 ms)
     const interval = setInterval(loadNotifications, 30000)
+    // dọn dẹp interval khi đóng component tránh rò rỉ bộ nhớ
     return () => clearInterval(interval)
   }, [])
 
+  // Điều hướng nhanh khi click vào một cảnh báo
   const handleNotifClick = (notif) => {
-    setIsNotifOpen(false)
+    setIsNotifOpen(false) // Đóng menu dropdown
+    // Chuyển tới trang Thiết bị và tự động gán query filter systemId
     navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
   }
+
   const visibleNavItems = navItems.filter((item) => hasAnyRole(user, item.roles))
   const currentItem =
     visibleNavItems.find((item) => location.pathname === item.href) ||
@@ -122,6 +141,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
+      {/* Sidebar - Cột điều hướng bên trái */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-72 border-r border-slate-800 bg-slate-950 px-3 py-4 text-white lg:block">
         <div className="flex items-center gap-3 px-2">
           <div className="grid size-9 place-items-center rounded-lg bg-violet-600 text-white">
@@ -178,6 +198,7 @@ export function AppShell() {
         </div>
       </aside>
 
+      {/* Vùng Content chính bên phải */}
       <div className="lg:pl-72">
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
@@ -190,14 +211,17 @@ export function AppShell() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+
+              {/* PHẦN CHUÔNG THÔNG BÁO VÀ DROPDOWN MENU */}
               <div className="relative">
-                <Button 
-                  className="relative" 
-                  size="icon" 
+                <Button
+                  className="relative"
+                  size="icon"
                   variant="ghost"
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
                 >
                   <Bell size={18} />
+                  {/* Nếu số thông báo lớn hơn 0, hiển thị nhãn số lượng nhấp nháy animate-pulse */}
                   {notifications.length > 0 && (
                     <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white animate-pulse">
                       {notifications.length}
@@ -208,7 +232,11 @@ export function AppShell() {
 
                 {isNotifOpen && (
                   <>
+                    {/* Tấm chắn đóng khi nhấp bên ngoài: 
+                        fixed inset-0 bao phủ toàn bộ màn hình, nằm dưới popup nhưng nằm trên nội dung chính. */}
                     <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+
+                    {/* Hộp Dropdown hiển thị thông báo */}
                     <div className="absolute right-0 mt-2 w-80 rounded-lg border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                       <div className="border-b border-slate-100 px-3 py-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
                         Thông báo cảnh báo ({notifications.length})
@@ -225,9 +253,8 @@ export function AppShell() {
                               onClick={() => handleNotifClick(notif)}
                               className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition rounded-md flex gap-2.5 items-start text-xs cursor-pointer"
                             >
-                              <span className={`mt-0.5 inline-block size-2 rounded-full shrink-0 ${
-                                notif.type === 'warning' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
-                              }`} />
+                              <span className={`mt-0.5 inline-block size-2 rounded-full shrink-0 ${notif.type === 'warning' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
+                                }`} />
                               <div>
                                 <p className={`font-semibold ${notif.type === 'warning' ? 'text-rose-700' : 'text-amber-700'}`}>
                                   {notif.type === 'warning' ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng'}
@@ -242,6 +269,7 @@ export function AppShell() {
                   </>
                 )}
               </div>
+
               <div className="flex items-center gap-3">
                 <div className="grid size-9 place-items-center rounded-full bg-violet-600 text-sm font-bold text-white">
                   {initials}
