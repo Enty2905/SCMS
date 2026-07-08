@@ -154,17 +154,17 @@ export function ToolListPage() {
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-            <thead className="bg-slate-200/60 text-sm uppercase tracking-wide text-slate-900">
+            <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
-                <th className="px-5 py-3 font-bold">Tên CCDC</th>
-                <th className="px-5 py-3 font-bold">Chủng loại</th>
-                <th className="px-5 py-3 text-right font-bold">Tổng SL</th>
-                <th className="px-5 py-3 text-right font-bold">Có sẵn</th>
-                <th className="px-5 py-3 text-right font-bold">Đang mượn</th>
-                <th className="px-5 py-3 text-right font-bold">Hư hỏng</th>
-                <th className="px-5 py-3 font-bold">Trạng thái</th>
-                <th className="px-5 py-3 font-bold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-bold">Thao tác</th>
+                <th className="px-5 py-3">Tên CCDC</th>
+                <th className="px-5 py-3">Chủng loại</th>
+                <th className="px-5 py-3 text-right">Tổng SL</th>
+                <th className="px-5 py-3 text-right">Có sẵn</th>
+                <th className="px-5 py-3 text-right">Đang mượn</th>
+                <th className="px-5 py-3 text-right">Hư hỏng</th>
+                <th className="px-5 py-3">Trạng thái</th>
+                <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
