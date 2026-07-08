@@ -2,6 +2,8 @@ package com.scms.equipment.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
@@ -12,6 +14,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE equipment_system SET is_deleted = true WHERE system_id = ?")
+@SQLRestriction("is_deleted = false")
 public class EquipmentSystem {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,4 +33,8 @@ public class EquipmentSystem {
 
     @Column(name = "parent_system_id")
     private UUID parentSystemId;
+
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean is_deleted = false;
 }

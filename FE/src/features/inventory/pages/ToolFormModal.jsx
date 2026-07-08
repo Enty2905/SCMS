@@ -16,11 +16,17 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
     name: item?.name || '',
     category: item?.category || '',
     totalQuantity: item?.totalQuantity ?? '',
-    availableQuantity: item?.availableQuantity ?? '',
+    damagedQuantity: item?.damagedQuantity ?? 0,
     note: item?.note || '',
   })
 
   const [errors, setErrors] = useState({})
+
+  // Tính availableQuantity để hiển thị (readonly)
+  const borrowedQuantity = item?.borrowedQuantity ?? 0
+  const totalQty = Number(form.totalQuantity) || 0
+  const damagedQty = Number(form.damagedQuantity) || 0
+  const computedAvailable = totalQty - borrowedQuantity - damagedQty
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -37,15 +43,17 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
     if (form.totalQuantity === '' || isNaN(form.totalQuantity) || Number(form.totalQuantity) < 0) {
       newErrors.totalQuantity = 'Tổng số lượng phải >= 0'
     }
-    if (form.availableQuantity === '' || isNaN(form.availableQuantity) || Number(form.availableQuantity) < 0) {
-      newErrors.availableQuantity = 'Số lượng khả dụng phải >= 0'
+    const dmg = Number(form.damagedQuantity)
+    if (form.damagedQuantity === '' || isNaN(dmg) || dmg < 0) {
+      newErrors.damagedQuantity = 'Số lượng hỏng phải >= 0'
+    } else {
+      const maxDamaged = totalQty - borrowedQuantity
+      if (dmg > maxDamaged) {
+        newErrors.damagedQuantity = `Số lượng hỏng không được vượt quá ${maxDamaged} (tổng - đang mượn)`
+      }
     }
-    if (
-      !newErrors.totalQuantity &&
-      !newErrors.availableQuantity &&
-      Number(form.availableQuantity) > Number(form.totalQuantity)
-    ) {
-      newErrors.availableQuantity = 'Số lượng khả dụng không được lớn hơn tổng số lượng'
+    if (!newErrors.totalQuantity && !newErrors.damagedQuantity && computedAvailable < 0) {
+      newErrors.damagedQuantity = 'Số lượng khả dụng không được âm'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -59,7 +67,7 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
       name: form.name.trim(),
       category: form.category.trim() || null,
       totalQuantity: Number(form.totalQuantity),
-      availableQuantity: Number(form.availableQuantity),
+      damagedQuantity: Number(form.damagedQuantity),
       note: form.note.trim() || null,
     }
 
@@ -107,6 +115,8 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
             placeholder="Dụng cụ cơ khí, Máy điện cầm tay..."
             value={form.category}
           />
+
+          {/* Tổng số lượng + Số lượng hỏng */}
           <div className="grid grid-cols-2 gap-4">
             <FormField
               error={errors.totalQuantity}
@@ -118,15 +128,48 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
               value={form.totalQuantity}
             />
             <FormField
-              error={errors.availableQuantity}
-              label="Số lượng khả dụng"
-              onChange={(value) => handleChange('availableQuantity', value)}
+              error={errors.damagedQuantity}
+              label="Số lượng hỏng"
+              onChange={(value) => handleChange('damagedQuantity', value)}
               placeholder="0"
               required
               type="number"
-              value={form.availableQuantity}
+              value={form.damagedQuantity}
             />
           </div>
+
+          {/* Số lượng đang mượn (readonly info) + Số lượng khả dụng (readonly) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Đang mượn
+              </label>
+              <input
+                className="h-10 w-full cursor-not-allowed rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500"
+                disabled
+                readOnly
+                value={borrowedQuantity}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Số lượng có sẵn
+                <span className="ml-1 text-xs font-normal text-slate-400">(tự tính)</span>
+              </label>
+              <input
+                className={[
+                  'h-10 w-full cursor-not-allowed rounded-md border px-3 text-sm font-semibold',
+                  computedAvailable < 0
+                    ? 'border-rose-300 bg-rose-50 text-rose-600'
+                    : 'border-slate-200 bg-slate-50 text-slate-700',
+                ].join(' ')}
+                disabled
+                readOnly
+                value={computedAvailable < 0 ? `${computedAvailable} (âm!)` : computedAvailable}
+              />
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Ghi chú

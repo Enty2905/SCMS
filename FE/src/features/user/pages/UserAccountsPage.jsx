@@ -1,10 +1,13 @@
 import {
+  AlertTriangle,
   Lock,
+  Loader2,
   Plus,
   Search,
   ShieldCheck,
   Trash2,
   Unlock,
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -32,6 +35,114 @@ const emptyForm = {
   password: '',
 }
 
+const roleLabels = {
+  ADMIN: 'Quản trị viên',
+  HR: 'Nhân sự',
+  NHAN_SU: 'Nhân sự',
+  OPS_MANAGER: 'Quản đốc vận hành',
+  REPAIR_MANAGER: 'Quản đốc sửa chữa',
+  SHIFT_LEADER: 'Trưởng ca',
+  TEAM_LEADER: 'Tổ trưởng sửa chữa',
+  WAREHOUSE_MAT: 'Thủ kho vật tư',
+  WAREHOUSE_TOOL: 'Thủ kho CCDC',
+  USER: 'Người dùng',
+}
+
+function getAccountRoles(account) {
+  return account.roles?.length ? account.roles : []
+}
+
+function getRoleLabel(role) {
+  return role.roleName || roleLabels[role.roleCode] || role.roleCode || 'Người dùng'
+}
+
+function AccountRoleBadges({ account }) {
+  const roles = getAccountRoles(account)
+
+  if (!roles.length) {
+    return (
+      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+        Chưa phân quyền
+      </span>
+    )
+  }
+
+  return roles.map((role) => (
+    <span
+      className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700"
+      key={role.roleCode || role.roleId}
+    >
+      {getRoleLabel(role)}
+    </span>
+  ))
+}
+
+function ConfirmAccountActionModal({ action, saving, onClose, onConfirm }) {
+  if (!action) return null
+
+  const isDelete = action.type === 'delete'
+  const isLock = action.type === 'lock'
+  const title = isDelete
+    ? 'Xác nhận xóa tài khoản'
+    : isLock
+      ? 'Xác nhận khóa tài khoản'
+      : 'Xác nhận mở khóa tài khoản'
+  const description = isDelete
+    ? 'Tài khoản sẽ được vô hiệu hóa và vẫn được giữ trong dữ liệu hệ thống.'
+    : isLock
+      ? 'Người dùng sẽ không thể đăng nhập cho đến khi tài khoản được mở khóa.'
+      : 'Người dùng sẽ có thể đăng nhập lại sau khi tài khoản được mở khóa.'
+  const confirmLabel = isDelete ? 'Xóa ' : isLock ? 'Khóa tài khoản' : 'Mở khóa'
+  const confirmClass =
+    isDelete || isLock ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">{title}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Tác vụ quản lý tài khoản</p>
+          </div>
+          <button
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            disabled={saving}
+            onClick={onClose}
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5">
+          <div className="flex gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-slate-700">
+                Bạn đang thao tác với tài khoản{' '}
+                <strong className="text-slate-950">{action.account.username}</strong>.
+              </p>
+              <p className="mt-1 text-sm text-slate-500">{description}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button disabled={saving} onClick={onClose} variant="secondary">
+              Hủy
+            </Button>
+            <Button className={confirmClass} disabled={saving} onClick={onConfirm}>
+              {saving ? <Loader2 className="animate-spin" size={16} /> : null}
+              {confirmLabel}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function UserAccountsPage() {
   const dispatch = useDispatch()
   const accounts = useSelector(selectUserAccounts)
@@ -43,6 +154,7 @@ export function UserAccountsPage() {
   const [form, setForm] = useState(emptyForm)
   const [query, setQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
 
   const filteredAccounts = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -52,11 +164,15 @@ export function UserAccountsPage() {
     }
 
     return accounts.filter((account) => {
-      return (
+      const matchesText =
         account.username?.toLowerCase().includes(keyword) ||
         account.employeeName?.toLowerCase().includes(keyword) ||
         account.departmentName?.toLowerCase().includes(keyword)
+      const matchesRole = getAccountRoles(account).some((role) =>
+        [role.roleCode, role.roleName].some((value) => value?.toLowerCase().includes(keyword)),
       )
+
+      return matchesText || matchesRole
     })
   }, [accounts, query])
 
@@ -79,25 +195,39 @@ export function UserAccountsPage() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  function handleStatusChange(account) {
-    dispatch(
-      updateUserAccountStatus({
-        userId: account.userId,
-        active: !account.active,
-      }),
-    )
+  function openStatusConfirm(account) {
+    setConfirmAction({
+      type: account.active ? 'lock' : 'unlock',
+      account,
+    })
   }
 
-  function handleDeleteAccount(account) {
-    const confirmed = window.confirm(
-      `Xoa tai khoan "${account.username}"? Nhan vien co the duoc cap lai tai khoan sau khi xoa.`,
-    )
+  function openDeleteConfirm(account) {
+    setConfirmAction({ type: 'delete', account })
+  }
 
-    if (!confirmed) {
+  async function handleConfirmAction() {
+    if (!confirmAction) {
       return
     }
 
-    dispatch(deleteUserAccount(account.userId))
+    const { account, type } = confirmAction
+    const result =
+      type === 'delete'
+        ? await dispatch(deleteUserAccount(account.userId))
+        : await dispatch(
+            updateUserAccountStatus({
+              userId: account.userId,
+              active: type === 'unlock',
+            }),
+          )
+
+    if (
+      deleteUserAccount.fulfilled.match(result) ||
+      updateUserAccountStatus.fulfilled.match(result)
+    ) {
+      setConfirmAction(null)
+    }
   }
 
   return (
@@ -127,7 +257,7 @@ export function UserAccountsPage() {
           <input
             className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm theo tên đăng nhập hoặc họ tên..."
+            placeholder="Tìm theo tên đăng nhập, họ tên hoặc vai trò..."
             value={query}
           />
         </label>
@@ -248,14 +378,12 @@ export function UserAccountsPage() {
                           <div className="grid size-8 place-items-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
                             {account.username?.[0]?.toUpperCase() || 'U'}
                           </div>
-                          <span className="font-semibold text-slate-950">
-                            {account.username}
-                          </span>
+                          <span className="font-semibold text-slate-950">{account.username}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-800">
-                          {account.employeeName}
+                          {account.employeeName || 'Chưa gắn nhân viên'}
                         </p>
                         <p className="text-xs text-slate-500">
                           {account.phone || account.workLocation || 'Chưa cập nhật'}
@@ -265,9 +393,9 @@ export function UserAccountsPage() {
                         {account.departmentName || 'Chưa cập nhật'}
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
-                          {account.positionName || 'Nhân sự'}
-                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <AccountRoleBadges account={account} />
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <span
@@ -294,20 +422,20 @@ export function UserAccountsPage() {
                                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
                             ].join(' ')}
                             disabled={saving}
-                            onClick={() => handleStatusChange(account)}
+                            onClick={() => openStatusConfirm(account)}
                             type="button"
                           >
                             {account.active ? <Lock size={16} /> : <Unlock size={16} />}
-                            {account.active ? 'Khoa' : 'Mo khoa'}
+                            {account.active ? 'Khóa' : 'Mở khóa'}
                           </button>
                           <button
                             className="inline-flex h-9 items-center gap-1.5 rounded-md bg-rose-50 px-3 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
                             disabled={saving}
-                            onClick={() => handleDeleteAccount(account)}
+                            onClick={() => openDeleteConfirm(account)}
                             type="button"
                           >
                             <Trash2 size={16} />
-                            Xoa
+                            Xóa
                           </button>
                         </div>
                       </td>
@@ -318,6 +446,13 @@ export function UserAccountsPage() {
           </table>
         </div>
       </section>
+
+      <ConfirmAccountActionModal
+        action={confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        saving={saving}
+      />
     </div>
   )
 }

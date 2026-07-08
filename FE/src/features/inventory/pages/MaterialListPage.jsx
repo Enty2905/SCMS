@@ -32,7 +32,8 @@ export function MaterialListPage() {
   const totalElements = useSelector(selectMaterialTotalElements)
 
   const [activeTab, setActiveTab] = useState('consumable')
-  const [keyword, setKeyword] = useState('')
+  const [searchType, setSearchType] = useState('code')
+  const [searchValue, setSearchValue] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
 
   // Modal states
@@ -40,8 +41,11 @@ export function MaterialListPage() {
   const [deleteModal, setDeleteModal] = useState({ open: false, item: null })
 
   const loadData = useCallback(() => {
-    dispatch(fetchMaterials({ tab: activeTab, keyword, page: currentPage, size: 10 }))
-  }, [dispatch, activeTab, keyword, currentPage])
+    const params = { tab: activeTab, page: currentPage, size: 10 }
+    if (searchType === 'code') params.code = searchValue
+    if (searchType === 'name') params.name = searchValue
+    dispatch(fetchMaterials(params))
+  }, [dispatch, activeTab, searchType, searchValue, currentPage])
 
   useEffect(() => {
     loadData()
@@ -49,13 +53,13 @@ export function MaterialListPage() {
 
   function handleTabChange(tab) {
     setActiveTab(tab)
-    setKeyword('')
+    setSearchValue('')
     setCurrentPage(0)
     dispatch(clearMaterialError())
   }
 
   function handleSearch(event) {
-    setKeyword(event.target.value)
+    setSearchValue(event.target.value)
     setCurrentPage(0)
   }
 
@@ -125,18 +129,28 @@ export function MaterialListPage() {
 
       {/* Search + Add button */}
       <section className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={17}
-          />
-          <input
-            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={handleSearch}
-            placeholder="Tìm theo mã hoặc tên vật tư..."
-            value={keyword}
-          />
-        </label>
+        <div className="flex flex-1 items-center gap-2">
+          <select
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+            onChange={(e) => setSearchType(e.target.value)}
+            value={searchType}
+          >
+            <option value="code">Mã vật tư</option>
+            <option value="name">Tên vật tư</option>
+          </select>
+          <label className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={handleSearch}
+              placeholder={searchType === 'code' ? 'Nhập mã vật tư...' : 'Nhập tên vật tư...'}
+              value={searchValue}
+            />
+          </label>
+        </div>
         <Button
           className="bg-violet-600 hover:bg-violet-700"
           onClick={openCreateModal}
@@ -160,14 +174,14 @@ export function MaterialListPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
-                <th className="px-5 py-3 font-semibold">Mã vật tư</th>
-                <th className="px-5 py-3 font-semibold">Tên vật tư</th>
-                <th className="px-5 py-3 font-semibold">Đơn vị</th>
-                <th className="px-5 py-3 font-semibold">Mức tối thiểu</th>
-                <th className="px-5 py-3 font-semibold">Ghi chú</th>
-                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+                <th className="px-5 py-3">Mã vật tư</th>
+                <th className="px-5 py-3">Tên vật tư</th>
+                <th className="px-5 py-3">Đơn vị</th>
+                <th className="px-5 py-3 text-right">Mức tối thiểu</th>
+                <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -199,7 +213,7 @@ export function MaterialListPage() {
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.unit}</td>
-                        <td className="px-5 py-4 text-slate-600">{item.minQuantity}</td>
+                        <td className="px-5 py-4 text-right text-slate-600">{item.minQuantity}</td>
                         <td className="px-5 py-4 text-slate-600">
                           <span 
                             className="line-clamp-2 max-w-xs" 
@@ -235,31 +249,63 @@ export function MaterialListPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
-            <p className="text-sm text-slate-500">
-              Trang {page + 1} / {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                disabled={page === 0}
-                onClick={() => handlePageChange(page - 1)}
-                size="sm"
-                variant="secondary"
-              >
-                Trước
-              </Button>
-              <Button
-                disabled={page >= totalPages - 1}
-                onClick={() => handlePageChange(page + 1)}
-                size="sm"
-                variant="secondary"
-              >
-                Sau
-              </Button>
+        {totalPages > 1 ? (() => {
+          let startPage = Math.max(0, page - 2)
+          let endPage = Math.min(totalPages - 1, page + 2)
+
+          if (endPage - startPage < 4) {
+            if (startPage === 0) {
+              endPage = Math.min(totalPages - 1, startPage + 4)
+            } else if (endPage === totalPages - 1) {
+              startPage = Math.max(0, endPage - 4)
+            }
+          }
+
+          const pages = []
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+          }
+
+          return (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+              <p className="text-sm text-slate-500">
+                Hiển thị trang {page + 1} / {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={page === 0}
+                  onClick={() => handlePageChange(0)}
+                >
+                  Trang đầu
+                </button>
+                
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                      page === p
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => handlePageChange(p)}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => handlePageChange(totalPages - 1)}
+                >
+                  Trang cuối
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
+          )
+        })() : null}
       </section>
 
       {/* Modals */}

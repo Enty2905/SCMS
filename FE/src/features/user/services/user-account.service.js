@@ -23,5 +23,6 @@ export async function updateAccountStatusService(userId, active) {
 }
 
 export async function deleteAccountService(userId) {
-  await apiClient.delete(`/hr/accounts/${userId}`)
+  const response = await apiClient.delete(`/hr/accounts/${userId}`)
+  return response.data
 }

@@ -1,8 +1,9 @@
 import { apiClient } from '@/shared/api/httpClient.js'
 
-export async function fetchSpareParts(keyword, page = 0, size = 10) {
+export async function fetchSpareParts({ code, name, page = 0, size = 10 }) {
   const params = new URLSearchParams()
-  if (keyword) params.set('keyword', keyword)
+  if (code) params.set('code', code)
+  if (name) params.set('name', name)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/spare-parts?${params}`)

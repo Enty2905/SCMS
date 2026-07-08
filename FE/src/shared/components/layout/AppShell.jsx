@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   Bell,
   LayoutDashboard,
@@ -21,6 +22,7 @@ import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
 import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
+import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 
 
 const navItems = [
@@ -42,6 +44,55 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
+
+  // State for dynamic notifications
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const equipments = await fetchEquipments()
+        const warnings = equipments
+          .filter((eq) => {
+            const statusLower = eq.status?.toLowerCase() || ''
+            return (
+              statusLower === 'sự cố' ||
+              statusLower === 'bảo dưỡng' ||
+              statusLower === 'broken' ||
+              statusLower === 'maintenance'
+            )
+          })
+          .map((eq) => {
+            const statusLower = eq.status?.toLowerCase() || ''
+            const isBroken = statusLower === 'sự cố' || statusLower === 'broken'
+            return {
+              id: eq.id,
+              kksCode: eq.kksCode,
+              name: eq.equipmentName,
+              status: eq.status,
+              systemId: eq.systemId,
+              message: isBroken
+                ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp SỰ CỐ!`
+                : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang tiến hành BẢO DƯỠNG.`,
+              type: isBroken ? 'warning' : 'info',
+            }
+          })
+        setNotifications(warnings)
+      } catch (err) {
+        console.error('Failed to load notifications in AppShell', err)
+      }
+    }
+
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleNotifClick = (notif) => {
+    setIsNotifOpen(false)
+    navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
+  }
   const visibleNavItems = navItems.filter((item) => hasAnyRole(user, item.roles))
   const currentItem =
     visibleNavItems.find((item) => location.pathname === item.href) ||
@@ -139,13 +190,58 @@ export function AppShell() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button className="relative" size="icon" variant="ghost">
-                <Bell size={18} />
-                <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                  4
-                </span>
-                <span className="sr-only">Thông báo</span>
-              </Button>
+              <div className="relative">
+                <Button 
+                  className="relative" 
+                  size="icon" 
+                  variant="ghost"
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                >
+                  <Bell size={18} />
+                  {notifications.length > 0 && (
+                    <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white animate-pulse">
+                      {notifications.length}
+                    </span>
+                  )}
+                  <span className="sr-only">Thông báo</span>
+                </Button>
+
+                {isNotifOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-80 rounded-lg border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                      <div className="border-b border-slate-100 px-3 py-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Thông báo cảnh báo ({notifications.length})
+                      </div>
+                      <div className="max-h-64 overflow-y-auto mt-1 divide-y divide-slate-50">
+                        {notifications.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-xs text-slate-500 italic">
+                            Không có cảnh báo nào hiện tại.
+                          </div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <button
+                              key={notif.id}
+                              onClick={() => handleNotifClick(notif)}
+                              className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition rounded-md flex gap-2.5 items-start text-xs cursor-pointer"
+                            >
+                              <span className={`mt-0.5 inline-block size-2 rounded-full shrink-0 ${
+                                notif.type === 'warning' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
+                              }`} />
+                              <div>
+                                <p className={`font-semibold ${notif.type === 'warning' ? 'text-rose-700' : 'text-amber-700'}`}>
+                                  {notif.type === 'warning' ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng'}
+                                </p>
+                                <p className="mt-0.5 text-slate-600 leading-normal">{notif.message}</p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <div className="grid size-9 place-items-center rounded-full bg-violet-600 text-sm font-bold text-white">
                   {initials}

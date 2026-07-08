@@ -8,7 +8,10 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+
+import com.scms.user.dto.response.RoleResponse;
 
 @Data
 @NoArgsConstructor
@@ -26,4 +29,5 @@ public class UserAccountResponse {
     String departmentName;
     String positionName;
     String workLocation;
+    List<RoleResponse> roles;
 }

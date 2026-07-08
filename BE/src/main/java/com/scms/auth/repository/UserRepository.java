@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     boolean existsByEmployeeEmployeeId(UUID employeeId);
 
+    Optional<User> findByEmployeeEmployeeId(UUID employeeId);
+
     Optional<User> findByEmployee(Employee employee);
 
     Page<User> findByIsActive(Boolean isActive, Pageable pageable);
@@ -48,7 +50,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     @Query("""
         SELECT DISTINCT u FROM User u
-        JOIN FETCH u.employee e
+        LEFT JOIN FETCH u.employee e
         LEFT JOIN FETCH e.department
         LEFT JOIN FETCH e.position
         ORDER BY u.createdAt DESC

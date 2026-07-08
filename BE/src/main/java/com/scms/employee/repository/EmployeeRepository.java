@@ -24,7 +24,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         LEFT JOIN FETCH e.department
         LEFT JOIN FETCH e.position
         WHERE NOT EXISTS (
-            SELECT 1 FROM User u WHERE u.employee.employeeId = e.employeeId
+            SELECT 1 FROM User u
+            WHERE u.employee.employeeId = e.employeeId
+              AND u.deleted = false
         )
         ORDER BY e.name ASC
     """)

@@ -67,6 +67,7 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .employee(employee)
                 .isActive(true)
+                .deleted(false)
                 .build();
         user = userRepository.save(user);
 
@@ -94,7 +95,7 @@ public class UserService {
             @Nullable String search
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Specification<User> spec = Specification.where(null);
+        Specification<User> spec = (root, query, cb) -> cb.isFalse(root.get("deleted"));
 
         // Lọc theo role
         if (roleCode != null && !roleCode.isBlank()) {
@@ -243,6 +244,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         user.setIsActive(false);
+        user.setDeleted(true);
         userRepository.save(user);
         log.info("Deactivated user: {}", user.getUsername());
     }

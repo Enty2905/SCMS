@@ -31,13 +31,20 @@ public class ConsumableService {
     // ── Thêm mới vật tư tiêu hao ─────────────────────────────
     @Transactional
     public ConsumableResponse createConsumable(ConsumableRequest request) {
-        // Kiểm tra trùng mã
-        if (consumableRepository.findByCode(request.getCode()).isPresent()) {
-            throw new DuplicateResourceException("Consumable", "code", request.getCode());
+        // Tự động tạo mã vật tư VTTH-(6 số)
+        String maxCode = consumableRepository.findMaxCode();
+        int nextNumber = 1;
+        if (maxCode != null && maxCode.startsWith("VTTH-")) {
+            try {
+                nextNumber = Integer.parseInt(maxCode.substring(5)) + 1;
+            } catch (NumberFormatException e) {
+                log.warn("Invalid max code format: {}", maxCode);
+            }
         }
+        String newCode = String.format("VTTH-%06d", nextNumber);
 
         Consumable consumable = Consumable.builder()
-                .code(request.getCode())
+                .code(newCode)
                 .name(request.getName())
                 .unit(request.getUnit())
                 .minQuantity(request.getMinQuantity())
@@ -50,12 +57,15 @@ public class ConsumableService {
     }
 
     // ── Lấy danh sách có phân trang và tìm kiếm ──────────────
-    public PagedResponse<ConsumableResponse> getConsumables(String keyword, int page, int size) {
+    public PagedResponse<ConsumableResponse> getConsumables(String code, String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "code"));
 
+        String searchCode = (code != null && !code.isBlank()) ? code.trim() : null;
+        String searchName = (name != null && !name.isBlank()) ? name.trim() : null;
+
         Page<Consumable> consumablePage;
-        if (keyword != null && !keyword.isBlank()) {
-            consumablePage = consumableRepository.searchByKeyword(keyword.trim(), pageable);
+        if (searchCode != null || searchName != null) {
+            consumablePage = consumableRepository.searchByCodeAndName(searchCode, searchName, pageable);
         } else {
             consumablePage = consumableRepository.findAll(pageable);
         }
@@ -85,15 +95,6 @@ public class ConsumableService {
         Consumable consumable = consumableRepository.findById(consumableId)
                 .orElseThrow(() -> new NotFoundException("Consumable", "id", consumableId));
 
-        // Kiểm tra trùng mã với bản ghi khác
-        consumableRepository.findByCode(request.getCode())
-                .ifPresent(existing -> {
-                    if (!existing.getConsumableId().equals(consumableId)) {
-                        throw new DuplicateResourceException("Consumable", "code", request.getCode());
-                    }
-                });
-
-        consumable.setCode(request.getCode());
         consumable.setName(request.getName());
         consumable.setUnit(request.getUnit());
         consumable.setMinQuantity(request.getMinQuantity());

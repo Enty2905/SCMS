@@ -1,6 +1,8 @@
-import { Edit3, Plus, Search, Trash2, X } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 import {
   fetchEquipments,
   createEquipment,
@@ -10,16 +12,29 @@ import {
 } from '../services/equipment.service.js'
 
 export function EquipmentListPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialSystemId = searchParams.get('systemId') || 'all'
+
   const [equipments, setEquipments] = useState([])
   const [systems, setSystems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  
+
+  // Confirm delete & Toast states
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [toast, setToast] = useState(null)
+
   // Search & Filter state
-  const [keyword, setKeyword] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [systemFilter, setSystemFilter] = useState('all')
+  const [searchKksCode, setSearchKksCode] = useState('')
+  const [searchEquipmentName, setSearchEquipmentName] = useState('')
+  const [systemFilter, setSystemFilter] = useState(initialSystemId)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const equipmentTypes = useMemo(() => {
     return [...new Set(equipments.map((eq) => eq.equipmentType).filter(Boolean))]
@@ -91,30 +106,68 @@ export function EquipmentListPage() {
     }
   }, [])
 
+  // Sync systemFilter state when URL changes
+  useEffect(() => {
+    const systemId = searchParams.get('systemId') || 'all'
+    setSystemFilter(systemId)
+  }, [searchParams])
+
+  // Set of allowed system IDs (including sub-systems recursively) for filtering
+  const allowedSystemIds = useMemo(() => {
+    if (systemFilter === 'all') return null
+
+    const ids = [systemFilter]
+    const queue = [systemFilter]
+    while (queue.length > 0) {
+      const currentId = queue.shift()
+      const children = systems.filter((sys) => sys.parentSystemId === currentId)
+      for (const child of children) {
+        if (!ids.includes(child.systemId)) {
+          ids.push(child.systemId)
+          queue.push(child.systemId)
+        }
+      }
+    }
+    return new Set(ids)
+  }, [systems, systemFilter])
+
   // Filtered equipments
   const filteredEquipments = useMemo(() => {
     return equipments.filter((eq) => {
-      const keywordLower = keyword.trim().toLowerCase()
-      const matchesSearch =
-        !keywordLower ||
-        eq.kksCode?.toLowerCase().includes(keywordLower) ||
-        eq.equipmentName?.toLowerCase().includes(keywordLower) ||
-        eq.equipmentType?.toLowerCase().includes(keywordLower) ||
-        eq.location?.toLowerCase().includes(keywordLower)
+      const kksLower = searchKksCode.trim().toLowerCase()
+      const nameLower = searchEquipmentName.trim().toLowerCase()
+
+      const matchesKks = !kksLower || eq.kksCode?.toLowerCase().includes(kksLower)
+      const matchesName = !nameLower || eq.equipmentName?.toLowerCase().includes(nameLower)
+      const matchesSystem =
+        systemFilter === 'all' || (allowedSystemIds && allowedSystemIds.has(eq.systemId))
+      
+      const matchesType =
+        typeFilter === 'all' || eq.equipmentType === typeFilter
 
       const matchesStatus =
         statusFilter === 'all' ||
         eq.status?.toLowerCase() === statusFilter.toLowerCase()
 
-      const matchesSystem =
-        systemFilter === 'all' || eq.systemId === systemFilter
-
-      const matchesType =
-        typeFilter === 'all' || eq.equipmentType === typeFilter
-
-      return matchesSearch && matchesStatus && matchesSystem && matchesType
+      return matchesKks && matchesName && matchesSystem && matchesType && matchesStatus
     })
-  }, [equipments, keyword, statusFilter, systemFilter, typeFilter])
+  }, [equipments, searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter, allowedSystemIds])
+
+  // Reset to first page when search criteria changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter])
+
+  // Total pages calculation
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredEquipments.length / pageSize)
+  }, [filteredEquipments, pageSize])
+
+  // Get current page slice of equipments
+  const paginatedEquipments = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredEquipments.slice(startIndex, startIndex + pageSize)
+  }, [filteredEquipments, currentPage, pageSize])
 
   // System name mapping
   const systemMap = useMemo(() => {
@@ -143,7 +196,7 @@ export function EquipmentListPage() {
         equipmentType: '',
         status: 'Hoạt động',
         location: '',
-        systemId: systems[0]?.systemId || '',
+        systemId: systemFilter !== 'all' ? systemFilter : '',
       })
     }
     setIsModalOpen(true)
@@ -159,7 +212,7 @@ export function EquipmentListPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError(null)
-    
+
     // Validate client-side
     if (!formData.kksCode.trim()) return setFormError('Mã KKS không được để trống')
     if (!formData.equipmentName.trim()) return setFormError('Tên thiết bị không được để trống')
@@ -183,18 +236,26 @@ export function EquipmentListPage() {
     }
   }
 
-  // Handle Delete Equipment
-  async function handleDelete(eq) {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa thiết bị "${eq.equipmentName}" (${eq.kksCode})?`)) {
-      return
-    }
+  // Handle Delete Equipment (open custom modal)
+  function handleDelete(eq) {
+    setDeleteTarget(eq)
+  }
 
+  function showToast(message, type = 'success') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
     try {
-      await deleteEquipment(eq.id)
-      loadData() // Refresh
+      await deleteEquipment(deleteTarget.id)
+      setDeleteTarget(null)
+      showToast('Đã ẩn thiết bị thành công (Xóa mềm).', 'success')
+      loadData() // Refresh list
     } catch (err) {
       console.error(err)
-      alert(err.message || 'Lỗi khi xóa thiết bị.')
+      showToast(err.message || 'Lỗi khi xóa thiết bị.', 'error')
     }
   }
 
@@ -218,6 +279,14 @@ export function EquipmentListPage() {
       {/* Header section */}
       <section className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => navigate('/dashboard/equipment-systems')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 hover:underline transition cursor-pointer"
+            >
+              <ArrowLeft size={14} /> Quay lại Hệ thống thiết bị
+            </button>
+          </div>
           <h1 className="text-xl font-bold text-slate-950">Quản lý Thiết bị</h1>
           <p className="mt-1 text-sm text-slate-500">
             Danh mục toàn bộ thiết bị trong nhà máy nhiệt điện, tra cứu mã KKS, trạng thái vận hành và bảo dưỡng.
@@ -230,35 +299,39 @@ export function EquipmentListPage() {
       </section>
 
       {/* Search & Filter section */}
+      {/* Search Inputs & Dropdowns Section */}
       <section className="mt-5 flex flex-col gap-3 xl:flex-row">
-        <label className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={17}
-          />
-          <input
-            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Tìm mã KKS, tên thiết bị, loại, vị trí..."
-            value={keyword}
-          />
-        </label>
+        <div className="flex flex-1 flex-col gap-3 md:flex-row">
+          <label className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => setSearchKksCode(event.target.value)}
+              placeholder="Tìm theo mã KKS..."
+              value={searchKksCode}
+            />
+          </label>
+          
+          <label className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => setSearchEquipmentName(event.target.value)}
+              placeholder="Tìm theo tên thiết bị..."
+              value={searchEquipmentName}
+            />
+          </label>
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <select
-            className="h-11 min-w-48 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={(event) => setSystemFilter(event.target.value)}
-            value={systemFilter}
-          >
-            <option value="all">Tất cả hệ thống</option>
-            {systems.map((sys) => (
-              <option key={sys.systemId} value={sys.systemId}>
-                {sys.systemName} ({sys.systemCode})
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+            className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer"
             onChange={(event) => setTypeFilter(event.target.value)}
             value={typeFilter}
           >
@@ -271,7 +344,7 @@ export function EquipmentListPage() {
           </select>
 
           <select
-            className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+            className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer"
             onChange={(event) => setStatusFilter(event.target.value)}
             value={statusFilter}
           >
@@ -288,7 +361,7 @@ export function EquipmentListPage() {
         <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
           Hiển thị {filteredEquipments.length} / {equipments.length} thiết bị
         </div>
-        
+
         {error ? (
           <div className="m-5 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
@@ -325,7 +398,7 @@ export function EquipmentListPage() {
                 </tr>
               ) : null}
 
-              {!loading && filteredEquipments.map((eq) => (
+              {!loading && paginatedEquipments.map((eq) => (
                 <tr className="hover:bg-slate-50/80 transition-colors" key={eq.id}>
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {eq.kksCode}
@@ -370,6 +443,65 @@ export function EquipmentListPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 bg-slate-50/50 px-5 py-3.5">
+            <div className="text-xs text-slate-500 font-medium">
+              Hiển thị từ <span className="font-semibold text-slate-800">{Math.min((currentPage - 1) * pageSize + 1, filteredEquipments.length)}</span> đến{" "}
+              <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, filteredEquipments.length)}</span> trong tổng số{" "}
+              <span className="font-semibold text-slate-800">{filteredEquipments.length}</span> thiết bị
+            </div>
+            <div className="flex items-center gap-1.5 self-center sm:self-auto">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition cursor-pointer"
+              >
+                Trang đầu
+              </button>
+              
+              {/* Dynamic page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  return Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages
+                })
+                .reduce((acc, page, idx, arr) => {
+                  if (idx > 0 && page - arr[idx - 1] > 1) {
+                    acc.push('ellipsis-' + page)
+                  }
+                  acc.push(page)
+                  return acc
+                }, [])
+                .map((page) => {
+                  if (typeof page === 'string' && page.startsWith('ellipsis')) {
+                    return <span key={page} className="px-1 text-slate-400 text-xs font-semibold">...</span>
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-8 w-8 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer ${
+                        currentPage === page
+                          ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 border-none'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-955'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition cursor-pointer"
+              >
+                Trang cuối
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Add / Edit Modal */}
@@ -448,20 +580,40 @@ export function EquipmentListPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Hệ thống thiết bị</label>
-                <select
-                  name="systemId"
-                  className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 transition"
-                  onChange={handleInputChange}
-                  value={formData.systemId}
-                >
-                  <option value="">-- Chọn hệ thống --</option>
-                  {systems.map((sys) => (
-                    <option key={sys.systemId} value={sys.systemId}>
-                      {sys.systemName} ({sys.systemCode})
-                    </option>
-                  ))}
-                </select>
+                {editingEquipment ? (
+                  <>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Hệ thống thiết bị</label>
+                    <select
+                      name="systemId"
+                      className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 transition"
+                      onChange={handleInputChange}
+                      value={formData.systemId}
+                    >
+                      <option value="">-- Chọn hệ thống --</option>
+                      {systems.map((sys) => (
+                        <option key={sys.systemId} value={sys.systemId}>
+                          {sys.systemName} ({sys.systemCode})
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Hệ thống thiết bị</label>
+                    {systemFilter !== 'all' ? (
+                      <div className="mt-1 rounded-md bg-violet-50/50 p-3 border border-violet-100/50 text-xs text-slate-600 flex items-center justify-between">
+                        <span>Tự động thêm vào hệ thống:</span>
+                        <span className="font-semibold text-violet-700 bg-violet-100 px-2.5 py-0.5 rounded-full">
+                          {systemMap.get(systemFilter) || 'Hệ thống hiện tại'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-1 rounded-md bg-amber-50/60 p-3 border border-amber-100/60 text-xs text-amber-700">
+                        Thiết bị sẽ được tạo mà không thuộc hệ thống nào. (Chọn một hệ thống cụ thể ở danh sách ngoài để tự động gán).
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>
@@ -495,6 +647,30 @@ export function EquipmentListPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Custom Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa thiết bị"
+        message={`Bạn có chắc chắn muốn xóa thiết bị "${deleteTarget?.equipmentName}" (${deleteTarget?.kksCode})?\n\n(Lưu ý: Thiết bị sẽ bị ẩn khỏi danh sách, nhưng toàn bộ lịch sử sửa chữa và hồ sơ liên quan vẫn được lưu giữ an toàn trên hệ thống).`}
+        confirmText="Xác nhận xóa"
+        type="danger"
+      />
+
+      {/* Success/Error Toast notification */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3.5 rounded-xl bg-white/95 backdrop-blur-md pl-4 pr-5 py-3 shadow-[0_15px_40px_rgba(0,0,0,0.12)] border border-slate-200/50 animate-in slide-in-from-bottom-5 duration-300">
+          <div className={`grid size-8 place-items-center rounded-lg shrink-0 ${toast.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+            {toast.type === 'success' ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">{toast.type === 'success' ? 'Thành công' : 'Lỗi xảy ra'}</p>
+            <p className="mt-0.5 text-xs font-medium text-slate-600">{toast.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

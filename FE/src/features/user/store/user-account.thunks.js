@@ -38,9 +38,9 @@ export const updateUserAccountStatus = createAsyncThunk(
 export const deleteUserAccount = createAsyncThunk(
   'userAccounts/delete',
   async (userId) => {
-    await deleteAccountService(userId)
+    const account = await deleteAccountService(userId)
     const employeesWithoutAccount = await fetchEmployeesWithoutAccountService()
 
-    return { userId, employeesWithoutAccount }
+    return { account, employeesWithoutAccount }
   },
 )

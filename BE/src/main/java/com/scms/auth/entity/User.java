@@ -39,12 +39,16 @@ public class User {
     @Column(name = "is_active", nullable = false)
     Boolean isActive;
 
+    @Column(name = "is_deleted", nullable = false)
+    Boolean deleted;
+
     @Column(name = "created_at")
     LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
         if (isActive == null) isActive = true;
+        if (deleted == null) deleted = false;
         createdAt = LocalDateTime.now();
     }
 }

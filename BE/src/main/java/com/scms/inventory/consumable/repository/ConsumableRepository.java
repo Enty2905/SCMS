@@ -17,7 +17,10 @@ public interface ConsumableRepository extends JpaRepository<Consumable, UUID> {
     Optional<Consumable> findByCode(String code);
 
     @Query("SELECT c FROM Consumable c WHERE " +
-            "LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Consumable> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+            "(:code IS NULL OR LOWER(c.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+            "(:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')))")
+    Page<Consumable> searchByCodeAndName(@Param("code") String code, @Param("name") String name, Pageable pageable);
+
+    @Query("SELECT MAX(c.code) FROM Consumable c WHERE c.code LIKE 'VTTH-%'")
+    String findMaxCode();
 }
