@@ -83,11 +83,11 @@ const userAccountSlice = createSlice({
       .addCase(deleteUserAccount.fulfilled, (state, action) => {
         state.saving = false
         state.accounts = state.accounts.filter(
-          (account) => account.userId !== action.payload.userId,
+          (account) => account.userId !== action.payload.account.userId,
         )
         state.employeesWithoutAccount =
           action.payload.employeesWithoutAccount
-        state.successMessage = 'Da xoa tai khoan.'
+        state.successMessage = 'Da xoa mem tai khoan.'
       })
       .addCase(deleteUserAccount.rejected, (state, action) => {
         state.saving = false

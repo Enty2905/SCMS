@@ -84,6 +84,7 @@ CREATE TABLE `user` (
   `password_hash` VARCHAR(255) NOT NULL,
   `employee_id`   BINARY(16)   NOT NULL COMMENT 'Tài khoản phải gắn với một nhân viên',
   `is_active`     TINYINT(1)   NOT NULL DEFAULT 1,
+  `is_deleted`    TINYINT(1)   NOT NULL DEFAULT 0,
   `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `uq_user_username` (`username`),
@@ -537,7 +538,8 @@ CREATE TABLE `tool` (
   `category`           VARCHAR(100) NULL,
   `total_quantity`     INT          NOT NULL DEFAULT 0,
   `available_quantity` INT          NOT NULL DEFAULT 0,
-  `status`             VARCHAR(20)  NOT NULL DEFAULT 'available' COMMENT 'available | low | out',
+  `damaged_quantity`   INT          NOT NULL DEFAULT 0,
+  `status`             VARCHAR(20)  NOT NULL DEFAULT 'available' COMMENT 'available | damaged',
   `note`               TEXT         NULL,
   PRIMARY KEY (`tool_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

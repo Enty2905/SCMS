@@ -62,8 +62,10 @@ public class UserAccountController {
     }
 
     @DeleteMapping("/accounts/{userId}")
-    public ApiResponse<Void> deleteAccount(@PathVariable UUID userId) {
-        userAccountService.deleteAccount(userId);
-        return ApiResponse.success("Account deleted successfully", null);
+    public ApiResponse<UserAccountResponse> deleteAccount(@PathVariable UUID userId) {
+        return ApiResponse.success(
+                "Account deactivated successfully",
+                userAccountService.deleteAccount(userId)
+        );
     }
 }

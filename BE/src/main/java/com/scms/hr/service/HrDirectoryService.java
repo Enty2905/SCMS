@@ -41,7 +41,9 @@ public class HrDirectoryService {
     }
 
     private EmployeeResponse toEmployeeResponse(Employee employee, int index) {
-        boolean hasAccount = userRepository.existsByEmployeeEmployeeId(employee.getEmployeeId());
+        boolean hasAccount = userRepository.findByEmployeeEmployeeId(employee.getEmployeeId())
+                .map(user -> !Boolean.TRUE.equals(user.getDeleted()))
+                .orElse(false);
         String employeeCode = "NV" + String.format("%03d", index);
         String emailName = employee.getName() == null
                 ? "nhanvien"
