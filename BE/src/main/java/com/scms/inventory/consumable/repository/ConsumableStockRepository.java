@@ -32,8 +32,16 @@ public interface ConsumableStockRepository extends JpaRepository<Consumable, UUI
     /**
      * Tìm kiếm vật tư theo code hoặc name (không phân biệt hoa thường), có phân trang.
      */
-    @Query("SELECT c FROM Consumable c WHERE " +
-            "(:keyword IS NULL OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    @Query(value = "SELECT c.* FROM consumable c " +
+            "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_in FROM consumable_import_item GROUP BY consumable_id) i ON c.consumable_id = i.consumable_id " +
+            "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_out FROM consumable_export_item GROUP BY consumable_id) e ON c.consumable_id = e.consumable_id " +
+            "WHERE (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
+            "AND (COALESCE(:keyword, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+           countQuery = "SELECT COUNT(*) FROM consumable c " +
+            "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_in FROM consumable_import_item GROUP BY consumable_id) i ON c.consumable_id = i.consumable_id " +
+            "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_out FROM consumable_export_item GROUP BY consumable_id) e ON c.consumable_id = e.consumable_id " +
+            "WHERE (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
+            "AND (COALESCE(:keyword, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+           nativeQuery = true)
     Page<Consumable> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }
