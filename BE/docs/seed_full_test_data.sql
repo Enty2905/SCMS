@@ -34,56 +34,141 @@ SET FOREIGN_KEY_CHECKS = 0;
 USE scms_db;
 
 -- ============================================================
--- 1. EQUIPMENT – 5 thiết bị
+-- 0. EQUIPMENT_SYSTEM – 6 hệ thống thiết bị
+-- ============================================================
+
+INSERT INTO `equipment_system`
+  (`system_id`, `system_name`, `system_code`, `description`, `parent_system_id`)
+VALUES
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000001'),
+ 'He thong Lo hoi chinh', 'SYS-BOILER', 'He thong lo hoi sinh hoi qua nhiet cho tuabin', NULL),
+
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000004'),
+ 'He thong Tuabin hoi', 'SYS-TURBINE', 'He thong tuabin biến đổi nhiệt năng hơi thành cơ năng', NULL),
+
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000005'),
+ 'He thong May phat dien', 'SYS-GENERATOR', 'He thong may phat dien va kích từ', NULL),
+
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000006'),
+ 'He thong Xu ly nuoc', 'SYS-WATER', 'He thong xu ly nuoc cap va nuoc thai nha may', NULL),
+
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000002'),
+ 'Duong ong hoi chinh', 'SYS-STEAM-PIPE', 'Duong ong dan hoi ap luc cao tu bao hoi lo sang tuabin', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
+
+(UUID_TO_BIN('31000000-0000-0000-0000-000000000003'),
+ 'Quat gio lo hoi', 'SYS-BOILER-FAN', 'He thong quat gio cap khi va hut khoi lo hoi', UUID_TO_BIN('31000000-0000-0000-0000-000000000001'))
+
+ON DUPLICATE KEY UPDATE
+  system_name = VALUES(system_name),
+  system_code = VALUES(system_code),
+  description = VALUES(description);
+
+-- ============================================================
+-- 1. EQUIPMENT – 30 thiết bị (5 thiết bị gốc + 25 thiết bị mới để test phân trang)
 --    Cột: equipment_id, kks_code, name, type, status, location, system_id
---    system_id = NULL (không dùng equipment_system cho test)
---    type: 'Co khi' | 'Dien' | 'CI'
---    status: 'active' | 'inactive' | 'maintenance' | 'broken'
 -- ============================================================
 
 INSERT INTO `equipment`
   (`equipment_id`, `kks_code`, `name`, `type`, `status`, `location`, `system_id`)
 VALUES
--- Cơ khí – đang hoạt động
+-- 5 thiết bị gốc
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000001'),
- '10LAB10AP001',
- 'Bom nuoc cap so 1',
- 'Co khi', 'active',
- 'PXVH - Tang 1, khu bom nuoc', NULL),
+ '10LAB10AP001', 'Bom nuoc cap so 1', 'Co khi', 'active', 'PXVH - Tang 1, khu bom nuoc', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
 
--- Cơ khí – bị hỏng (broken)
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000002'),
- '10MAB20CP001',
- 'May nen khi so 1',
- 'Co khi', 'broken',
- 'PXVH - Tang 2, khu nen khi', NULL),
+ '10MAB20CP001', 'May nen khi so 1', 'Co khi', 'broken', 'PXVH - Tang 2, khu nen khi', UUID_TO_BIN('31000000-0000-0000-0000-000000000006')),
 
--- Điện – đang bảo dưỡng (maintenance)
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000003'),
- '10EAB10ET001',
- 'Dong co dien bom so 1',
- 'Dien', 'maintenance',
- 'PXVH - Tang 1, khu bom nuoc', NULL),
+ '10EAB10ET001', 'Dong co dien bom so 1', 'Dien', 'maintenance', 'PXVH - Tang 1, khu bom nuoc', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
 
--- Điện – đang hoạt động
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000004'),
- '10EAB20ET002',
- 'Bien tan ABB so 2',
- 'Dien', 'active',
- 'PXVH - Tu dien tang 2', NULL),
+ '10EAB20ET002', 'Bien tan ABB so 2', 'Dien', 'active', 'PXVH - Tu dien tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000005')),
 
--- CI – đang hoạt động
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000005'),
- '10LCA10CP001',
- 'Bo dieu khien PLC so 1',
- 'CI', 'active',
- 'PXVH - Phong dieu khien trung tam', NULL)
+ '10LCA10CP001', 'Bo dieu khien PLC so 1', 'CI', 'active', 'PXVH - Phong dieu khien trung tam', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
+
+-- Các thiết bị mới để test phân trang
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000006'),
+ '10LAB10AP002', 'Bom nuoc cap so 2', 'Co khi', 'active', 'PXVH - Tang 1', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000007'),
+ '10LAB20AP001', 'Bom tuan hoan lo hoi A', 'Co khi', 'maintenance', 'PXVH - Tang 1', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000008'),
+ '10LAB20AP002', 'Bom tuan hoan lo hoi B', 'Co khi', 'active', 'PXVH - Tang 1', UUID_TO_BIN('31000000-0000-0000-0000-000000000001')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000009'),
+ '10LBA10AA001', 'Van chan duong hoi chinh A', 'Co khi', 'active', 'PXVH - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000002')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000010'),
+ '10LBA10AA002', 'Van chan duong hoi chinh B', 'Co khi', 'active', 'PXVH - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000002')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000011'),
+ '10LBA20AA001', 'Van dieu chinh ap suat hoi', 'Co khi', 'broken', 'PXVH - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000002')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000012'),
+ '10FAD10AN001', 'Quat gio cuong buc A (FD Fan)', 'Co khi', 'active', 'Khu vuc lo hoi - Ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000003')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000013'),
+ '10FAD10AN002', 'Quat gio cuong buc B (FD Fan)', 'Co khi', 'active', 'Khu vuc lo hoi - Ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000003')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000014'),
+ '10FAD10ET001', 'Dong co quat gio FD Fan A', 'Dien', 'active', 'Khu vuc lo hoi - Ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000003')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000015'),
+ '10FAD10ET002', 'Dong co quat gio FD Fan B', 'Dien', 'maintenance', 'Khu vuc lo hoi - Ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000003')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000016'),
+ '10MAX10AT001', 'Tuabin hoi cao ap', 'Co khi', 'active', 'Gian may chinh - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000017'),
+ '10MAX20AT001', 'Tuabin hoi trung ap', 'Co khi', 'active', 'Gian may chinh - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000018'),
+ '10MAX30AT001', 'Tuabin hoi ha ap', 'Co khi', 'active', 'Gian may chinh - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000019'),
+ '10MGT10AG001', 'May phat dien chinh', 'Dien', 'active', 'Gian may chinh - Tang 2', UUID_TO_BIN('31000000-0000-0000-0000-000000000005')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000020'),
+ '10MGT10ET001', 'He thong kich tu may phat', 'Dien', 'active', 'Phong thiet bi dien', UUID_TO_BIN('31000000-0000-0000-0000-000000000005')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000021'),
+ '10MGT10CP001', 'Tu may cat dau cuc may phat', 'Dien', 'active', 'Phong thiet bi dien', UUID_TO_BIN('31000000-0000-0000-0000-000000000005')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000022'),
+ '10GCA10AP001', 'Bom nuoc ngung A', 'Co khi', 'active', 'Duoi san tuabin - Tang 1', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000023'),
+ '10GCA10AP002', 'Bom nuoc ngung B', 'Co khi', 'broken', 'Duoi san tuabin - Tang 1', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000024'),
+ '10CTY10CT001', 'Thap giai nhiet A', 'Co khi', 'active', 'Khu vuc ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000025'),
+ '10HAD10AP001', 'Bom nuoc tho dau vao', 'Co khi', 'active', 'Tram bom nuoc tho', UUID_TO_BIN('31000000-0000-0000-0000-000000000006')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000026'),
+ '10HAD20AP001', 'Bom dinh luong hoa chat', 'Co khi', 'active', 'Nha xu ly hoa chat', UUID_TO_BIN('31000000-0000-0000-0000-000000000006')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000027'),
+ '10HAD30AT001', 'Be loc cat ap luc', 'Co khi', 'maintenance', 'Nha xu ly nuoc', UUID_TO_BIN('31000000-0000-0000-0000-000000000006')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000028'),
+ '10LCA20CP001', 'Tu dieu khien DCS tuabin', 'CI', 'active', 'Phong dieu khien trung tam', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000029'),
+ '10LCA30CP001', 'Tu giam sat rung dong vong bi', 'CI', 'active', 'Phong dieu khien trung tam', UUID_TO_BIN('31000000-0000-0000-0000-000000000004')),
+
+(UUID_TO_BIN('30000000-0000-0000-0000-000000000030'),
+ '10EYB10ET001', 'May bien ap tu dung', 'Dien', 'active', 'Tram bien ap ngoai troi', UUID_TO_BIN('31000000-0000-0000-0000-000000000005'))
 
 ON DUPLICATE KEY UPDATE
   name     = VALUES(name),
   type     = VALUES(type),
   status   = VALUES(status),
-  location = VALUES(location);
+  location = VALUES(location),
+  system_id = VALUES(system_id);
 
 -- Kiểm tra
 SELECT BIN_TO_UUID(equipment_id) AS equipment_id, kks_code, name, type, status
