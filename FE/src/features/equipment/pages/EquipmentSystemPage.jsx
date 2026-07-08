@@ -1,6 +1,8 @@
-import { Edit3, Plus, Search, Trash2, X, Network } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X, Network, Eye, CheckCircle2, XCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 import {
   fetchSystems,
   createSystem,
@@ -9,12 +11,33 @@ import {
 } from '../services/equipment.service.js'
 
 export function EquipmentSystemPage() {
+  const navigate = useNavigate()
   const [systems, setSystems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Search filter
-  const [keyword, setKeyword] = useState('')
+  // Confirm delete & Toast states
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // State to track expanded system IDs in tree-table
+  const [expandedSystemIds, setExpandedSystemIds] = useState(new Set())
+
+  const toggleExpand = (systemId) => {
+    setExpandedSystemIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(systemId)) {
+        next.delete(systemId)
+      } else {
+        next.add(systemId)
+      }
+      return next
+    })
+  }
+
+  // Search filters
+  const [searchSystemCode, setSearchSystemCode] = useState('')
+  const [searchSystemName, setSearchSystemName] = useState('')
 
   // Form Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -75,20 +98,58 @@ export function EquipmentSystemPage() {
   // Filtered systems
   const filteredSystems = useMemo(() => {
     return systems.filter((sys) => {
-      const keywordLower = keyword.trim().toLowerCase()
-      return (
-        !keywordLower ||
-        sys.systemCode?.toLowerCase().includes(keywordLower) ||
-        sys.systemName?.toLowerCase().includes(keywordLower) ||
-        sys.description?.toLowerCase().includes(keywordLower)
-      )
+      const codeLower = searchSystemCode.trim().toLowerCase()
+      const nameLower = searchSystemName.trim().toLowerCase()
+
+      const matchesCode = !codeLower || sys.systemCode?.toLowerCase().includes(codeLower)
+      const matchesName = !nameLower || sys.systemName?.toLowerCase().includes(nameLower)
+
+      return matchesCode && matchesName
     })
-  }, [systems, keyword])
+  }, [systems, searchSystemCode, searchSystemName])
 
   // System Map for quick Parent Name lookup
   const systemMap = useMemo(() => {
     return new Map(systems.map((sys) => [sys.systemId, sys.systemName]))
   }, [systems])
+
+  // Calculate displayed systems for the Tree-Table hierarchy
+  const displaySystems = useMemo(() => {
+    // If searching, show a flat list of matching systems
+    if (searchSystemCode.trim() !== '' || searchSystemName.trim() !== '') {
+      return filteredSystems.map((sys) => ({
+        ...sys,
+        level: 0,
+        hasChildren: false,
+      }))
+    }
+
+    // Helper to recursively build tree representation
+    const buildTree = (parentId = null, level = 0, result = []) => {
+      const children = systems.filter((sys) => {
+        if (!parentId) {
+          return !sys.parentSystemId
+        }
+        return sys.parentSystemId === parentId
+      })
+
+      for (const child of children) {
+        const hasChildren = systems.some((s) => s.parentSystemId === child.systemId)
+        result.push({
+          ...child,
+          level,
+          hasChildren,
+        })
+
+        if (hasChildren && expandedSystemIds.has(child.systemId)) {
+          buildTree(child.systemId, level + 1, result)
+        }
+      }
+      return result
+    }
+
+    return buildTree(null, 0, [])
+  }, [systems, filteredSystems, searchSystemCode, searchSystemName, expandedSystemIds])
 
   // Dropdown list for Parent System selection (exclude current system being edited to prevent loop)
   const availableParentSystems = useMemo(() => {
@@ -155,18 +216,29 @@ export function EquipmentSystemPage() {
     }
   }
 
-  // Handle Delete System
-  async function handleDelete(sys) {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa hệ thống "${sys.systemName}" (${sys.systemCode})?`)) {
-      return
-    }
+  // Handle Delete System (open custom modal)
+  function handleDelete(sys) {
+    setDeleteTarget(sys)
+  }
 
+  function showToast(message, type = 'success') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
     try {
-      await deleteSystem(sys.systemId)
-      loadData() // Refresh
+      await deleteSystem(deleteTarget.systemId)
+      setDeleteTarget(null)
+      showToast('Đã ẩn hệ thống thiết bị thành công (Xóa mềm).', 'success')
+      loadData() // Refresh list
     } catch (err) {
       console.error(err)
-      alert(err.message || 'Lỗi khi xóa hệ thống. Có thể hệ thống này đang chứa thiết bị hoặc có hệ thống con.')
+      showToast(
+        err.message || 'Lỗi khi xóa hệ thống. Có thể hệ thống này đang chứa thiết bị hoặc có hệ thống con.',
+        'error'
+      )
     }
   }
 
@@ -186,8 +258,8 @@ export function EquipmentSystemPage() {
         </Button>
       </section>
 
-      {/* Search Bar */}
-      <section className="mt-5 flex gap-3">
+      {/* Search Inputs Section */}
+      <section className="mt-5 flex flex-col gap-3 md:flex-row">
         <label className="relative flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -195,9 +267,22 @@ export function EquipmentSystemPage() {
           />
           <input
             className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Tìm theo tên hệ thống, mã hệ thống..."
-            value={keyword}
+            onChange={(event) => setSearchSystemCode(event.target.value)}
+            placeholder="Tìm theo mã hệ thống..."
+            value={searchSystemCode}
+          />
+        </label>
+        
+        <label className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={17}
+          />
+          <input
+            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+            onChange={(event) => setSearchSystemName(event.target.value)}
+            placeholder="Tìm theo tên hệ thống..."
+            value={searchSystemName}
           />
         </label>
       </section>
@@ -234,7 +319,7 @@ export function EquipmentSystemPage() {
                 </tr>
               ) : null}
 
-              {!loading && !filteredSystems.length ? (
+              {!loading && !displaySystems.length ? (
                 <tr>
                   <td className="px-5 py-8 text-center text-slate-500" colSpan={5}>
                     Không tìm thấy hệ thống nào phù hợp.
@@ -242,17 +327,43 @@ export function EquipmentSystemPage() {
                 </tr>
               ) : null}
 
-              {!loading && filteredSystems.map((sys) => (
-                <tr className="hover:bg-slate-50/80 transition-colors" key={sys.systemId}>
+              {!loading && displaySystems.map((sys) => (
+                <tr 
+                  className="hover:bg-slate-50/85 transition-colors cursor-pointer group" 
+                  key={sys.systemId}
+                  onClick={() => navigate(`/dashboard/equipment?systemId=${sys.systemId}`)}
+                >
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {sys.systemCode || <span className="text-slate-400 font-normal italic">N/A</span>}
                   </td>
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-8 place-items-center rounded-lg bg-violet-50 text-violet-600">
+                    <div 
+                      className="flex items-center gap-2"
+                      style={{ paddingLeft: `${sys.level * 24}px` }}
+                    >
+                      {/* Expand/Collapse arrow or spacer */}
+                      {sys.hasChildren ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleExpand(sys.systemId)
+                          }}
+                          className="mr-0.5 rounded p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition cursor-pointer"
+                        >
+                          {expandedSystemIds.has(sys.systemId) ? (
+                            <ChevronDown size={14} />
+                          ) : (
+                            <ChevronRight size={14} />
+                          )}
+                        </button>
+                      ) : (
+                        <div className="w-6 shrink-0" />
+                      )}
+
+                      <div className="grid size-8 place-items-center rounded-lg bg-violet-50 text-violet-600 shrink-0">
                         <Network size={16} />
                       </div>
-                      <div className="font-semibold text-slate-900">{sys.systemName}</div>
+                      <div className="font-semibold text-slate-900 group-hover:text-violet-700 transition-colors">{sys.systemName}</div>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-slate-600 max-w-sm truncate" title={sys.description}>
@@ -270,14 +381,30 @@ export function EquipmentSystemPage() {
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2 text-slate-400">
                       <button
-                        onClick={() => openModal(sys)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/dashboard/equipment?systemId=${sys.systemId}`)
+                        }}
+                        className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600 transition"
+                        title="Xem chi tiết thiết bị"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openModal(sys)
+                        }}
                         className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600 transition"
                         title="Sửa"
                       >
                         <Edit3 size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(sys)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(sys)
+                        }}
                         className="rounded-md p-2 hover:bg-slate-100 hover:text-rose-600 transition"
                         title="Xóa"
                       >
@@ -388,6 +515,30 @@ export function EquipmentSystemPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Custom Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa hệ thống"
+        message={`Bạn có chắc chắn muốn xóa hệ thống "${deleteTarget?.systemName}" (${deleteTarget?.systemCode})?\n\n(Lưu ý: Hệ thống sẽ bị ẩn khỏi danh sách, nhưng các thiết bị và dữ liệu con trực thuộc vẫn được lưu giữ an toàn).`}
+        confirmText="Xác nhận xóa"
+        type="danger"
+      />
+
+      {/* Success/Error Toast notification */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3.5 rounded-xl bg-white/95 backdrop-blur-md pl-4 pr-5 py-3 shadow-[0_15px_40px_rgba(0,0,0,0.12)] border border-slate-200/50 animate-in slide-in-from-bottom-5 duration-300">
+          <div className={`grid size-8 place-items-center rounded-lg shrink-0 ${toast.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+            {toast.type === 'success' ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">{toast.type === 'success' ? 'Thành công' : 'Lỗi xảy ra'}</p>
+            <p className="mt-0.5 text-xs font-medium text-slate-600">{toast.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
