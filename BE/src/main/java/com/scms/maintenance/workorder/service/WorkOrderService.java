@@ -6,8 +6,8 @@ import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
-import com.scms.maintenance.repairrequest.entity.RepairRequest;
-import com.scms.maintenance.repairrequest.repository.RepairRequestRepository;
+import com.scms.repairrequest.entity.RepairRequest;
+import com.scms.repairrequest.repository.RepairRequestRepository;
 import com.scms.maintenance.workorder.dto.request.CreateWorkOrderRequest;
 import com.scms.maintenance.workorder.dto.response.WorkOrderResponse;
 import com.scms.maintenance.workorder.entity.WorkOrder;
@@ -52,7 +52,7 @@ public class WorkOrderService {
                 if (req.getRequestId() != null) {
                         repairRequest = repairRequestRepository.findById(req.getRequestId())
                                         .orElseThrow(() -> new AppException(ErrorCode.REPAIR_REQUEST_NOT_FOUND));
-                        repairRequest.setStatus("in_progress");
+                        repairRequest.setStatus("done");
                         repairRequestRepository.save(repairRequest);
                 }
 

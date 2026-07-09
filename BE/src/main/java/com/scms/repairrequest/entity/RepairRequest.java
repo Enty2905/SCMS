@@ -1,16 +1,18 @@
-package com.scms.maintenance.repairrequest.entity;
+package com.scms.repairrequest.entity;
 
 import com.scms.auth.entity.User;
 import com.scms.equipment.entity.Equipment;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "repair_request")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -40,16 +42,20 @@ public class RepairRequest {
     @Column(name = "priority", length = 20, nullable = false)
     String priority;
 
-    // pending | confirmed | in_progress | done | cancelled
+    // processing | done
     @Column(name = "status", length = 20, nullable = false)
     String status;
 
     @Column(name = "created_at")
     LocalDateTime createdAt;
 
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    boolean isDeleted = false;
+
     @PrePersist
     public void prePersist() {
-        if (status == null) status = "pending";
+        if (status == null) status = "processing";
         if (priority == null) priority = "medium";
         createdAt = LocalDateTime.now();
     }

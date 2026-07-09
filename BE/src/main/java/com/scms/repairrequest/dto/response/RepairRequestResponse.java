@@ -1,4 +1,4 @@
-package com.scms.maintenance.repairrequest.dto.response;
+package com.scms.repairrequest.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -20,7 +20,7 @@ public class RepairRequestResponse {
     LocalDateTime createdAt;
 
     // Thông tin người tạo (Trưởng Ca)
-    String createdByName;   // Tên nhân viên
+    String createdByName;
     String createdByUsername;
 
     // Thông tin thiết bị

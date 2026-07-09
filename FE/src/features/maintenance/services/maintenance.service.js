@@ -3,7 +3,7 @@ import { apiClient } from '@/shared/api/httpClient.js'
 // ── Repair Request ───────────────────────────────────────────────────────────
 
 export async function fetchPendingRequestsService() {
-  const response = await apiClient.get('/maintenance/requests/pending')
+  const response = await apiClient.get('/repair-requests/pending')
   return response.data || []
 }
 
