@@ -1,18 +1,30 @@
 package com.scms.hr.controller;
 
 import com.scms.common.response.ApiResponse;
+import com.scms.hr.dto.request.DepartmentCreateRequest;
+import com.scms.hr.dto.request.EmployeeUpsertRequest;
 import com.scms.hr.dto.response.DepartmentResponse;
+import com.scms.hr.dto.response.EmployeePositionResponse;
 import com.scms.hr.dto.response.EmployeeResponse;
 import com.scms.hr.service.HrDirectoryService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/hr")
@@ -28,8 +40,41 @@ public class HrDirectoryController {
         return ApiResponse.success("Employees loaded successfully", hrDirectoryService.getEmployees());
     }
 
+    @GetMapping("/employee-positions")
+    public ApiResponse<List<EmployeePositionResponse>> getEmployeePositions() {
+        return ApiResponse.success("Employee positions loaded successfully", hrDirectoryService.getEmployeePositions());
+    }
+
+    @PostMapping(value = "/employees", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<EmployeeResponse> createEmployee(@Valid @ModelAttribute EmployeeUpsertRequest request) {
+        return ApiResponse.created("Employee created successfully", hrDirectoryService.createEmployee(request));
+    }
+
+    @PutMapping(value = "/employees/{employeeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<EmployeeResponse> updateEmployee(
+            @PathVariable UUID employeeId,
+            @Valid @ModelAttribute EmployeeUpsertRequest request
+    ) {
+        return ApiResponse.success("Employee updated successfully", hrDirectoryService.updateEmployee(employeeId, request));
+    }
+
     @GetMapping("/departments")
     public ApiResponse<List<DepartmentResponse>> getDepartments() {
         return ApiResponse.success("Departments loaded successfully", hrDirectoryService.getDepartments());
+    }
+
+    @PostMapping("/departments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentCreateRequest request) {
+        return ApiResponse.created("Department created successfully", hrDirectoryService.createDepartment(request));
+    }
+
+    @DeleteMapping("/departments/{departmentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<Void> deleteDepartment(@PathVariable UUID departmentId) {
+        hrDirectoryService.deleteDepartment(departmentId);
+        return ApiResponse.success("Department deleted successfully", null);
     }
 }

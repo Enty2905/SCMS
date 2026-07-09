@@ -21,10 +21,13 @@ public class EmployeeResponse {
     String phone;
     String email;
     String gender;
+    UUID departmentId;
     String departmentCode;
     String departmentName;
+    UUID positionId;
     String positionName;
     String workLocation;
+    String avatarUrl;
     String status;
     Boolean hasAccount;
 }

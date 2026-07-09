@@ -3,11 +3,15 @@ package com.scms.inventory.consumable.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "consumable")
+@SQLDelete(sql = "UPDATE consumable SET is_deleted = true WHERE consumable_id = ?")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -34,4 +38,8 @@ public class Consumable {
 
     @Column(name = "note", length = 500)
     String note;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    Boolean isDeleted = false;
 }

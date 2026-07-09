@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search } from 'lucide-react'
+import { Edit3, Plus, Search, AlertTriangle, Eye } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
@@ -14,6 +14,8 @@ import {
 } from '../store/tool.selectors.js'
 import { fetchToolList } from '../store/tool.thunks.js'
 import { ToolFormModal } from './ToolFormModal.jsx'
+import { ToolDisposeDamagedModal } from './ToolDisposeDamagedModal.jsx'
+import { ToolDetailModal } from './ToolDetailModal.jsx'
 
 // Status badge mapping (giá trị từ BE: 'available' | 'damaged')
 const STATUS_LABELS = {
@@ -41,6 +43,8 @@ export function ToolListPage() {
 
   // Modal state
   const [formModal, setFormModal] = useState({ open: false, item: null })
+  const [disposeModal, setDisposeModal] = useState({ open: false, item: null })
+  const [detailModal, setDetailModal] = useState({ open: false, item: null })
 
   // Derive unique categories from current items for the filter dropdown
   const categories = [...new Set(items.map((item) => item.category).filter(Boolean))]
@@ -92,10 +96,31 @@ export function ToolListPage() {
     loadData()
   }
 
+  function openDisposeModal(item) {
+    setDisposeModal({ open: true, item })
+  }
+
+  function closeDisposeModal() {
+    setDisposeModal({ open: false, item: null })
+  }
+
+  function handleDisposeSuccess() {
+    closeDisposeModal()
+    loadData()
+  }
+
+  function openDetailModal(item) {
+    setDetailModal({ open: true, item })
+  }
+
+  function closeDetailModal() {
+    setDetailModal({ open: false, item: null })
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-slate-950">Danh sách CCDC</h1>
+        <h1 className="text-xl font-bold text-slate-950">Quản lý CCDC</h1>
       </section>
 
       {/* Summary cards */}
@@ -156,21 +181,22 @@ export function ToolListPage() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Tên CCDC</th>
-                <th className="px-5 py-3">Chủng loại</th>
-                <th className="px-5 py-3 text-right">Tổng SL</th>
+                <th className="px-5 py-3 w-36">Chủng loại</th>
                 <th className="px-5 py-3 text-right">Có sẵn</th>
                 <th className="px-5 py-3 text-right">Đang mượn</th>
                 <th className="px-5 py-3 text-right">Hư hỏng</th>
+                <th className="px-5 py-3 text-right">Tổng SL</th>
                 <th className="px-5 py-3">Trạng thái</th>
-                <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3 w-60">Ghi chú</th>
                 <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={10}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -178,23 +204,25 @@ export function ToolListPage() {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={10}>
                     Không có CCDC phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? items.map((item) => {
+                ? items.map((item, index) => {
                     const statusLabel = STATUS_LABELS[item.status] || item.status
                     const badgeClass = STATUS_BADGES[item.status] || 'bg-slate-100 text-slate-600'
                     return (
                       <tr className="hover:bg-slate-50/80" key={item.toolId}>
+                        <td className="px-5 py-4 text-center font-medium text-slate-500">
+                          {page * 10 + index + 1}
+                        </td>
                         <td className="px-5 py-4 font-semibold text-slate-950">
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.category}</td>
-                        <td className="px-5 py-4 text-right text-slate-600">{item.totalQuantity}</td>
                         <td className="px-5 py-4 text-right font-semibold text-emerald-600">
                           {item.availableQuantity}
                         </td>
@@ -203,6 +231,9 @@ export function ToolListPage() {
                         </td>
                         <td className="px-5 py-4 text-right font-semibold text-rose-600">
                           {item.damagedQuantity ?? 0}
+                        </td>
+                        <td className="px-5 py-4 text-right font-semibold text-slate-950">
+                          {item.totalQuantity}
                         </td>
                         <td className="px-5 py-4">
                           <span
@@ -213,7 +244,7 @@ export function ToolListPage() {
                         </td>
                         <td className="px-5 py-4 text-slate-600">
                           <span
-                            className="line-clamp-2 max-w-xs"
+                            className="line-clamp-2 max-w-[15rem]"
                             title={item.note}
                           >
                             {item.note}
@@ -221,6 +252,22 @@ export function ToolListPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2 text-slate-400">
+                            {item.availableQuantity > 0 && (
+                              <button
+                                className="rounded-md p-2 hover:bg-rose-50 hover:text-rose-600"
+                                onClick={() => openDisposeModal(item)}
+                                title="Báo hỏng"
+                              >
+                                <AlertTriangle size={16} />
+                              </button>
+                            )}
+                            <button
+                              className="rounded-md p-2 hover:bg-sky-50 hover:text-sky-600"
+                              onClick={() => openDetailModal(item)}
+                              title="Xem chi tiết"
+                            >
+                              <Eye size={16} />
+                            </button>
                             <button
                               className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600"
                               onClick={() => openEditModal(item)}
@@ -304,6 +351,21 @@ export function ToolListPage() {
           item={formModal.item}
           onClose={closeFormModal}
           onSuccess={handleFormSuccess}
+        />
+      ) : null}
+
+      {disposeModal.open ? (
+        <ToolDisposeDamagedModal
+          item={disposeModal.item}
+          onClose={closeDisposeModal}
+          onSuccess={handleDisposeSuccess}
+        />
+      ) : null}
+
+      {detailModal.open ? (
+        <ToolDetailModal
+          item={detailModal.item}
+          onClose={closeDetailModal}
         />
       ) : null}
     </div>

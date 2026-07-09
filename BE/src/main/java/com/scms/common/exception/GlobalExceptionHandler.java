@@ -101,6 +101,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý lỗi nghiệp vụ (BadRequestException)
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<?>> handleBadRequestException(BadRequestException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(400, ex.getMessage())
+        );
+    }
+
+    /**
      * Bắt tất cả lỗi chưa xử lý khác (fallback)
      */
     @ExceptionHandler(Exception.class)
