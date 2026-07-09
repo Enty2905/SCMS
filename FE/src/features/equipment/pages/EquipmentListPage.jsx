@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle, RotateCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button.jsx'
@@ -53,6 +53,14 @@ export function EquipmentListPage() {
   })
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [kksMode, setKksMode] = useState('builder') // 'builder' or 'manual'
+  const [kksParts, setKksParts] = useState({
+    block: '10',
+    system: 'LAB',
+    subsystem: '10',
+    type: 'AP',
+    sequence: '001',
+  })
 
   // Load Initial Data
   async function loadData() {
@@ -141,7 +149,7 @@ export function EquipmentListPage() {
       const matchesName = !nameLower || eq.equipmentName?.toLowerCase().includes(nameLower)
       const matchesSystem =
         systemFilter === 'all' || (allowedSystemIds && allowedSystemIds.has(eq.systemId))
-      
+
       const matchesType =
         typeFilter === 'all' || eq.equipmentType === typeFilter
 
@@ -188,10 +196,34 @@ export function EquipmentListPage() {
         location: eq.location || '',
         systemId: eq.systemId || '',
       })
+
+      // Parse KKS Code for builder if standard
+      const match = (eq.kksCode || '').match(/^(\d{2})([A-Z]{3})(\d{2})([A-Z]{2})(\d{3})$/i)
+      if (match) {
+        setKksMode('builder')
+        setKksParts({
+          block: match[1],
+          system: match[2].toUpperCase(),
+          subsystem: match[3],
+          type: match[4].toUpperCase(),
+          sequence: match[5],
+        })
+      } else {
+        setKksMode('manual')
+      }
     } else {
       setEditingEquipment(null)
+      const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')
+      setKksMode('builder')
+      setKksParts({
+        block: '10',
+        system: 'LAB',
+        subsystem: '10',
+        type: 'AP',
+        sequence: randomSeq,
+      })
       setFormData({
-        kksCode: '',
+        kksCode: `10LAB10AP${randomSeq}`,
         equipmentName: '',
         equipmentType: '',
         status: 'Hoạt động',
@@ -200,6 +232,22 @@ export function EquipmentListPage() {
       })
     }
     setIsModalOpen(true)
+  }
+
+  // Handle individual KKS parts changes
+  function handleKksPartChange(part, value) {
+    setKksParts((prev) => {
+      const updated = { ...prev, [part]: value };
+      const newKks = `${updated.block}${updated.system}${updated.subsystem}${updated.type}${updated.sequence}`;
+      setFormData((f) => ({ ...f, kksCode: newKks }));
+      return updated;
+    });
+  }
+
+  // Randomize sequence (part 5)
+  function handleRandomizeSequence() {
+    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    handleKksPartChange('sequence', randomSeq);
   }
 
   // Handle Form Input Changes
@@ -287,7 +335,14 @@ export function EquipmentListPage() {
               <ArrowLeft size={14} /> Quay lại Hệ thống thiết bị
             </button>
           </div>
-          <h1 className="text-xl font-bold text-slate-950">Quản lý Thiết bị</h1>
+          <h1 className="text-xl font-bold text-slate-950">
+            Quản lý Thiết bị
+            {systemFilter !== 'all' && (
+              <span className="text-violet-600 font-medium text-lg ml-2">
+                — Hệ thống: {systemMap.get(systemFilter) || 'Đang tải...'}
+              </span>
+            )}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
             Danh mục toàn bộ thiết bị trong nhà máy nhiệt điện, tra cứu mã KKS, trạng thái vận hành và bảo dưỡng.
           </p>
@@ -314,7 +369,7 @@ export function EquipmentListPage() {
               value={searchKksCode}
             />
           </label>
-          
+
           <label className="relative flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -330,6 +385,30 @@ export function EquipmentListPage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <select
+            className="h-11 min-w-48 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer text-slate-700 font-medium"
+            onChange={(event) => {
+              const val = event.target.value
+              setSystemFilter(val)
+              setSearchParams((prev) => {
+                if (val === 'all') {
+                  prev.delete('systemId')
+                } else {
+                  prev.set('systemId', val)
+                }
+                return prev
+              })
+            }}
+            value={systemFilter}
+          >
+            <option value="all">Tất cả hệ thống</option>
+            {systems.map((sys) => (
+              <option key={sys.systemId} value={sys.systemId}>
+                {sys.systemName}
+              </option>
+            ))}
+          </select>
+
           <select
             className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer"
             onChange={(event) => setTypeFilter(event.target.value)}
@@ -460,7 +539,7 @@ export function EquipmentListPage() {
               >
                 Trang đầu
               </button>
-              
+
               {/* Dynamic page numbers */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((page) => {
@@ -481,11 +560,10 @@ export function EquipmentListPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`h-8 w-8 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer ${
-                        currentPage === page
-                          ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 border-none'
-                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-955'
-                      }`}
+                      className={`h-8 w-8 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer ${currentPage === page
+                        ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 border-none'
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-955'
+                        }`}
                     >
                       {page}
                     </button>
@@ -529,15 +607,164 @@ export function EquipmentListPage() {
               ) : null}
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Mã KKS *</label>
-                <input
-                  name="kksCode"
-                  className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition"
-                  onChange={handleInputChange}
-                  placeholder="Ví dụ: 10LBA10AA001"
-                  required
-                  value={formData.kksCode}
-                />
+                {kksMode === 'builder' ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Dựng mã KKS *</label>
+                      <button
+                        type="button"
+                        onClick={() => setKksMode('manual')}
+                        className="text-xs font-semibold text-violet-600 hover:text-violet-700 hover:underline transition cursor-pointer"
+                      >
+                        Nhập tự do
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      {/* 1. Tổ máy */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tổ máy</label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          list="kks-block-options"
+                          value={kksParts.block}
+                          onChange={(e) => handleKksPartChange('block', e.target.value)}
+                          className="h-9 w-full text-xs font-mono font-bold rounded-md border border-slate-200 bg-white px-1.5 outline-none focus:border-violet-500 transition text-center"
+                          placeholder="10"
+                        />
+                        <datalist id="kks-block-options">
+                          <option value="10">10</option>
+                          <option value="20">20</option>
+                          <option value="30">30</option>
+                        </datalist>
+                      </div>
+
+                      {/* 2. Hệ thống */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Hệ thống</label>
+                        <input
+                          type="text"
+                          maxLength={3}
+                          list="kks-system-options"
+                          value={kksParts.system}
+                          onChange={(e) => handleKksPartChange('system', e.target.value.toUpperCase())}
+                          className="h-9 w-full text-xs font-mono font-bold rounded-md border border-slate-200 bg-white px-1.5 outline-none focus:border-violet-500 transition text-center uppercase"
+                          placeholder="LAB"
+                        />
+                        <datalist id="kks-system-options">
+                          <option value="LAB">LAB (Nước cấp)</option>
+                          <option value="LBA">LBA (Hơi nước)</option>
+                          <option value="FAD">FAD (Lò hơi)</option>
+                          <option value="MAX">MAX (Tuabin)</option>
+                          <option value="MGT">MGT (Máy phát)</option>
+                          <option value="GCA">GCA (Nước ngưng)</option>
+                          <option value="HAD">HAD (Nước thô)</option>
+                          <option value="LCA">LCA (Đo lường)</option>
+                        </datalist>
+                      </div>
+
+                      {/* 3. Phân hệ */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Phân hệ</label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          list="kks-subsystem-options"
+                          value={kksParts.subsystem}
+                          onChange={(e) => handleKksPartChange('subsystem', e.target.value)}
+                          className="h-9 w-full text-xs font-mono font-bold rounded-md border border-slate-200 bg-white px-1.5 outline-none focus:border-violet-500 transition text-center"
+                          placeholder="10"
+                        />
+                        <datalist id="kks-subsystem-options">
+                          <option value="10">10</option>
+                          <option value="20">20</option>
+                          <option value="30">30</option>
+                        </datalist>
+                      </div>
+
+                      {/* 4. Loại thiết bị */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mã loại</label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          list="kks-type-options"
+                          value={kksParts.type}
+                          onChange={(e) => handleKksPartChange('type', e.target.value.toUpperCase())}
+                          className="h-9 w-full text-xs font-mono font-bold rounded-md border border-slate-200 bg-white px-1.5 outline-none focus:border-violet-500 transition text-center uppercase"
+                          placeholder="AP"
+                        />
+                        <datalist id="kks-type-options">
+                          <option value="AP">AP (Bơm)</option>
+                          <option value="AA">AA (Van)</option>
+                          <option value="AN">AN (Quạt)</option>
+                          <option value="ET">ET (Động cơ)</option>
+                          <option value="CP">CP (Tủ điều khiển)</option>
+                          <option value="AC">AC (Máy nén)</option>
+                          <option value="GS">GS (Máy phát)</option>
+                          <option value="EY">EY (Biến áp)</option>
+                          <option value="CS">CS (Cảm biến)</option>
+                          <option value="CT">CT (Đầu truyền)</option>
+                          <option value="AT">AT (Tuabin)</option>
+                        </datalist>
+                      </div>
+
+                      {/* 5. Số thứ tự (Tự động / Random) */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Số TT *</label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            maxLength={3}
+                            value={kksParts.sequence}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              handleKksPartChange('sequence', val.padStart(3, '0').slice(-3));
+                            }}
+                            className="h-9 w-full text-xs font-mono font-bold rounded-md border border-slate-200 bg-white pl-2 pr-6 outline-none focus:border-violet-500 transition text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRandomizeSequence}
+                            className="absolute right-1.5 text-slate-400 hover:text-violet-600 transition cursor-pointer active:scale-90"
+                            title="Ngẫu nhiên số thứ tự"
+                          >
+                            <RotateCw size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-violet-50/50 px-3 py-1.5 rounded-lg border border-violet-100 text-xs font-semibold text-violet-800">
+                      <span>Mã KKS hoàn chỉnh:</span>
+                      <span className="font-mono font-bold tracking-wide text-sm text-violet-700 bg-white border border-violet-200 px-2 py-0.5 rounded shadow-sm">
+                        {formData.kksCode}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Mã KKS *</label>
+                      <button
+                        type="button"
+                        onClick={() => setKksMode('builder')}
+                        className="text-xs font-semibold text-violet-600 hover:text-violet-700 hover:underline transition cursor-pointer"
+                      >
+                        Dựng mã chuẩn KKS
+                      </button>
+                    </div>
+                    <input
+                      name="kksCode"
+                      className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition"
+                      onChange={handleInputChange}
+                      placeholder="Ví dụ: 10LBA10AA001"
+                      required
+                      value={formData.kksCode}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

@@ -12,13 +12,13 @@ USE scms_db;
 INSERT INTO `equipment` (`equipment_id`, `kks_code`, `name`, `type`, `status`, `location`, `system_id`)
 VALUES
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000001'),
- '10LAB10AP001', 'Bơm nước cấp số 1', 'Cơ khí', 'active',   'Phân xưởng vận hành - Tầng 1', NULL),
+ '10LAB10AP001', 'Bơm nước cấp số 1', 'Cơ khí', 'Hoạt động',   'Phân xưởng vận hành - Tầng 1', NULL),
 
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000002'),
- '10MAB20CP001', 'Máy nén khí số 1',  'Cơ khí', 'broken',   'Phân xưởng vận hành - Tầng 2', NULL),
+ '10MAB20CP001', 'Máy nén khí số 1',  'Cơ khí', 'Sự cố',   'Phân xưởng vận hành - Tầng 2', NULL),
 
 (UUID_TO_BIN('30000000-0000-0000-0000-000000000003'),
- '10EAB10ET001', 'Động cơ điện bơm 1','Điện',   'maintenance','Phân xưởng vận hành - Tầng 1', NULL)
+ '10EAB10ET001', 'Động cơ điện bơm 1','Điện',   'Bảo dưỡng','Phân xưởng vận hành - Tầng 1', NULL)
 
 ON DUPLICATE KEY UPDATE
   name     = VALUES(name),

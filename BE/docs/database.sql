@@ -115,7 +115,7 @@ CREATE TABLE `equipment` (
   `kks_code`     VARCHAR(100) NOT NULL COMMENT 'Mã định danh theo tiêu chuẩn KKS',
   `name`         VARCHAR(200) NOT NULL,
   `type`         VARCHAR(100) NOT NULL COMMENT 'Cơ khí | Điện | CI',
-  `status`       VARCHAR(20)  NOT NULL DEFAULT 'active' COMMENT 'active | inactive | maintenance | broken',
+  `status`       VARCHAR(20)  NOT NULL DEFAULT 'Hoạt động' COMMENT 'Hoạt động | Bảo dưỡng | Sự cố | Ngừng hoạt động',
   `location`     VARCHAR(200) NULL COMMENT 'Vị trí lắp đặt trong nhà máy',
   `system_id`    BINARY(16)   NULL,
   `is_deleted`   TINYINT(1)   NOT NULL DEFAULT 0,

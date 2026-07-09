@@ -33,7 +33,7 @@ try {
   sql += "INSERT INTO `equipment` (`equipment_id`, `kks_code`, `name`, `type`, `status`, `location`, `system_id`) VALUES\n";
 
   const types = ['Co khi', 'Dien', 'CI'];
-  const statuses = ['active', 'maintenance', 'broken'];
+  const statuses = ['Hoạt động', 'Bảo dưỡng', 'Sự cố'];
   const locations = ['Tang 1', 'Tang 2', 'Ngoai troi', 'Trong tu dieu khien'];
 
   let values = [];
