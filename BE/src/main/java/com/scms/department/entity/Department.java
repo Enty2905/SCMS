@@ -23,6 +23,9 @@ public class Department {
     @Column(name = "department_name", length = 150, nullable = false)
     String departmentName;
 
+    @Column(name = "department_code", length = 50, unique = true)
+    String departmentCode;
+
     @Column(name = "description", length = 500)
     String description;
 }

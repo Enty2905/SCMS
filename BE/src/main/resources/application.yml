@@ -47,3 +47,4 @@ logging:
 app:
   upload:
     pdf-dir: uploads/pdf
+    employee-avatar-dir: uploads/employees

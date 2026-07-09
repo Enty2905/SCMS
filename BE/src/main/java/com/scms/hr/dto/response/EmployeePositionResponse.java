@@ -14,20 +14,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EmployeeResponse {
-    UUID employeeId;
-    String employeeCode;
-    String employeeName;
-    String phone;
-    String email;
-    String gender;
-    UUID departmentId;
-    String departmentCode;
-    String departmentName;
+public class EmployeePositionResponse {
     UUID positionId;
     String positionName;
-    String workLocation;
-    String avatarUrl;
-    String status;
-    Boolean hasAccount;
+    String description;
 }
