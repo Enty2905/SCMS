@@ -25,6 +25,11 @@ export async function disposeDamagedTool(id, data) {
   return response.data
 }
 
+export async function reportDamagedTool(id, data) {
+  const response = await apiClient.patch(`/tools/${id}/report-damaged`, data)
+  return response.data
+}
+
 export async function fetchDamagedTools(keyword, category, page = 0, size = 10) {
   const params = new URLSearchParams()
   if (keyword) params.set('keyword', keyword)

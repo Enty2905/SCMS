@@ -23,12 +23,13 @@ public class ConsumableStockService {
     ConsumableStockRepository stockRepository;
 
     // ── Tồn kho vật tư tiêu hao với phân trang và tìm kiếm ──
-    public PagedResponse<ConsumableStockResponse> getStocks(String keyword, int page, int size) {
+    public PagedResponse<ConsumableStockResponse> getStocks(String code, String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "code"));
 
-        String searchKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        String searchCode = (code != null && !code.isBlank()) ? code.trim() : null;
+        String searchName = (name != null && !name.isBlank()) ? name.trim() : null;
 
-        Page<Consumable> consumablePage = stockRepository.searchByKeyword(searchKeyword, pageable);
+        Page<Consumable> consumablePage = stockRepository.searchByCodeAndName(searchCode, searchName, pageable);
 
         return PagedResponse.<ConsumableStockResponse>builder()
                 .content(consumablePage.getContent().stream()

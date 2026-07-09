@@ -33,8 +33,8 @@ export function MaterialListPage() {
   const totalElements = useSelector(selectMaterialTotalElements)
 
   const [activeTab, setActiveTab] = useState('consumable')
-  const [searchType, setSearchType] = useState('code')
-  const [searchValue, setSearchValue] = useState('')
+  const [searchCode, setSearchCode] = useState('')
+  const [searchName, setSearchName] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
 
   // Modal states
@@ -44,10 +44,10 @@ export function MaterialListPage() {
 
   const loadData = useCallback(() => {
     const params = { tab: activeTab, page: currentPage, size: 10 }
-    if (searchType === 'code') params.code = searchValue
-    if (searchType === 'name') params.name = searchValue
+    if (searchCode) params.code = searchCode
+    if (searchName) params.name = searchName
     dispatch(fetchMaterials(params))
-  }, [dispatch, activeTab, searchType, searchValue, currentPage])
+  }, [dispatch, activeTab, searchCode, searchName, currentPage])
 
   useEffect(() => {
     loadData()
@@ -55,13 +55,19 @@ export function MaterialListPage() {
 
   function handleTabChange(tab) {
     setActiveTab(tab)
-    setSearchValue('')
+    setSearchCode('')
+    setSearchName('')
     setCurrentPage(0)
     dispatch(clearMaterialError())
   }
 
-  function handleSearch(event) {
-    setSearchValue(event.target.value)
+  function handleSearchCode(event) {
+    setSearchCode(event.target.value)
+    setCurrentPage(0)
+  }
+
+  function handleSearchName(event) {
+    setSearchName(event.target.value)
     setCurrentPage(0)
   }
 
@@ -144,25 +150,29 @@ export function MaterialListPage() {
 
       {/* Search + Add button */}
       <section className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-1 items-center gap-2">
-          <select
-            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={(e) => setSearchType(e.target.value)}
-            value={searchType}
-          >
-            <option value="code">Mã vật tư</option>
-            <option value="name">Tên vật tư</option>
-          </select>
-          <label className="relative flex-1">
+        <div className="flex flex-1 items-center gap-4">
+          <label className="relative flex-[1]">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
               size={17}
             />
             <input
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-              onChange={handleSearch}
-              placeholder={searchType === 'code' ? 'Nhập mã vật tư...' : 'Nhập tên vật tư...'}
-              value={searchValue}
+              onChange={handleSearchCode}
+              placeholder="Nhập mã vật tư..."
+              value={searchCode}
+            />
+          </label>
+          <label className="relative flex-[2]">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={handleSearchName}
+              placeholder="Nhập tên vật tư..."
+              value={searchName}
             />
           </label>
         </div>

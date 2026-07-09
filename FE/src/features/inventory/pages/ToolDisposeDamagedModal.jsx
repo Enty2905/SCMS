@@ -2,7 +2,7 @@ import { Loader2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
-import { disposeDamagedTool } from '../services/tool.service.js'
+import { reportDamagedTool } from '../services/tool.service.js'
 
 export function ToolDisposeDamagedModal({ item, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false)
@@ -28,7 +28,7 @@ export function ToolDisposeDamagedModal({ item, onClose, onSuccess }) {
 
     try {
       setSubmitting(true)
-      await disposeDamagedTool(item.toolId, {
+      await reportDamagedTool(item.toolId, {
         quantity: disposeQty,
         note: note.trim()
       })
