@@ -2,6 +2,8 @@ import { RequireRole } from '@/app/RouteGuards.jsx'
 
 import { RepairRequestPage } from './pages/RepairRequestPage.jsx'
 import { TechnicalAssessmentPage } from './pages/TechnicalAssessmentPage.jsx'
+import { MaterialRequestPage } from './pages/MaterialRequestPage.jsx'
+import { RepairHistoryPage } from './pages/RepairHistoryPage.jsx'
 import { ASSESSMENT_ROLES, MAINTENANCE_ROLES } from './maintenance.nav.js'
 
 export const maintenanceRoutes = [
@@ -18,6 +20,22 @@ export const maintenanceRoutes = [
     element: (
       <RequireRole roles={ASSESSMENT_ROLES}>
         <TechnicalAssessmentPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'maintenance/material-requests',
+    element: (
+      <RequireRole roles={MAINTENANCE_ROLES}>
+        <MaterialRequestPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'maintenance/repair-histories',
+    element: (
+      <RequireRole roles={MAINTENANCE_ROLES}>
+        <RepairHistoryPage />
       </RequireRole>
     ),
   },

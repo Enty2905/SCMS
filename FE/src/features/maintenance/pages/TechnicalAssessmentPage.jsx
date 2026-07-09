@@ -105,7 +105,10 @@ export function TechnicalAssessmentPage() {
   const error = useSelector(selectAssessmentError)
 
   const [showForm, setShowForm] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchNumber, setSearchNumber] = useState('')
+  const [searchKks, setSearchKks] = useState('')
+  const [searchEqName, setSearchEqName] = useState('')
+  const [currentPage, setCurrentPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState('all')
 
   const [form, setForm] = useState({
@@ -118,7 +121,8 @@ export function TechnicalAssessmentPage() {
   const [equipments, setEquipments] = useState([])
   const [equipmentsLoading, setEquipmentsLoading] = useState(true)
   const [selectedType, setSelectedType] = useState('all')
-  const [searchName, setSearchName] = useState('')
+  const [innerSearchName, setInnerSearchName] = useState('')
+  const [innerSearchKks, setInnerSearchKks] = useState('')
   const [showEqSuggestions, setShowEqSuggestions] = useState(false)
   const searchWrapRef = useRef(null)
 
@@ -174,16 +178,15 @@ export function TechnicalAssessmentPage() {
 
   // Filter equipments list
   const filteredEquipments = useMemo(() => {
-    const kw = searchName.trim().toLowerCase()
+    const nameKw = innerSearchName.trim().toLowerCase()
+    const kksKw = innerSearchKks.trim().toLowerCase()
     return equipments.filter((e) => {
       const matchType = selectedType === 'all' || e.equipmentType === selectedType
-      const matchKeyword =
-        !kw ||
-        e.equipmentName?.toLowerCase().includes(kw) ||
-        e.kksCode?.toLowerCase().includes(kw)
-      return matchType && matchKeyword
+      const matchName = !nameKw || e.equipmentName?.toLowerCase().includes(nameKw)
+      const matchKks = !kksKw || e.kksCode?.toLowerCase().includes(kksKw)
+      return matchType && matchName && matchKks
     })
-  }, [equipments, selectedType, searchName])
+  }, [equipments, selectedType, innerSearchName, innerSearchKks])
 
   // Current selected equipment object
   const selectedEquipment = useMemo(() => {
@@ -192,18 +195,37 @@ export function TechnicalAssessmentPage() {
 
   // Filter assessments list
   const filteredAssessments = useMemo(() => {
-    const kw = searchQuery.trim().toLowerCase()
+    const numKw = searchNumber.trim().toLowerCase()
+    const kksKw = searchKks.trim().toLowerCase()
+    const nameKw = searchEqName.trim().toLowerCase()
     return assessments.filter((a) => {
-      const matchKw =
-        !kw ||
-        a.assessmentNumber?.toLowerCase().includes(kw) ||
-        a.equipmentName?.toLowerCase().includes(kw) ||
-        a.equipmentKksCode?.toLowerCase().includes(kw) ||
-        a.createdByName?.toLowerCase().includes(kw)
+      const matchNumber = !numKw || a.assessmentNumber?.toLowerCase().includes(numKw)
+      const matchKks = !kksKw || a.equipmentKksCode?.toLowerCase().includes(kksKw)
+      const matchName = !nameKw || a.equipmentName?.toLowerCase().includes(nameKw)
       const matchStatus = statusFilter === 'all' || a.completionStatus === statusFilter
-      return matchKw && matchStatus
+      return matchNumber && matchKks && matchName && matchStatus
     })
-  }, [assessments, searchQuery, statusFilter])
+  }, [assessments, searchNumber, searchKks, searchEqName, statusFilter])
+
+  const pageSize = 10
+  const totalElements = filteredAssessments.length
+  const totalPages = Math.ceil(totalElements / pageSize)
+
+  const paginatedAssessments = useMemo(() => {
+    const start = currentPage * pageSize
+    return filteredAssessments.slice(start, start + pageSize)
+  }, [filteredAssessments, currentPage])
+
+  function handlePageChange(newPage) {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
+
+  function handleStatusFilterChange(val) {
+    setStatusFilter(val)
+    setCurrentPage(0)
+  }
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -264,6 +286,18 @@ export function TechnicalAssessmentPage() {
     a.click()
   }
 
+  // Auto reset form on toggle
+  const prevShowForm = useRef(showForm)
+  useEffect(() => {
+    if (showForm !== prevShowForm.current) {
+      setForm({ equipmentId: '', damageDescription: '', proposedAction: '' })
+      setInnerSearchName('')
+      setInnerSearchKks('')
+      setSelectedType('all')
+    }
+    prevShowForm.current = showForm
+  }, [showForm])
+
   function handleClosePreview() {
     if (pdfPreviewUrl) {
       URL.revokeObjectURL(pdfPreviewUrl)
@@ -291,9 +325,6 @@ export function TechnicalAssessmentPage() {
             className="bg-violet-600 hover:bg-violet-700"
             onClick={() => {
               setShowForm(true)
-              setForm({ equipmentId: '', damageDescription: '', proposedAction: '' })
-              setSearchName('')
-              setSelectedType('all')
             }}
           >
             <Plus size={17} />
@@ -319,14 +350,13 @@ export function TechnicalAssessmentPage() {
           <div className="max-w-3xl mx-auto rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="mb-5 text-base font-bold text-slate-950">Tạo biên bản mới</p>
 
-
             <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Equipment Search Section */}
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" ref={searchWrapRef}>
                 <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                   Chọn thiết bị cần đánh giá <span className="text-rose-500">*</span>
                 </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
                     <label className={labelCls}>Chọn loại thiết bị</label>
                     <select
@@ -343,7 +373,7 @@ export function TechnicalAssessmentPage() {
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>Tìm theo tên / mã KKS</label>
+                    <label className={labelCls}>Tìm theo Tên thiết bị</label>
                     <div className="relative">
                       <Search
                         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -352,13 +382,33 @@ export function TechnicalAssessmentPage() {
                       <input
                         className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
                         onChange={(e) => {
-                          setSearchName(e.target.value)
+                          setInnerSearchName(e.target.value)
                           setShowEqSuggestions(true)
                         }}
                         onFocus={() => setShowEqSuggestions(true)}
-                        placeholder="Nhập tên hoặc mã KKS..."
+                        placeholder="Nhập tên thiết bị..."
                         type="text"
-                        value={searchName}
+                        value={innerSearchName}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Tìm theo Mã KKS</label>
+                    <div className="relative">
+                      <Search
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={14}
+                      />
+                      <input
+                        className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+                        onChange={(e) => {
+                          setInnerSearchKks(e.target.value)
+                          setShowEqSuggestions(true)
+                        }}
+                        onFocus={() => setShowEqSuggestions(true)}
+                        placeholder="Nhập mã KKS..."
+                        type="text"
+                        value={innerSearchKks}
                       />
                     </div>
                   </div>
@@ -381,7 +431,8 @@ export function TechnicalAssessmentPage() {
                               }`}
                               onMouseDown={() => {
                                 set('equipmentId', eq.id)
-                                setSearchName(`${eq.equipmentName} (${eq.kksCode})`)
+                                setInnerSearchName(eq.equipmentName)
+                                setInnerSearchKks(eq.kksCode)
                                 setShowEqSuggestions(false)
                               }}
                               type="button"
@@ -466,24 +517,50 @@ export function TechnicalAssessmentPage() {
         ) : (
           /* List View */
           <>
-            {/* Filters */}
+            {/* Filters với Phân tách 3 trường tìm kiếm lọc đồng thời */}
             <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={16}
-                />
-                <input
-                  className="h-10 w-full rounded-md border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-violet-500"
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm theo số biên bản, mã KKS, tên thiết bị..."
-                  type="text"
-                  value={searchQuery}
-                />
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+                    onChange={(e) => {
+                      setSearchNumber(e.target.value)
+                      setCurrentPage(0)
+                    }}
+                    placeholder="Tìm theo Số biên bản..."
+                    value={searchNumber}
+                  />
+                </label>
+                <label className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+                    onChange={(e) => {
+                      setSearchKks(e.target.value)
+                      setCurrentPage(0)
+                    }}
+                    placeholder="Tìm theo Mã KKS..."
+                    value={searchKks}
+                  />
+                </label>
+                <label className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+                    onChange={(e) => {
+                      setSearchEqName(e.target.value)
+                      setCurrentPage(0)
+                    }}
+                    placeholder="Tìm theo Tên thiết bị..."
+                    value={searchEqName}
+                  />
+                </label>
               </div>
+
               <select
                 className="h-10 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
                 value={statusFilter}
               >
                 <option value="all">Tất cả trạng thái</option>
@@ -494,7 +571,7 @@ export function TechnicalAssessmentPage() {
 
             {/* Error alerts */}
             {exportError && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 animate-in fade-in duration-150">
                 <AlertTriangle className="shrink-0 text-rose-500" size={16} />
                 <p>{exportError}</p>
               </div>
@@ -504,7 +581,7 @@ export function TechnicalAssessmentPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-                  <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
                     <tr className="border-b border-slate-200">
                       <th className="px-6 py-4">Số biên bản</th>
                       <th className="px-6 py-4">Thiết bị</th>
@@ -532,7 +609,7 @@ export function TechnicalAssessmentPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredAssessments.map((a) => {
+                      paginatedAssessments.map((a) => {
                         const isSigned = a.completionStatus === 'signed'
                         return (
                           <tr className="hover:bg-slate-50/50 transition-colors" key={a.assessmentId}>
@@ -620,6 +697,65 @@ export function TechnicalAssessmentPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Phân trang */}
+              {totalPages > 1 ? (() => {
+                let startPage = Math.max(0, currentPage - 2)
+                let endPage = Math.min(totalPages - 1, currentPage + 2)
+
+                if (endPage - startPage < 4) {
+                  if (startPage === 0) {
+                    endPage = Math.min(totalPages - 1, startPage + 4)
+                  } else if (endPage === totalPages - 1) {
+                    startPage = Math.max(0, endPage - 4)
+                  }
+                }
+
+                const pages = []
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(i)
+                }
+
+                return (
+                  <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 bg-white">
+                    <p className="text-sm text-slate-500">
+                      Hiển thị trang {currentPage + 1} / {totalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                        disabled={currentPage === 0}
+                        onClick={() => handlePageChange(0)}
+                      >
+                        Trang đầu
+                      </button>
+                      
+                      {pages.map((p) => (
+                        <button
+                          key={p}
+                          className={[
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                            currentPage === p
+                              ? 'bg-violet-600 text-white shadow-sm'
+                              : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                          ].join(' ')}
+                          onClick={() => handlePageChange(p)}
+                        >
+                          {p + 1}
+                        </button>
+                      ))}
+
+                      <button
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                        disabled={currentPage >= totalPages - 1}
+                        onClick={() => handlePageChange(totalPages - 1)}
+                      >
+                        Trang cuối
+                      </button>
+                    </div>
+                  </div>
+                )
+              })() : null}
             </div>
           </>
         )}

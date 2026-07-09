@@ -106,3 +106,101 @@ export async function downloadSignedPdfService(assessmentId) {
   return response.blob()
 }
 
+// ── Work Orders (PCT List) ───────────────────────────────────────────────────
+
+export async function fetchWorkOrdersService() {
+  const response = await apiClient.get('/maintenance/work-orders')
+  return response.data || []
+}
+
+// ── Consumable Request ────────────────────────────────────────────────────────
+
+export async function fetchConsumableRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  if (reqNumber) params.set('reqNumber', reqNumber)
+  if (orderNumber) params.set('orderNumber', orderNumber)
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/consumable-requests?${params}`)
+  return response.data
+}
+
+export async function createConsumableRequestService(body) {
+  const response = await apiClient.post('/maintenance/consumable-requests', body)
+  return response.data
+}
+
+export async function exportConsumableRequestPdfService(reqId) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const response = await fetch(
+    apiClient.url(`/maintenance/consumable-requests/${reqId}/export-pdf`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`Không thể xuất PDF: ${response.status}`)
+  }
+
+  return response.blob()
+}
+
+// ── Spare Part Request ────────────────────────────────────────────────────────
+
+export async function fetchSparePartRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  if (reqNumber) params.set('reqNumber', reqNumber)
+  if (orderNumber) params.set('orderNumber', orderNumber)
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/spare-part-requests?${params}`)
+  return response.data
+}
+
+export async function createSparePartRequestService(body) {
+  const response = await apiClient.post('/maintenance/spare-part-requests', body)
+  return response.data
+}
+
+export async function exportSparePartRequestPdfService(reqId) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const response = await fetch(
+    apiClient.url(`/maintenance/spare-part-requests/${reqId}/export-pdf`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`Không thể xuất PDF: ${response.status}`)
+  }
+
+  return response.blob()
+}
+
+// ── Repair History ────────────────────────────────────────────────────────────
+
+export async function fetchRepairHistoriesService({ equipmentId, kksCode, equipmentName, orderNumber, page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  if (equipmentId) params.set('equipmentId', equipmentId)
+  if (kksCode) params.set('kksCode', kksCode)
+  if (equipmentName) params.set('equipmentName', equipmentName)
+  if (orderNumber) params.set('orderNumber', orderNumber)
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/repair-histories?${params}`)
+  return response.data
+}
+
+export async function createRepairHistoryService(body) {
+  const response = await apiClient.post('/maintenance/repair-histories', body)
+  return response.data
+}
+
