@@ -127,8 +127,9 @@ export function DamagedToolPage() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
-                <th className="px-5 py-3">Mã CCDC</th>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Tên CCDC</th>
+                <th className="px-5 py-3 w-48">Chủng loại</th>
                 <th className="px-5 py-3">Mô tả hư hỏng</th>
                 <th className="px-5 py-3 text-center">SL</th>
                 <th className="px-5 py-3 text-center">Thao tác</th>
@@ -137,7 +138,7 @@ export function DamagedToolPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -145,23 +146,24 @@ export function DamagedToolPage() {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Không có CCDC hư hỏng nào.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? items.map((item) => {
+                ? items.map((item, index) => {
                     return (
                       <tr className="hover:bg-slate-50/80" key={item.toolId}>
-                        <td className="px-5 py-4">
-                          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                            {item.toolId.substring(0, 8).toUpperCase()}
-                          </span>
+                        <td className="px-5 py-4 text-center font-medium text-slate-500">
+                          {page * 10 + index + 1}
                         </td>
                         <td className="px-5 py-4 font-semibold text-slate-950">
                           {item.name}
+                        </td>
+                        <td className="px-5 py-4 text-slate-600">
+                          {item.category}
                         </td>
                         <td className="px-5 py-4 text-slate-600">
                           <span className="line-clamp-2 max-w-xs" title={item.note || 'Không có mô tả'}>

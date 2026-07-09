@@ -118,6 +118,58 @@ public class ToolService {
         return toResponse(tool, borrowedQuantity);
     }
 
+    // ── Xóa CCDC (Soft Delete) ────────────────────────────────
+    @Transactional
+    public void deleteTool(UUID toolId) {
+        Tool tool = toolRepository.findById(toolId)
+                .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
+        toolRepository.delete(tool);
+        log.info("Deleted tool: {}", tool.getName());
+    }
+
+    // ── Báo hỏng CCDC ────────────────────────────────────────
+    @Transactional
+    public ToolResponse reportDamaged(UUID toolId, ToolDisposeRequest request) {
+        Tool tool = toolRepository.findById(toolId)
+                .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
+
+        int damagedQty = request.getQuantity();
+        if (damagedQty <= 0) {
+            throw new BadRequestException("Số lượng báo hỏng phải > 0");
+        }
+
+        int currentAvailable = tool.getAvailableQuantity();
+        if (damagedQty > currentAvailable) {
+            throw new BadRequestException("Số lượng báo hỏng vượt quá số lượng khả dụng");
+        }
+
+        int newDamaged = tool.getDamagedQuantity() + damagedQty;
+        int newAvailable = currentAvailable - damagedQty;
+        
+        String newStatus = (newDamaged == tool.getTotalQuantity()) ? "damaged" : "available";
+
+        String existingNote = tool.getNote() != null ? tool.getNote() : "";
+        String newNote;
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            newNote = existingNote.isBlank()
+                    ? request.getNote().trim()
+                    : existingNote + "; " + request.getNote().trim();
+        } else {
+            newNote = existingNote;
+        }
+
+        tool.setDamagedQuantity(newDamaged);
+        tool.setAvailableQuantity(newAvailable);
+        tool.setStatus(newStatus);
+        tool.setNote(newNote);
+
+        tool = toolRepository.save(tool);
+        log.info("Reported damaged tool: {} - damaged: {}, available: {}", tool.getName(), newDamaged, newAvailable);
+
+        int borrowed = toolRepository.sumBorrowedQuantity(toolId);
+        return toResponse(tool, borrowed);
+    }
+
     // ── Huỷ CCDC bị hư hỏng ──────────────────────────────────
     @Transactional
     public ToolResponse disposeDamaged(UUID toolId, ToolDisposeRequest request) {

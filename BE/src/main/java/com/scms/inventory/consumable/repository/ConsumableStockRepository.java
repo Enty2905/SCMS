@@ -30,18 +30,20 @@ public interface ConsumableStockRepository extends JpaRepository<Consumable, UUI
     Long sumExported(@Param("id") String id);
 
     /**
-     * Tìm kiếm vật tư theo code hoặc name (không phân biệt hoa thường), có phân trang.
+     * Tìm kiếm vật tư theo code và name (không phân biệt hoa thường), có phân trang.
      */
     @Query(value = "SELECT c.* FROM consumable c " +
             "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_in FROM consumable_import_item GROUP BY consumable_id) i ON c.consumable_id = i.consumable_id " +
             "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_out FROM consumable_export_item GROUP BY consumable_id) e ON c.consumable_id = e.consumable_id " +
-            "WHERE (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
-            "AND (COALESCE(:keyword, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+            "WHERE c.is_deleted = 0 AND (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
+            "AND (COALESCE(:code, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :code, '%'))) " +
+            "AND (COALESCE(:name, '') = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')))",
            countQuery = "SELECT COUNT(*) FROM consumable c " +
             "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_in FROM consumable_import_item GROUP BY consumable_id) i ON c.consumable_id = i.consumable_id " +
             "LEFT JOIN (SELECT consumable_id, SUM(quantity) as total_out FROM consumable_export_item GROUP BY consumable_id) e ON c.consumable_id = e.consumable_id " +
-            "WHERE (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
-            "AND (COALESCE(:keyword, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+            "WHERE c.is_deleted = 0 AND (COALESCE(i.total_in, 0) - COALESCE(e.total_out, 0)) > 0 " +
+            "AND (COALESCE(:code, '') = '' OR LOWER(c.code) LIKE LOWER(CONCAT('%', :code, '%'))) " +
+            "AND (COALESCE(:name, '') = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')))",
            nativeQuery = true)
-    Page<Consumable> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    Page<Consumable> searchByCodeAndName(@Param("code") String code, @Param("name") String name, Pageable pageable);
 }

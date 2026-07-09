@@ -1,9 +1,10 @@
-import { Plus } from 'lucide-react'
+import { Plus, Eye } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { fetchConsumableImports } from '../services/consumableImport.service.js'
 import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
+import { ConsumableImportDetailModal } from './ConsumableImportDetailModal.jsx'
 
 export function ConsumableImportPage() {
   const [items, setItems] = useState([])
@@ -15,6 +16,7 @@ export function ConsumableImportPage() {
   const [totalElements, setTotalElements] = useState(0)
 
   const [formModalOpen, setFormModalOpen] = useState(false)
+  const [detailModalItem, setDetailModalItem] = useState(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -82,12 +84,13 @@ export function ConsumableImportPage() {
                 <th className="px-5 py-3">Ngày nhập</th>
                 <th className="px-5 py-3 text-right">Tổng loại vật tư</th>
                 <th className="px-5 py-3">Ghi chú</th>
+                <th className="px-5 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={5}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -95,7 +98,7 @@ export function ConsumableImportPage() {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={5}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Chưa có phiếu nhập nào.
                   </td>
                 </tr>
@@ -120,6 +123,15 @@ export function ConsumableImportPage() {
                         <span className="line-clamp-2 max-w-xs" title={item.note}>
                           {item.note}
                         </span>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <button
+                          className="rounded-md p-2 text-slate-400 hover:bg-sky-50 hover:text-sky-600"
+                          onClick={() => setDetailModalItem(item)}
+                          title="Xem chi tiết"
+                        >
+                          <Eye size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -158,6 +170,13 @@ export function ConsumableImportPage() {
         <ConsumableImportFormModal
           onClose={() => setFormModalOpen(false)}
           onSuccess={handleFormSuccess}
+        />
+      )}
+
+      {detailModalItem && (
+        <ConsumableImportDetailModal
+          item={detailModalItem}
+          onClose={() => setDetailModalItem(null)}
         />
       )}
     </div>

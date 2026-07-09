@@ -24,13 +24,14 @@ export function ConsumableStockPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
-  const [keyword, setKeyword] = useState('')
+  const [searchCode, setSearchCode] = useState('')
+  const [searchName, setSearchName] = useState('')
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await fetchConsumableStocks(keyword, page, 10)
+      const data = await fetchConsumableStocks({ code: searchCode, name: searchName, page, size: 10 })
       setItems(data.content || [])
       setTotalPages(data.totalPages || 0)
       setTotalElements(data.totalElements || 0)
@@ -39,15 +40,20 @@ export function ConsumableStockPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, keyword])
+  }, [page, searchCode, searchName])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
 
-  function handleSearch(event) {
-    setKeyword(event.target.value)
+  function handleSearchCode(event) {
+    setSearchCode(event.target.value)
+    setPage(0)
+  }
+
+  function handleSearchName(event) {
+    setSearchName(event.target.value)
     setPage(0)
   }
 
@@ -64,18 +70,32 @@ export function ConsumableStockPage() {
       </section>
 
       <section className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={17}
-          />
-          <input
-            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={handleSearch}
-            placeholder="Tìm theo mã hoặc tên vật tư..."
-            value={keyword}
-          />
-        </label>
+        <div className="flex flex-1 items-center gap-4">
+          <label className="relative flex-[1]">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={handleSearchCode}
+              placeholder="Nhập mã vật tư..."
+              value={searchCode}
+            />
+          </label>
+          <label className="relative flex-[2]">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={handleSearchName}
+              placeholder="Nhập tên vật tư..."
+              value={searchName}
+            />
+          </label>
+        </div>
       </section>
 
       {error ? (
@@ -97,7 +117,7 @@ export function ConsumableStockPage() {
                 <th className="px-5 py-3">Đơn vị</th>
                 <th className="px-5 py-3 text-right">Tổng nhập</th>
                 <th className="px-5 py-3 text-right">Tổng xuất</th>
-                <th className="px-5 py-3 text-right text-violet-600 font-bold">Tồn hiện tại</th>
+                <th className="px-5 py-3 text-right font-bold">Tồn hiện tại</th>
                 <th className="px-5 py-3 text-right">Tồn tối thiểu</th>
                 <th className="px-5 py-3">Trạng thái</th>
               </tr>
@@ -132,16 +152,16 @@ export function ConsumableStockPage() {
                           {item.name}
                         </td>
                         <td className="px-5 py-4 text-slate-600">{item.unit}</td>
-                        <td className="px-5 py-4 text-right text-emerald-600 font-medium">
+                        <td className="px-5 py-4 text-right text-slate-950 font-medium">
                           {item.importedQuantity}
                         </td>
-                        <td className="px-5 py-4 text-right text-rose-600 font-medium">
+                        <td className="px-5 py-4 text-right text-slate-950 font-medium">
                           {item.exportedQuantity}
                         </td>
-                        <td className="px-5 py-4 text-right text-violet-600 font-bold bg-violet-50/50">
+                        <td className="px-5 py-4 text-right text-slate-950 font-bold bg-slate-50/50">
                           {item.stockQuantity}
                         </td>
-                        <td className="px-5 py-4 text-right text-slate-600 font-medium">
+                        <td className="px-5 py-4 text-right text-slate-950 font-medium">
                           {item.minQuantity}
                         </td>
                         <td className="px-5 py-4">

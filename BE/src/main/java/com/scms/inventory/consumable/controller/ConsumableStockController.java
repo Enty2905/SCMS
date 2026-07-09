@@ -23,13 +23,14 @@ public class ConsumableStockController {
     @Operation(summary = "Lấy danh sách tồn kho vật tư tiêu hao (phân trang, tìm kiếm)")
     @GetMapping
     public ApiResponse<PagedResponse<ConsumableStockResponse>> getStocks(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.<PagedResponse<ConsumableStockResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách tồn kho thành công")
-                .data(stockService.getStocks(keyword, page, size))
+                .data(stockService.getStocks(code, name, page, size))
                 .build();
     }
 }
