@@ -1,9 +1,14 @@
+# syntax=docker/dockerfile:1.7
+
 # Stage 1: Build
 FROM maven:3.9.8-amazoncorretto-21 AS build
 WORKDIR /app
 COPY pom.xml .
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -ntp -Dmaven.wagon.http.retryHandler.count=5 dependency:go-offline
 COPY src ./src
-RUN mvn package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -ntp -Dmaven.wagon.http.retryHandler.count=5 package -DskipTests
 
 # Stage 2: Run
 FROM amazoncorretto:21.0.4

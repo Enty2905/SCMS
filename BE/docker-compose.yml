@@ -57,6 +57,7 @@ services:
       LOG_PATH: ${LOG_PATH:-/var/log/scms}
     volumes:
       - scms_logs:/var/log/scms
+      - ./uploads:/app/uploads
     networks:
       - backend
 

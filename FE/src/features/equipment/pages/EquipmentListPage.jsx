@@ -13,8 +13,8 @@ import {
 
 export function EquipmentListPage() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const initialSystemId = searchParams.get('systemId') || 'all'
+  const [searchParams] = useSearchParams()
+  const systemFilter = searchParams.get('systemId') || 'all'
 
   const [equipments, setEquipments] = useState([])
   const [systems, setSystems] = useState([])
@@ -28,13 +28,12 @@ export function EquipmentListPage() {
   // Search & Filter state
   const [searchKksCode, setSearchKksCode] = useState('')
   const [searchEquipmentName, setSearchEquipmentName] = useState('')
-  const [systemFilter, setSystemFilter] = useState(initialSystemId)
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const pageSize = 10
 
   const equipmentTypes = useMemo(() => {
     return [...new Set(equipments.map((eq) => eq.equipmentType).filter(Boolean))]
@@ -106,12 +105,6 @@ export function EquipmentListPage() {
     }
   }, [])
 
-  // Sync systemFilter state when URL changes
-  useEffect(() => {
-    const systemId = searchParams.get('systemId') || 'all'
-    setSystemFilter(systemId)
-  }, [searchParams])
-
   // Set of allowed system IDs (including sub-systems recursively) for filtering
   const allowedSystemIds = useMemo(() => {
     if (systemFilter === 'all') return null
@@ -153,11 +146,6 @@ export function EquipmentListPage() {
     })
   }, [equipments, searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter, allowedSystemIds])
 
-  // Reset to first page when search criteria changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchKksCode, searchEquipmentName, systemFilter, typeFilter, statusFilter])
-
   // Total pages calculation
   const totalPages = useMemo(() => {
     return Math.ceil(filteredEquipments.length / pageSize)
@@ -165,9 +153,10 @@ export function EquipmentListPage() {
 
   // Get current page slice of equipments
   const paginatedEquipments = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize
+    const activePage = Math.min(currentPage, totalPages || 1)
+    const startIndex = (activePage - 1) * pageSize
     return filteredEquipments.slice(startIndex, startIndex + pageSize)
-  }, [filteredEquipments, currentPage, pageSize])
+  }, [filteredEquipments, currentPage, pageSize, totalPages])
 
   // System name mapping
   const systemMap = useMemo(() => {
@@ -309,7 +298,10 @@ export function EquipmentListPage() {
             />
             <input
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-              onChange={(event) => setSearchKksCode(event.target.value)}
+              onChange={(event) => {
+                setSearchKksCode(event.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Tìm theo mã KKS..."
               value={searchKksCode}
             />
@@ -322,7 +314,10 @@ export function EquipmentListPage() {
             />
             <input
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-              onChange={(event) => setSearchEquipmentName(event.target.value)}
+              onChange={(event) => {
+                setSearchEquipmentName(event.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Tìm theo tên thiết bị..."
               value={searchEquipmentName}
             />
@@ -332,7 +327,10 @@ export function EquipmentListPage() {
         <div className="flex flex-wrap gap-3">
           <select
             className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer"
-            onChange={(event) => setTypeFilter(event.target.value)}
+            onChange={(event) => {
+              setTypeFilter(event.target.value)
+              setCurrentPage(1)
+            }}
             value={typeFilter}
           >
             <option value="all">Tất cả loại thiết bị</option>
@@ -345,7 +343,10 @@ export function EquipmentListPage() {
 
           <select
             className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 cursor-pointer"
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value)
+              setCurrentPage(1)
+            }}
             value={statusFilter}
           >
             <option value="all">Tất cả trạng thái</option>
