@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search, Trash2 } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, Download } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
@@ -16,6 +16,7 @@ import { fetchMaterials, deleteMaterial } from '../store/material.thunks.js'
 import { clearMaterialError } from '../store/material.reducer.js'
 import { MaterialFormModal } from './MaterialFormModal.jsx'
 import { DeleteConfirmModal } from './DeleteConfirmModal.jsx'
+import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
 
 const TABS = [
   { key: 'consumable', label: 'Vật tư tiêu hao' },
@@ -39,6 +40,7 @@ export function MaterialListPage() {
   // Modal states
   const [formModal, setFormModal] = useState({ open: false, item: null })
   const [deleteModal, setDeleteModal] = useState({ open: false, item: null })
+  const [importModal, setImportModal] = useState({ open: false, item: null })
 
   const loadData = useCallback(() => {
     const params = { tab: activeTab, page: currentPage, size: 10 }
@@ -92,6 +94,19 @@ export function MaterialListPage() {
   function handleFormSuccess() {
     closeFormModal()
     loadData()
+  }
+
+  function openImportModal(item) {
+    setImportModal({ open: true, item })
+  }
+
+  function closeImportModal() {
+    setImportModal({ open: false, item: null })
+  }
+
+  function handleImportSuccess() {
+    closeImportModal()
+    // Optional: add toast notification here
   }
 
   async function handleDeleteConfirm() {
@@ -224,6 +239,15 @@ export function MaterialListPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2 text-slate-400">
+                            {activeTab === 'consumable' && (
+                              <button
+                                className="rounded-md p-2 hover:bg-emerald-50 hover:text-emerald-600"
+                                onClick={() => openImportModal(item)}
+                                title="Nhập kho"
+                              >
+                                <Download size={16} />
+                              </button>
+                            )}
                             <button
                               className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600"
                               onClick={() => openEditModal(item)}
@@ -323,6 +347,14 @@ export function MaterialListPage() {
           itemName={deleteModal.item?.name || ''}
           onClose={closeDeleteModal}
           onConfirm={handleDeleteConfirm}
+        />
+      ) : null}
+
+      {importModal.open ? (
+        <ConsumableImportFormModal
+          onClose={closeImportModal}
+          onSuccess={handleImportSuccess}
+          initialItem={importModal.item}
         />
       ) : null}
     </div>
