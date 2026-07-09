@@ -21,6 +21,6 @@ public interface ConsumableRepository extends JpaRepository<Consumable, UUID> {
             "(:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')))")
     Page<Consumable> searchByCodeAndName(@Param("code") String code, @Param("name") String name, Pageable pageable);
 
-    @Query("SELECT MAX(c.code) FROM Consumable c WHERE c.code LIKE 'VTTH-%'")
+    @Query(value = "SELECT MAX(code) FROM consumable WHERE code LIKE 'VTTH-%'", nativeQuery = true)
     String findMaxCode();
 }
