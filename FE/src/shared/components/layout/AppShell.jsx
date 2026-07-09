@@ -22,6 +22,7 @@ import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
 import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
+import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
 import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 
 
@@ -36,6 +37,7 @@ const navItems = [
   ...inventoryNavItems,
   ...equipmentNavItems,
   ...maintenanceNavItems,
+  ...repairRequestNavItems,
 ]
 
 

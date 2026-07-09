@@ -2,7 +2,7 @@ package com.scms.maintenance.workorder.entity;
 
 import com.scms.auth.entity.User;
 import com.scms.employee.entity.Employee;
-import com.scms.maintenance.repairrequest.entity.RepairRequest;
+import com.scms.repairrequest.entity.RepairRequest;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
