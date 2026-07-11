@@ -109,8 +109,25 @@ public class WorkOrderService {
                                 .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
                 // Load members riêng để tránh MultipleBagFetchException
                 List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(orderId);
+                wo.getMembers().clear();
                 wo.getMembers().addAll(members);
                 return toResponse(wo);
+        }
+
+        /**
+         * Lấy toàn bộ danh sách phiếu công tác
+         */
+        @Transactional(readOnly = true)
+        public List<WorkOrderResponse> getAllWorkOrders() {
+                List<WorkOrder> orders = workOrderRepository.findAll();
+                for (WorkOrder wo : orders) {
+                        List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());
+                        wo.getMembers().clear();
+                        wo.getMembers().addAll(members);
+                }
+                return orders.stream()
+                                .map(this::toResponse)
+                                .toList();
         }
 
         // ── Helper ───────────────────────────────────────────────────────────────

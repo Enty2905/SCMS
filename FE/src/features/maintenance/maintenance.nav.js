@@ -18,4 +18,16 @@ export const maintenanceNavItems = [
     icon: FileText,
     roles: ASSESSMENT_ROLES,
   },
+  {
+    label: 'Yêu cầu cấp vật tư',
+    href: '/dashboard/maintenance/material-requests',
+    icon: FileText,
+    roles: MAINTENANCE_ROLES,
+  },
+  {
+    label: 'Lịch sử sửa chữa',
+    href: '/dashboard/maintenance/repair-histories',
+    icon: ClipboardList,
+    roles: MAINTENANCE_ROLES,
+  },
 ]

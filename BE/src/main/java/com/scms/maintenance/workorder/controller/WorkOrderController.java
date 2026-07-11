@@ -48,6 +48,17 @@ public class WorkOrderController {
     }
 
     /**
+     * Lấy toàn bộ danh sách phiếu công tác (PCT)
+     * Quyền: ADMIN, REPAIR_MANAGER, TEAM_LEADER, SHIFT_LEADER
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'SHIFT_LEADER')")
+    @Operation(summary = "Danh sách phiếu công tác", description = "Lấy toàn bộ danh sách PCT có trong hệ thống")
+    public ApiResponse<java.util.List<WorkOrderResponse>> getWorkOrders() {
+        return ApiResponse.success(workOrderService.getAllWorkOrders());
+    }
+
+    /**
      * Xem chi tiết một phiếu công tác
      * Quyền: ADMIN, REPAIR_MANAGER, TEAM_LEADER, SHIFT_LEADER
      */
