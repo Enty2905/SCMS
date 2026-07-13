@@ -48,3 +48,8 @@ app:
   upload:
     pdf-dir: uploads/pdf
     employee-avatar-dir: uploads/employees
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dtayjf0fi}
+  api-key: ${CLOUDINARY_API_KEY:773119296171951}
+  api-secret: ${CLOUDINARY_API_SECRET:N7heEmm8WrLNM4g5sbR-1yujiJw}
