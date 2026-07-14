@@ -18,4 +18,5 @@ public class ToolResponse {
     Integer damagedQuantity;
     String status;
     String note;
+    String imageUrl;
 }

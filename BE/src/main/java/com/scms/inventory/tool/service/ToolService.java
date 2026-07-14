@@ -51,6 +51,7 @@ public class ToolService {
                 .damagedQuantity(damagedQuantity)
                 .status(status)
                 .note(request.getNote())
+                .imageUrl(request.getImageUrl())
                 .build();
 
         tool = toolRepository.save(tool);
@@ -112,6 +113,7 @@ public class ToolService {
         tool.setDamagedQuantity(damagedQuantity);
         tool.setStatus(status);
         tool.setNote(request.getNote());
+        tool.setImageUrl(request.getImageUrl());
 
         tool = toolRepository.save(tool);
         log.info("Updated tool: {} - status: {}", tool.getName(), tool.getStatus());
@@ -277,6 +279,7 @@ public class ToolService {
                 .damagedQuantity(tool.getDamagedQuantity())
                 .status(tool.getStatus())
                 .note(tool.getNote())
+                .imageUrl(tool.getImageUrl())
                 .build();
     }
 }

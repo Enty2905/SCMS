@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { apiClient } from '@/shared/api/httpClient.js'
 
 import { selectToolSubmitting } from '../store/tool.selectors.js'
 import { createToolItem, updateToolItem } from '../store/tool.thunks.js'
@@ -18,7 +19,10 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
     totalQuantity: item?.totalQuantity ?? '',
     damagedQuantity: item?.damagedQuantity ?? 0,
     note: item?.note || '',
+    imageUrl: item?.imageUrl || '',
   })
+
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const [errors, setErrors] = useState({})
 
@@ -32,6 +36,44 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
     setForm((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: null }))
+    }
+  }
+
+  async function handleImageChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Kiểm tra định dạng
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg']
+    if (!validTypes.includes(file.type)) {
+      setErrors((prev) => ({ ...prev, image: 'Chỉ hỗ trợ định dạng JPG, JPEG, PNG' }))
+      return
+    }
+
+    // Kiểm tra dung lượng (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, image: 'Dung lượng ảnh tối đa 5MB' }))
+      return
+    }
+
+    setErrors((prev) => ({ ...prev, image: null }))
+    setUploadingImage(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'scms/tools')
+
+      const response = await apiClient.post('/common/upload/image', formData)
+      if (response && response.data) {
+        handleChange('imageUrl', response.data)
+      } else {
+        setErrors((prev) => ({ ...prev, image: 'Tải ảnh thất bại' }))
+      }
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, image: err.message || 'Lỗi tải ảnh' }))
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -69,6 +111,7 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
       totalQuantity: Number(form.totalQuantity),
       damagedQuantity: Number(form.damagedQuantity),
       note: form.note.trim() || null,
+      imageUrl: form.imageUrl.trim() || null,
     }
 
     try {
@@ -180,6 +223,45 @@ export function ToolFormModal({ item, onClose, onSuccess }) {
               placeholder="Ghi chú thêm..."
               value={form.note}
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Ảnh CCDC
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                {form.imageUrl ? (
+                  <img
+                    alt="CCDC preview"
+                    className="h-full w-full object-cover"
+                    src={form.imageUrl}
+                  />
+                ) : (
+                  <span className="text-xs text-slate-400">Chưa có ảnh</span>
+                )}
+                {uploadingImage && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                    <Loader2 className="animate-spin text-violet-600" size={24} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  accept="image/jpeg, image/png, image/jpg"
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-md file:border-0 file:bg-violet-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-100"
+                  disabled={uploadingImage}
+                  onChange={handleImageChange}
+                  type="file"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Hỗ trợ định dạng JPG, PNG. Dung lượng tối đa 5MB.
+                </p>
+                {errors.image ? (
+                  <p className="mt-1 text-xs text-rose-600">{errors.image}</p>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           {/* Actions */}
