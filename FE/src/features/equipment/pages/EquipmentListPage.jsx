@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle, RotateCw } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle, RotateCw, ChevronLeft, ChevronRight, Eye, Network, Printer } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button.jsx'
@@ -9,7 +9,10 @@ import {
   updateEquipment,
   deleteEquipment,
   fetchSystems,
+  uploadEquipmentImage,
+  deleteEquipmentImage,
 } from '../services/equipment.service.js'
+import { apiClient } from '@/shared/api/httpClient.js'
 
 export function EquipmentListPage() {
   const navigate = useNavigate()
@@ -52,6 +55,13 @@ export function EquipmentListPage() {
   })
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Image & Gallery states
+  const [newImageFiles, setNewImageFiles] = useState([])
+  const [modalImages, setModalImages] = useState([])
+  const [galleryTarget, setGalleryTarget] = useState(null)
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0)
+  const [viewingEquipment, setViewingEquipment] = useState(null)
   const [kksMode, setKksMode] = useState('builder') // 'builder' or 'manual'
   const [kksParts, setKksParts] = useState({
     block: '10',
@@ -175,8 +185,10 @@ export function EquipmentListPage() {
   function openModal(eq = null) {
     setError(null)
     setFormError(null)
+    setNewImageFiles([])
     if (eq) {
       setEditingEquipment(eq)
+      setModalImages(eq.images || [])
       setFormData({
         kksCode: eq.kksCode || '',
         equipmentName: eq.equipmentName || '',
@@ -245,6 +257,22 @@ export function EquipmentListPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  async function handleDeleteImage(imgId) {
+    try {
+      await deleteEquipmentImage(imgId)
+      setModalImages((prev) => prev.filter((img) => img.id !== imgId))
+      setEquipments((prev) => prev.map((e) => {
+        if (e.id === editingEquipment.id) {
+          return { ...e, images: (e.images || []).filter((img) => img.id !== imgId) }
+        }
+        return e
+      }))
+    } catch (err) {
+      console.error(err)
+      setFormError(err.message || 'Xóa ảnh thất bại.')
+    }
+  }
+
   // Handle Form Submit
   async function handleSubmit(e) {
     e.preventDefault()
@@ -258,11 +286,20 @@ export function EquipmentListPage() {
 
     setSubmitting(true)
     try {
+      let savedEq;
       if (editingEquipment) {
-        await updateEquipment(editingEquipment.id, formData)
+        savedEq = await updateEquipment(editingEquipment.id, formData)
       } else {
-        await createEquipment(formData)
+        savedEq = await createEquipment(formData)
       }
+
+      // Upload newly selected images if any
+      if (newImageFiles.length > 0) {
+        for (const file of newImageFiles) {
+          await uploadEquipmentImage(savedEq.id, file)
+        }
+      }
+
       setIsModalOpen(false)
       loadData() // Refresh list
     } catch (err) {
@@ -309,6 +346,45 @@ export function EquipmentListPage() {
       return 'bg-rose-100 text-rose-700 border-rose-200'
     }
     return 'bg-slate-100 text-slate-600 border-slate-200'
+  }
+
+  const handlePrint = (elementId) => {
+    const originalTitle = document.title
+    document.title = `Bao_cao_thiet_bi_${new Date().toISOString().slice(0, 10)}`
+
+    const style = document.createElement('style')
+    style.id = 'print-temporary-style'
+    style.innerHTML =
+      '@media print {\n' +
+      '  body * {\n' +
+      '    visibility: hidden !important;\n' +
+      '  }\n' +
+      '  #' + elementId + ', #' + elementId + ' * {\n' +
+      '    visibility: visible !important;\n' +
+      '  }\n' +
+      '  #' + elementId + ' {\n' +
+      '    position: absolute !important;\n' +
+      '    left: 0 !important;\n' +
+      '    top: 0 !important;\n' +
+      '    width: 100% !important;\n' +
+      '    background: white !important;\n' +
+      '    color: black !important;\n' +
+      '    box-shadow: none !important;\n' +
+      '    border: none !important;\n' +
+      '  }\n' +
+      '  .no-print, .no-print * {\n' +
+      '    display: none !important;\n' +
+      '  }\n' +
+      '}'
+    document.head.appendChild(style)
+
+    window.print()
+
+    document.title = originalTitle
+    const tempStyle = document.getElementById('print-temporary-style')
+    if (tempStyle) {
+      tempStyle.remove()
+    }
   }
 
   return (
@@ -483,8 +559,33 @@ export function EquipmentListPage() {
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {eq.kksCode}
                   </td>
-                  <td className="px-5 py-4 font-semibold text-slate-900">
-                    {eq.equipmentName}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      {eq.images && eq.images.length > 0 ? (
+                        <img
+                          src={apiClient.url(eq.images[0].imageUrl)}
+                          alt={eq.equipmentName}
+                          className="size-10 rounded-md object-cover border border-slate-200 cursor-pointer hover:opacity-85 hover:scale-105 transition shrink-0"
+                          onClick={() => {
+                            setGalleryTarget(eq)
+                            setActiveGalleryIndex(0)
+                          }}
+                          title="Click để xem tất cả ảnh"
+                        />
+                      ) : (
+                        <div className="size-10 rounded-md bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-400 text-[10px] font-semibold shrink-0 select-none">
+                          No Img
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-semibold text-slate-900">{eq.equipmentName}</div>
+                        {eq.images && eq.images.length > 0 && (
+                          <div className="text-[10px] text-violet-600 font-bold mt-0.5">
+                            {eq.images.length} ảnh
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-5 py-4 text-slate-600">
                     {eq.equipmentType}
@@ -502,6 +603,13 @@ export function EquipmentListPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2 text-slate-400">
+                      <button
+                        onClick={() => setViewingEquipment(eq)}
+                        className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600 transition"
+                        title="Xem chi tiết"
+                      >
+                        <Eye size={16} />
+                      </button>
                       <button
                         onClick={() => openModal(eq)}
                         className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600 transition"
@@ -855,6 +963,82 @@ export function EquipmentListPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Hình ảnh thiết bị</label>
+
+                {/* Existing images list if editing */}
+                {editingEquipment && modalImages.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {modalImages.map((img) => (
+                      <div key={img.id} className="relative group size-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0">
+                        <img
+                          src={apiClient.url(img.imageUrl)}
+                          alt="Equipment"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteImage(img.id)}
+                          className="absolute inset-0 bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200 cursor-pointer font-bold text-xs"
+                          title="Xóa ảnh này"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Preview of newly selected files */}
+                {newImageFiles.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {newImageFiles.map((file, index) => {
+                      const previewUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="relative group size-20 rounded-lg overflow-hidden border border-violet-200 bg-violet-50 shrink-0">
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
+                            }}
+                            className="absolute top-1 right-1 size-5 bg-slate-900/70 hover:bg-slate-950 text-white rounded-full flex items-center justify-center transition cursor-pointer text-[10px]"
+                            title="Hủy chọn"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Upload Trigger Area */}
+                <div className="relative border-2 border-dashed border-slate-200 hover:border-violet-400 rounded-lg p-4 transition text-center bg-slate-50/50 hover:bg-slate-50">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const filesArray = Array.from(e.target.files);
+                        setNewImageFiles((prev) => [...prev, ...filesArray]);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="text-slate-400 text-xs flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                    <Plus size={20} className="text-slate-400" />
+                    <span className="font-semibold text-violet-600 hover:text-violet-700">Chọn ảnh tải lên</span>
+                    <span>(JPG, PNG, WEBP, GIF tối đa 20MB)</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <Button
                   onClick={() => setIsModalOpen(false)}
@@ -872,6 +1056,151 @@ export function EquipmentListPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Detail Modal */}
+      {viewingEquipment ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setViewingEquipment(null)} />
+          <div id="equipment-detail-print" className="relative z-10 w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-lg font-bold text-slate-950 flex items-center gap-2">
+                <Eye className="text-violet-600" size={20} />
+                <span>Chi tiết thiết bị</span>
+              </h2>
+              <button
+                onClick={() => setViewingEquipment(null)}
+                className="rounded-lg p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition no-print"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Image Section */}
+              <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200/60 rounded-lg p-4">
+                {viewingEquipment.images && viewingEquipment.images.length > 0 ? (
+                  <div className="w-full space-y-3">
+                    <img
+                      src={apiClient.url(viewingEquipment.images[0].imageUrl)}
+                      alt={viewingEquipment.equipmentName}
+                      className="w-full h-48 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 hover:scale-[1.02] transition"
+                      onClick={() => {
+                        setGalleryTarget(viewingEquipment)
+                        setActiveGalleryIndex(0)
+                      }}
+                      title="Click để xem toàn bộ ảnh"
+                    />
+                    {viewingEquipment.images.length > 1 && (
+                      <div className="flex justify-center gap-1.5 overflow-x-auto py-1">
+                        {viewingEquipment.images.map((img, index) => (
+                          <img
+                            key={img.id}
+                            src={apiClient.url(img.imageUrl)}
+                            alt="Thumbnail"
+                            className="size-10 rounded object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition"
+                            onClick={() => {
+                              setGalleryTarget(viewingEquipment)
+                              setActiveGalleryIndex(index)
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-center text-[10px] text-slate-400 italic">Click vào hình để xem thư viện ảnh ({viewingEquipment.images.length} ảnh)</p>
+                  </div>
+                ) : (
+                  <div className="w-full h-48 rounded-lg bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-200">
+                    <span className="text-xs font-semibold">Chưa có hình ảnh thiết bị</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Info Section */}
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mã định danh KKS</div>
+                  <div className="mt-1 font-mono font-bold text-sm text-violet-700 bg-violet-50/50 border border-violet-100 px-2.5 py-1.5 rounded-lg inline-block tracking-wide">
+                    {viewingEquipment.kksCode}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tên thiết bị</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">{viewingEquipment.equipmentName}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phân loại</div>
+                    <div className="mt-1 text-sm font-medium text-slate-700">{viewingEquipment.equipmentType}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái</div>
+                    <div className="mt-1">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold border ${getStatusBadgeStyle(viewingEquipment.status)}`}>
+                        {viewingEquipment.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hệ thống quản lý</div>
+                  <div className="mt-1 text-sm text-slate-700 font-medium">
+                    {systemMap.get(viewingEquipment.systemId) || (
+                      <span className="text-slate-400 italic">Chưa liên kết hệ thống</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vị trí lắp đặt</div>
+                  <div className="mt-1 text-sm text-slate-700 font-medium">
+                    {viewingEquipment.location || (
+                      <span className="text-slate-400 italic">Chưa xác định vị trí</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Technical Specs Section */}
+            <div className="mt-6 border-t border-slate-100 pt-5">
+              <h3 className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                <Network className="text-violet-600 animate-pulse" size={16} />
+                <span>Thông số kỹ thuật đặc trưng ({viewingEquipment.equipmentType})</span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/50">
+                {getTechnicalSpecs(viewingEquipment).map((spec, index) => (
+                  <div key={index} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1">{spec.label}</div>
+                    <div className="text-xs font-bold text-slate-800 font-mono">
+                      {spec.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-5 no-print">
+              <Button
+                onClick={() => handlePrint('equipment-detail-print')}
+                variant="secondary"
+                className="border-slate-200 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1.5"
+              >
+                <Printer size={16} />
+                In chi tiết PDF
+              </Button>
+              <Button
+                onClick={() => setViewingEquipment(null)}
+                className="bg-violet-600 hover:bg-violet-700 text-white font-medium"
+              >
+                Đóng
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -899,6 +1228,122 @@ export function EquipmentListPage() {
           </div>
         </div>
       )}
+
+      {/* Lightbox / Image Gallery Modal */}
+      {galleryTarget && galleryTarget.images && galleryTarget.images.length > 0 && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <button
+            onClick={() => setGalleryTarget(null)}
+            className="absolute top-5 right-5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2.5 transition cursor-pointer"
+            title="Đóng"
+          >
+            <X size={24} />
+          </button>
+
+          <div className="relative w-full max-w-4xl max-h-[80vh] flex items-center justify-center">
+            {galleryTarget.images.length > 1 && (
+              <button
+                onClick={() => {
+                  setActiveGalleryIndex((prev) => (prev === 0 ? galleryTarget.images.length - 1 : prev - 1));
+                }}
+                className="absolute left-4 z-10 text-white/70 hover:text-white bg-black/45 hover:bg-black/65 rounded-full p-3 transition cursor-pointer select-none active:scale-90"
+              >
+                <ChevronLeft size={24} />
+              </button>
+            )}
+
+            <img
+              src={apiClient.url(galleryTarget.images[activeGalleryIndex].imageUrl)}
+              alt={galleryTarget.equipmentName}
+              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl border border-white/10"
+            />
+
+            {galleryTarget.images.length > 1 && (
+              <button
+                onClick={() => {
+                  setActiveGalleryIndex((prev) => (prev === galleryTarget.images.length - 1 ? 0 : prev + 1));
+                }}
+                className="absolute right-4 z-10 text-white/70 hover:text-white bg-black/45 hover:bg-black/65 rounded-full p-3 transition cursor-pointer select-none active:scale-90"
+              >
+                <ChevronRight size={24} />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 text-center text-white space-y-1">
+            <h3 className="font-semibold text-lg">{galleryTarget.equipmentName}</h3>
+            <p className="text-xs text-white/60 font-mono">{galleryTarget.kksCode}</p>
+            {galleryTarget.images[activeGalleryIndex].caption && (
+              <p className="text-sm text-white/80 italic">"{galleryTarget.images[activeGalleryIndex].caption}"</p>
+            )}
+            {galleryTarget.images.length > 1 && (
+              <div className="inline-flex bg-white/10 rounded-full px-3 py-1 text-xs text-white/70 font-semibold mt-2">
+                Ảnh {activeGalleryIndex + 1} / {galleryTarget.images.length}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function getTechnicalSpecs(eq) {
+  if (!eq) return [];
+
+  const type = (eq.equipmentType || '').toLowerCase();
+  const kks = eq.kksCode || '';
+
+  // Deterministic hash based on KKS code
+  let hash = 0;
+  for (let i = 0; i < kks.length; i++) {
+    hash = kks.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  hash = Math.abs(hash);
+
+  if (type.includes('cơ khí') || type.includes('co khi') || type.includes('mechanical')) {
+    const powers = ['45 kW', '55 kW', '75 kW', '110 kW', '250 kW', '450 kW'];
+    const pressures = ['6 bar', '10 bar', '16 bar', '25 bar', '40 bar', '100 bar'];
+    const flows = ['50 m³/h', '80 m³/h', '120 m³/h', '250 m³/h', '500 m³/h'];
+    const temps = ['85 °C', '120 °C', '150 °C', '200 °C', '350 °C'];
+    const speeds = ['980 rpm', '1480 rpm', '2950 rpm', '3000 rpm'];
+
+    return [
+      { label: 'Công suất định mức', value: powers[hash % powers.length] },
+      { label: 'Áp suất thiết kế', value: pressures[(hash + 1) % pressures.length] },
+      { label: 'Lưu lượng danh định', value: flows[(hash + 2) % flows.length] },
+      { label: 'Nhiệt độ hoạt động', value: temps[(hash + 3) % temps.length] },
+      { label: 'Tốc độ quay trục', value: speeds[(hash + 4) % speeds.length] },
+    ];
+  }
+
+  if (type.includes('điện') || type.includes('dien') || type.includes('electrical')) {
+    const voltages = ['220 V AC', '380 V AC', '6.6 kV AC', '10 kV AC', '110 V DC', '220 V DC'];
+    const currents = ['12 A', '45 A', '85 A', '120 A', '250 A', '630 A'];
+    const classes = ['Class B', 'Class F', 'Class H'];
+    const cosPhis = ['0.82', '0.85', '0.88', '0.90', '0.92'];
+
+    return [
+      { label: 'Điện áp hoạt động', value: voltages[hash % voltages.length] },
+      { label: 'Dòng điện định mức', value: currents[(hash + 1) % currents.length] },
+      { label: 'Tần số thiết kế', value: '50 Hz' },
+      { label: 'Cấp cách điện', value: classes[(hash + 2) % classes.length] },
+      { label: 'Hệ số công suất (cos φ)', value: cosPhis[(hash + 3) % cosPhis.length] },
+    ];
+  }
+
+  // Default to CI (Control & Instrumentation)
+  const voltagesCI = ['24 V DC', '48 V DC', '110 V AC', '220 V AC'];
+  const signals = ['4 - 20 mA', '0 - 10 V', 'Modbus RTU', 'HART', 'Profibus DP'];
+  const tolerances = ['±0.05 %', '±0.1 %', '±0.2 %', '±0.5 %'];
+  const protocols = ['Modbus RTU/TCP', 'HART Protocol', 'Profibus', 'EtherNet/IP', 'Foundation Fieldbus'];
+  const ips = ['IP54', 'IP65', 'IP67', 'IP68'];
+
+  return [
+    { label: 'Nguồn cấp hoạt động', value: voltagesCI[hash % voltagesCI.length] },
+    { label: 'Tín hiệu điều khiển', value: signals[(hash + 1) % signals.length] },
+    { label: 'Sai số cho phép', value: tolerances[(hash + 2) % tolerances.length] },
+    { label: 'Giao thức truyền thông', value: protocols[(hash + 3) % protocols.length] },
+    { label: 'Cấp bảo vệ vỏ ngoài', value: ips[(hash + 4) % ips.length] },
+  ];
 }

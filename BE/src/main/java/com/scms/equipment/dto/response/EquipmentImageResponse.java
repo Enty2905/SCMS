@@ -3,7 +3,7 @@ package com.scms.equipment.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -11,13 +11,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EquipmentResponse {
+public class EquipmentImageResponse {
     UUID id;
-    String kksCode;
-    String equipmentName;
-    String equipmentType;
-    String status;
-    String location;
-    UUID systemId;
-    List<EquipmentImageResponse> images;
+    UUID equipmentId;
+    String imageUrl;
+    String caption;
+    UUID uploadedBy;
+    LocalDateTime uploadedAt;
 }
