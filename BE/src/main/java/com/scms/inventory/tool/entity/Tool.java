@@ -49,4 +49,7 @@ public class Tool {
     @Column(name = "is_deleted")
     @Builder.Default
     Boolean isDeleted = false;
+
+    @Column(name = "image_url", length = 500)
+    String imageUrl;
 }

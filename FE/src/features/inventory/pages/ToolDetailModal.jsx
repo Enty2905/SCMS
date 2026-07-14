@@ -36,6 +36,18 @@ export function ToolDetailModal({ item, onClose }) {
 
         {/* Content */}
         <div className="space-y-4 px-6 py-5">
+          {item.imageUrl && (
+            <div className="flex justify-center mb-4">
+              <div className="h-40 w-40 overflow-hidden rounded-md border border-slate-200 bg-slate-50 shadow-sm">
+                <img
+                  alt="CCDC Image"
+                  className="h-full w-full object-cover"
+                  src={item.imageUrl}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <DetailItem label="Tên CCDC" value={item.name} />
             <DetailItem label="Chủng loại" value={item.category || '---'} />
