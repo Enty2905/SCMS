@@ -421,11 +421,11 @@ public class TechnicalAssessmentService {
         }
 
         private String generateAssessmentNumber() {
-                long count = assessmentRepository.count();
-                long next = count + 1;
+                String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+                long next = 1;
                 String candidate;
                 do {
-                        candidate = String.format("BB-DGKT-%04d", next);
+                        candidate = String.format("BBKT-%s-%04d", datePrefix, next);
                         next++;
                 } while (assessmentRepository.existsByAssessmentNumber(candidate));
                 return candidate;
