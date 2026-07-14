@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
-import { fetchConsumableStocks } from '../services/consumableStock.service.js'
+import { sparePartStockService } from '../services/sparePartStock.service.js'
 
 const STATUS_LABELS = {
   available: 'Còn hàng',
@@ -15,7 +15,7 @@ const STATUS_BADGES = {
   out: 'bg-rose-100 text-rose-700',
 }
 
-export function ConsumableStockPage({ hideHeader }) {
+export function SparePartStockPage({ hideHeader }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -31,7 +31,7 @@ export function ConsumableStockPage({ hideHeader }) {
     try {
       setLoading(true)
       setError(null)
-      const data = await fetchConsumableStocks({ code: searchCode, name: searchName, page, size: 10 })
+      const data = await sparePartStockService.getAll({ keyword: searchCode || searchName, page, size: 10 })
       setItems(data.content || [])
       setTotalPages(data.totalPages || 0)
       setTotalElements(data.totalElements || 0)
@@ -67,7 +67,7 @@ export function ConsumableStockPage({ hideHeader }) {
     <div className={hideHeader ? "" : "mx-auto max-w-7xl"}>
       {!hideHeader && (
         <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-bold text-slate-950">Tồn kho vật tư tiêu hao</h1>
+          <h1 className="text-xl font-bold text-slate-950">Tồn kho vật tư thay thế</h1>
         </section>
       )}
 
@@ -146,7 +146,7 @@ export function ConsumableStockPage({ hideHeader }) {
                     const statusLabel = STATUS_LABELS[item.status] || item.status
                     const badgeClass = STATUS_BADGES[item.status] || 'bg-slate-100 text-slate-600'
                     return (
-                      <tr className="hover:bg-slate-50/80" key={item.consumableId}>
+                      <tr className="hover:bg-slate-50/80" key={item.sparePartId}>
                         <td className="px-5 py-4 font-semibold text-slate-950">
                           {item.code}
                         </td>

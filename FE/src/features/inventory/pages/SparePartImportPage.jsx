@@ -2,11 +2,11 @@ import { Plus, Eye } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
-import { fetchConsumableImports } from '../services/consumableImport.service.js'
-import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
-import { ConsumableImportDetailModal } from './ConsumableImportDetailModal.jsx'
+import { sparePartImportService } from '../services/sparePartImport.service.js'
+import { SparePartImportFormModal } from './SparePartImportFormModal.jsx'
+import { SparePartImportDetailModal } from './SparePartImportDetailModal.jsx'
 
-export function ConsumableImportPage({ hideHeader }) {
+export function SparePartImportPage({ hideHeader }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -22,7 +22,7 @@ export function ConsumableImportPage({ hideHeader }) {
     try {
       setLoading(true)
       setError(null)
-      const data = await fetchConsumableImports(page, 10)
+      const data = await sparePartImportService.getAll({ page, size: 10 })
       setItems(data.content || [])
       setTotalPages(data.totalPages || 0)
       setTotalElements(data.totalElements || 0)
@@ -53,7 +53,7 @@ export function ConsumableImportPage({ hideHeader }) {
     <div className={hideHeader ? "" : "mx-auto max-w-7xl"}>
       {!hideHeader && (
         <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-bold text-slate-950">Phiếu nhập kho vật tư tiêu hao</h1>
+          <h1 className="text-xl font-bold text-slate-950">Phiếu nhập kho vật tư thay thế</h1>
         </section>
       )}
 
@@ -169,14 +169,14 @@ export function ConsumableImportPage({ hideHeader }) {
       </section>
 
       {formModalOpen && (
-        <ConsumableImportFormModal
+        <SparePartImportFormModal
           onClose={() => setFormModalOpen(false)}
           onSuccess={handleFormSuccess}
         />
       )}
 
       {detailModalItem && (
-        <ConsumableImportDetailModal
+        <SparePartImportDetailModal
           item={detailModalItem}
           onClose={() => setDetailModalItem(null)}
         />
