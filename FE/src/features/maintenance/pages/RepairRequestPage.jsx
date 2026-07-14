@@ -178,6 +178,7 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
 
   const prevWorkOrder = useRef(workOrder)
   const [success, setSuccess] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
     if (workOrder && workOrder !== prevWorkOrder.current) setSuccess(true)
@@ -203,6 +204,13 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
 
   function handleSubmit(e) {
     e.preventDefault()
+    setValidationError('')
+
+    if (form.safetySupervisorId === form.workLeaderId || form.safetySupervisorId === form.directCommanderId) {
+      setValidationError('Người giám sát an toàn phải khác Lãnh đạo thi công và Chỉ huy trực tiếp')
+      return
+    }
+
     const body = {
       ...(form.requestId ? { requestId: form.requestId } : {}),
       ...(form.content ? { content: form.content } : {}),
@@ -274,13 +282,6 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
           </div>
         ) : (
           <form className="space-y-5 p-6" onSubmit={handleSubmit}>
-            {error ? (
-              <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2">
-                <AlertTriangle className="shrink-0 text-rose-500" size={16} />
-                <p className="text-sm font-medium text-rose-700">{error}</p>
-              </div>
-            ) : null}
-
             {/* Liên kết Request (tuỳ chọn) */}
             <div>
               <label className={labelCls}>Liên kết yêu cầu sửa chữa (tuỳ chọn)</label>
@@ -403,6 +404,13 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
                 <p className="mt-1 text-xs text-slate-500">Đã chọn {form.memberIds.length} thành viên</p>
               ) : null}
             </div>
+
+            {error || validationError ? (
+              <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 mt-4">
+                <AlertTriangle className="shrink-0 text-rose-500 mt-0.5" size={16} />
+                <p className="text-sm font-medium text-rose-700">{error || validationError}</p>
+              </div>
+            ) : null}
 
             {/* Footer */}
             <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">

@@ -232,11 +232,11 @@ public class ConsumableRequestService {
     }
 
     private String generateReqNumber() {
-        long count = consumableRequestRepository.count();
-        long next = count + 1;
+        String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+        long next = 1;
         String candidate;
         do {
-            candidate = String.format("YC-VTH-%04d", next);
+            candidate = String.format("YCVT-%s-%04d", datePrefix, next);
             next++;
         } while (consumableRequestRepository.existsByReqNumber(candidate));
         return candidate;

@@ -65,6 +65,13 @@ public class WorkOrderService {
                 Employee directCommander = getEmployeeOrThrow(req.getDirectCommanderId());
                 Employee safetySupervisor = getEmployeeOrThrow(req.getSafetySupervisorId());
 
+                // Ràng buộc người an toàn khác Lãnh đạo thi công, Chỉ huy trực tiếp và Thành viên thi công
+                if (req.getSafetySupervisorId().equals(req.getWorkLeaderId()) ||
+                    req.getSafetySupervisorId().equals(req.getDirectCommanderId()) ||
+                    (req.getMemberIds() != null && req.getMemberIds().contains(req.getSafetySupervisorId()))) {
+                    throw new AppException(ErrorCode.SAFETY_SUPERVISOR_MUST_BE_UNIQUE);
+                }
+
                 // 5. Tạo WorkOrder (status = draft)
                 WorkOrder workOrder = WorkOrder.builder()
                                 .orderNumber(orderNumber) // số tự sinh
@@ -143,11 +150,11 @@ public class WorkOrderService {
          * chưa dùng.
          */
         private String generateOrderNumber() {
-                long count = workOrderRepository.countAllOrders();
-                long next = count + 1;
+                String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+                long next = 1;
                 String candidate;
                 do {
-                        candidate = String.format("PCT-%04d", next);
+                        candidate = String.format("PCT-%s-%04d", datePrefix, next);
                         next++;
                 } while (workOrderRepository.existsByOrderNumber(candidate));
                 return candidate;
