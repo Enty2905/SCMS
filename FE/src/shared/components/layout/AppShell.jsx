@@ -26,6 +26,7 @@ import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
 import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
 import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
+import { fetchTools } from '@/features/inventory/services/tool.service.js'
 
 
 const navItems = [
@@ -111,6 +112,28 @@ export function AppShell() {
           }
         }
 
+        // Load damaged tool warnings for TKCCDC role
+        if (hasAnyRole(user, [ROLES.WAREHOUSE_TOOL])) {
+          try {
+            const toolData = await fetchTools(null, null, 0, 1000)
+            const tools = toolData.content || []
+            const toolWarnings = tools
+              .filter((item) => item.status === 'damaged')
+              .map((item) => ({
+                id: `tool-${item.toolId}`,
+                name: item.name,
+                status: item.status,
+                title: 'CCDC bị hỏng',
+                message: `${item.name} - Bị hỏng: ${item.damagedQuantity}`,
+                type: 'error',
+                category: 'tool',
+              }))
+            allNotifications = [...allNotifications, ...toolWarnings]
+          } catch (err) {
+            console.error('Failed to load tool notifications', err)
+          }
+        }
+
         setNotifications(allNotifications)
       } catch (err) {
         console.error('Failed to load notifications in AppShell', err)
@@ -126,6 +149,8 @@ export function AppShell() {
     setIsNotifOpen(false)
     if (notif.category === 'material') {
       navigate('/dashboard/inventory/consumable-stocks')
+    } else if (notif.category === 'tool') {
+      navigate('/dashboard/inventory/tools')
     } else {
       navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
     }
