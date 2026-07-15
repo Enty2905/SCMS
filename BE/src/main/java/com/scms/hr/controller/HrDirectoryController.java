@@ -36,6 +36,7 @@ public class HrDirectoryController {
     HrDirectoryService hrDirectoryService;
 
     @GetMapping("/employees")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_TOOL')")
     public ApiResponse<List<EmployeeResponse>> getEmployees() {
         return ApiResponse.success("Employees loaded successfully", hrDirectoryService.getEmployees());
     }
