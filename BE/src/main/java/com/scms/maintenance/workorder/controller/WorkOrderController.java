@@ -4,13 +4,17 @@ import com.scms.common.response.ApiResponse;
 import com.scms.maintenance.workorder.dto.request.CreateWorkOrderRequest;
 import com.scms.maintenance.workorder.dto.response.WorkOrderResponse;
 import com.scms.maintenance.workorder.service.WorkOrderService;
+import com.scms.maintenance.workorder.service.WorkOrderPdfService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +29,7 @@ import java.util.UUID;
 public class WorkOrderController {
 
     WorkOrderService workOrderService;
+    WorkOrderPdfService workOrderPdfService;
 
     /**
      * Chức năng 2: Tạo phiếu công tác từ một repair request
@@ -53,9 +58,11 @@ public class WorkOrderController {
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'SHIFT_LEADER')")
-    @Operation(summary = "Danh sách phiếu công tác", description = "Lấy toàn bộ danh sách PCT có trong hệ thống")
-    public ApiResponse<java.util.List<WorkOrderResponse>> getWorkOrders() {
-        return ApiResponse.success(workOrderService.getAllWorkOrders());
+    @Operation(summary = "Danh sách phiếu công tác", description = "Lấy danh sách PCT, hỗ trợ lọc theo số PCT và mã KKS")
+    public ApiResponse<java.util.List<WorkOrderResponse>> getWorkOrders(
+            @RequestParam(required = false) String orderNumber,
+            @RequestParam(required = false) String kksCode) {
+        return ApiResponse.success(workOrderService.getAllWorkOrders(orderNumber, kksCode));
     }
 
     /**
@@ -67,5 +74,20 @@ public class WorkOrderController {
     @Operation(summary = "Chi tiết phiếu công tác", description = "Xem đầy đủ thông tin PCT theo ID")
     public ApiResponse<WorkOrderResponse> getWorkOrder(@PathVariable UUID orderId) {
         return ApiResponse.success(workOrderService.getWorkOrderById(orderId));
+    }
+
+    /**
+     * Xuất PDF phiếu công tác
+     * Quyền: ADMIN, REPAIR_MANAGER, TEAM_LEADER
+     */
+    @GetMapping("/{orderId}/export-pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Xuất PDF phiếu công tác")
+    public ResponseEntity<byte[]> exportPdf(@PathVariable UUID orderId) {
+        byte[] pdf = workOrderPdfService.exportPdf(orderId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"PCT-" + orderId + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

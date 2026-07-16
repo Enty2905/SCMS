@@ -1,8 +1,6 @@
 import {
   AlertTriangle,
-  CheckCircle2,
   Loader2,
-  Plus,
   RefreshCw,
   Search,
   X,
@@ -14,16 +12,8 @@ import { fetchHrDirectoryData } from '@/features/hr/store/hr-directory.thunks.js
 import { selectHrEmployees } from '@/features/hr/store/hr-directory.selectors.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 
-import {
-  selectRequests,
-  selectRequestsError,
-  selectRequestsLoading,
-  selectWorkOrder,
-  selectWorkOrderError,
-  selectWorkOrderLoading,
-} from '../store/maintenance.selectors.js'
-import { createWorkOrder, fetchPendingRequests } from '../store/maintenance.thunks.js'
-import { clearWorkOrderError } from '../store/maintenance.reducer.js'
+import { selectRequests, selectRequestsError, selectRequestsLoading } from '../store/maintenance.selectors.js'
+import { fetchPendingRequests } from '../store/maintenance.thunks.js'
 
 // ── Priority config ──────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -446,8 +436,6 @@ export function RepairRequestPage() {
   const [searchName, setSearchName] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
   const [priority, setPriority] = useState('all')
-  const [showModal, setShowModal] = useState(false)
-  const [defaultRequestId, setDefaultRequestId] = useState('')
 
   const filteredRequests = useMemo(() => {
     const kksKw = searchKks.trim().toLowerCase()
@@ -487,16 +475,6 @@ export function RepairRequestPage() {
     dispatch(fetchHrDirectoryData())
   }, [dispatch])
 
-  function openModal(requestId = '') {
-    setDefaultRequestId(requestId)
-    setShowModal(true)
-  }
-
-  function handleCloseModal() {
-    setShowModal(false)
-    dispatch(fetchPendingRequests())
-  }
-
   return (
     <div className="mx-auto max-w-7xl">
       {/* Header */}
@@ -507,10 +485,6 @@ export function RepairRequestPage() {
             Danh sách yêu cầu đang chờ xử lý từ trưởng ca / trưởng kíp.
           </p>
         </div>
-        <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => openModal()}>
-          <Plus size={17} />
-          Tạo phiếu công tác
-        </Button>
       </section>
 
       {/* Filters với Phân tách 2 trường tìm kiếm */}
@@ -636,12 +610,9 @@ export function RepairRequestPage() {
                       {formatDateTime(r.createdAt)}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        className="rounded-md bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
-                        onClick={() => openModal(r.requestId)}
-                      >
-                        Tạo PCT
-                      </button>
+                      <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                        Xem PCT
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -710,14 +681,6 @@ export function RepairRequestPage() {
         })() : null}
       </section>
 
-      {showModal ? (
-        <CreateWorkOrderModal
-          defaultRequestId={defaultRequestId}
-          employees={employees}
-          onClose={handleCloseModal}
-          requests={requests}
-        />
-      ) : null}
     </div>
   )
 }

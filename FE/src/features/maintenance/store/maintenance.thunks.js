@@ -7,6 +7,7 @@ import {
   fetchPendingRequestsService,
   uploadSignedPdfService,
   fetchWorkOrdersService,
+  exportWorkOrderPdfService,
   fetchConsumableRequestsService,
   createConsumableRequestService,
   fetchSparePartRequestsService,
@@ -43,7 +44,7 @@ export const fetchAssessments = createAsyncThunk(
 
 export const fetchWorkOrders = createAsyncThunk(
   'maintenance/fetchWorkOrders',
-  async () => fetchWorkOrdersService(),
+  async (params) => fetchWorkOrdersService(params),
 )
 
 export const fetchConsumableRequests = createAsyncThunk(
