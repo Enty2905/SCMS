@@ -1,7 +1,6 @@
 package com.scms.inventory.consumable.service;
 
 import com.itextpdf.io.font.PdfEncodings;
-import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
@@ -9,7 +8,6 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
-import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
@@ -50,7 +48,6 @@ import java.util.UUID;
 public class ConsumableRequestService {
 
     ConsumableRequestRepository consumableRequestRepository;
-    ConsumableRequestItemRepository consumableRequestItemRepository;
     WorkOrderRepository workOrderRepository;
     ConsumableRepository consumableRepository;
     UserRepository userRepository;
@@ -199,17 +196,17 @@ public class ConsumableRequestService {
                     .add(new Paragraph("NGƯỜI YÊU CẦU").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
             
-            Cell managerCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("QUẢN ĐỐC DUYỆT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
+            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
+                    .add(new Paragraph("NGƯỜI CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
 
-            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("KHO CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
+            Cell receiverCell = new Cell().setBorder(Border.NO_BORDER)
+                    .add(new Paragraph("NGƯỜI NHẬN").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
 
             signTable.addCell(requesterCell);
-            signTable.addCell(managerCell);
             signTable.addCell(issuerCell);
+            signTable.addCell(receiverCell);
             document.add(signTable);
 
             document.close();
