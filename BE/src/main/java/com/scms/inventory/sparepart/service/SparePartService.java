@@ -1,6 +1,5 @@
 package com.scms.inventory.sparepart.service;
 
-import com.scms.common.exception.DuplicateResourceException;
 import com.scms.common.exception.NotFoundException;
 import com.scms.common.response.PagedResponse;
 import com.scms.inventory.sparepart.dto.request.SparePartRequest;
