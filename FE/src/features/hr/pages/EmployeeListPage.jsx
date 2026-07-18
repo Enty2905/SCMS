@@ -1,9 +1,10 @@
-import { Edit3, Filter, ImagePlus, Plus, Search, X } from 'lucide-react'
+import { Edit3, Filter, ImagePlus, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { apiClient } from '@/shared/api/httpClient.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 
 import {
   selectHrDepartments,
@@ -15,6 +16,7 @@ import {
 } from '../store/hr-directory.selectors.js'
 import {
   createEmployee,
+  deleteEmployee,
   fetchHrDirectoryData,
   updateEmployee,
 } from '../store/hr-directory.thunks.js'
@@ -22,6 +24,7 @@ import {
 const emptyForm = {
   employeeName: '',
   phone: '',
+  email: '',
   departmentId: '',
   positionId: '',
   workLocation: '',
@@ -40,6 +43,7 @@ export function EmployeeListPage() {
   const [department, setDepartment] = useState('all')
   const [status, setStatus] = useState('all')
   const [editingEmployee, setEditingEmployee] = useState(undefined)
+  const [employeeToDelete, setEmployeeToDelete] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
 
@@ -51,6 +55,7 @@ export function EmployeeListPage() {
           !keyword ||
           employee.employeeCode?.toLowerCase().includes(keyword) ||
           employee.employeeName?.toLowerCase().includes(keyword) ||
+          employee.email?.toLowerCase().includes(keyword) ||
           employee.phone?.includes(keyword)
         const matchesDepartment =
           department === 'all' || employee.departmentId === department
@@ -76,6 +81,7 @@ export function EmployeeListPage() {
     setForm({
       employeeName: employee.employeeName || '',
       phone: employee.phone || '',
+      email: employee.email || '',
       departmentId: employee.departmentId || '',
       positionId: employee.positionId || '',
       workLocation: employee.workLocation || '',
@@ -107,6 +113,7 @@ export function EmployeeListPage() {
       ...form,
       employeeName: form.employeeName.trim(),
       phone: form.phone.trim(),
+      email: form.email.trim(),
       workLocation: form.workLocation.trim(),
     }
 
@@ -120,6 +127,17 @@ export function EmployeeListPage() {
       closeModal()
     } catch (err) {
       setFormError(err.message || 'Không thể lưu nhân viên. Vui lòng thử lại.')
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!employeeToDelete) return
+
+    try {
+      await dispatch(deleteEmployee(employeeToDelete.employeeId)).unwrap()
+      setEmployeeToDelete(null)
+    } catch {
+      // Redux stores and displays the backend business-rule message.
     }
   }
 
@@ -193,6 +211,7 @@ export function EmployeeListPage() {
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
+                <th className="w-16 px-5 py-3 text-center font-semibold">STT</th>
                 <th className="px-5 py-3 font-semibold">Mã NV</th>
                 <th className="px-5 py-3 font-semibold">Họ tên</th>
                 <th className="px-5 py-3 font-semibold">Phòng ban</th>
@@ -206,7 +225,7 @@ export function EmployeeListPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -214,15 +233,18 @@ export function EmployeeListPage() {
 
               {!loading && !filteredEmployees.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Không có nhân viên phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? filteredEmployees.map((employee) => (
+                ? filteredEmployees.map((employee, index) => (
                     <tr className="hover:bg-slate-50/80" key={employee.employeeId}>
+                      <td className="px-5 py-4 text-center font-medium text-slate-500">
+                        {index + 1}
+                      </td>
                       <td className="px-5 py-4 font-semibold text-slate-700">
                         {employee.employeeCode}
                       </td>
@@ -256,11 +278,26 @@ export function EmployeeListPage() {
                         <div className="flex justify-end gap-2 text-slate-400">
                           <Button
                             className="hover:text-violet-600"
+                            aria-label={`Cập nhật ${employee.employeeName}`}
                             onClick={() => openEditModal(employee)}
                             size="icon"
+                            title="Cập nhật nhân viên"
                             variant="ghost"
                           >
                             <Edit3 size={16} />
+                          </Button>
+                          <Button
+                            aria-label={`Xóa ${employee.employeeName}`}
+                            className="text-rose-500 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={saving}
+                            onClick={() => setEmployeeToDelete(employee)}
+                            size="icon"
+                            title={employee.hasAccount
+                              ? 'Xóa mềm nhân viên và khóa tài khoản liên quan'
+                              : 'Xóa nhân viên'}
+                            variant="ghost"
+                          >
+                            <Trash2 size={16} />
                           </Button>
                         </div>
                       </td>
@@ -285,6 +322,16 @@ export function EmployeeListPage() {
           saving={saving}
         />
       ) : null}
+
+      <ConfirmModal
+        confirmText={saving ? 'Đang xóa...' : 'Xóa nhân viên'}
+        isOpen={Boolean(employeeToDelete)}
+        message={`Nhân viên "${employeeToDelete?.employeeName || ''}" sẽ được xóa mềm và không còn xuất hiện trong danh sách.${employeeToDelete?.hasAccount ? ' Tài khoản liên quan cũng sẽ bị khóa và xóa mềm.' : ''} Dữ liệu lịch sử vẫn được giữ lại.`}
+        onClose={() => setEmployeeToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa nhân viên"
+        type="danger"
+      />
     </div>
   )
 }
@@ -362,6 +409,17 @@ function EmployeeFormModal({
               className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               onChange={(event) => updateField('phone', event.target.value)}
               value={form.phone}
+            />
+          </label>
+
+          <label>
+            <span className="text-sm font-semibold text-slate-700">Email</span>
+            <input
+              className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => updateField('email', event.target.value)}
+              placeholder="vd: nguyenvana@nhm.vn"
+              type="email"
+              value={form.email}
             />
           </label>
 

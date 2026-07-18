@@ -4,7 +4,10 @@ import {
   createDepartment,
   createEmployee,
   deleteDepartment,
+  deleteEmployee,
   fetchHrDirectoryData,
+  removeEmployeeFromDepartment,
+  updateDepartment,
   updateEmployee,
 } from './hr-directory.thunks.js'
 
@@ -49,6 +52,12 @@ const hrDirectorySlice = createSlice({
         state.saving = false
         state.error = action.error.message || 'Khong the them phong ban'
       })
+      .addCase(updateDepartment.pending, markSaving)
+      .addCase(updateDepartment.fulfilled, markSaved)
+      .addCase(updateDepartment.rejected, (state, action) => {
+        state.saving = false
+        state.error = action.error.message || 'Khong the cap nhat phong ban'
+      })
       .addCase(createEmployee.pending, markSaving)
       .addCase(createEmployee.fulfilled, markSaved)
       .addCase(createEmployee.rejected, (state, action) => {
@@ -60,6 +69,18 @@ const hrDirectorySlice = createSlice({
       .addCase(updateEmployee.rejected, (state, action) => {
         state.saving = false
         state.error = action.error.message || 'Khong the cap nhat nhan vien'
+      })
+      .addCase(deleteEmployee.pending, markSaving)
+      .addCase(deleteEmployee.fulfilled, markSaved)
+      .addCase(deleteEmployee.rejected, (state, action) => {
+        state.saving = false
+        state.error = action.error.message || 'Khong the xoa nhan vien'
+      })
+      .addCase(removeEmployeeFromDepartment.pending, markSaving)
+      .addCase(removeEmployeeFromDepartment.fulfilled, markSaved)
+      .addCase(removeEmployeeFromDepartment.rejected, (state, action) => {
+        state.saving = false
+        state.error = action.error.message || 'Khong the xoa nhan vien khoi phong ban'
       })
   },
 })

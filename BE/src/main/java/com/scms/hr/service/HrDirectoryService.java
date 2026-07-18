@@ -1,6 +1,7 @@
 package com.scms.hr.service;
 
 import com.scms.auth.repository.UserRepository;
+import com.scms.common.exception.BadRequestException;
 import com.scms.common.exception.DuplicateResourceException;
 import com.scms.common.exception.NotFoundException;
 import com.scms.department.entity.Department;
@@ -74,9 +75,7 @@ public class HrDirectoryService {
     @Transactional
     public DepartmentResponse createDepartment(DepartmentCreateRequest request) {
         String departmentCode = blankToNull(request.getDepartmentCode());
-        if (departmentCode != null && departmentRepository.findByDepartmentCode(departmentCode).isPresent()) {
-            throw new DuplicateResourceException("Department", "departmentCode", departmentCode);
-        }
+        validateDepartmentCode(departmentCode, null);
 
         Department department = Department.builder()
                 .departmentName(request.getDepartmentName().trim())
@@ -89,6 +88,27 @@ public class HrDirectoryService {
                 .departmentCode(savedDepartment.getDepartmentCode())
                 .departmentName(savedDepartment.getDepartmentName())
                 .employeeCount(0L)
+                .build();
+    }
+
+    @Transactional
+    public DepartmentResponse updateDepartment(UUID departmentId, DepartmentCreateRequest request) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new NotFoundException("Department", "departmentId", departmentId));
+        String departmentCode = blankToNull(request.getDepartmentCode());
+        validateDepartmentCode(departmentCode, departmentId);
+
+        department.setDepartmentName(request.getDepartmentName().trim());
+        department.setDepartmentCode(departmentCode);
+        Department savedDepartment = departmentRepository.save(department);
+
+        long employeeCount = employeeRepository.countByDepartmentDepartmentId(departmentId);
+
+        return DepartmentResponse.builder()
+                .departmentId(savedDepartment.getDepartmentId())
+                .departmentCode(savedDepartment.getDepartmentCode())
+                .departmentName(savedDepartment.getDepartmentName())
+                .employeeCount(employeeCount)
                 .build();
     }
 
@@ -113,18 +133,65 @@ public class HrDirectoryService {
     }
 
     @Transactional
-    public void deleteDepartment(UUID departmentId) {
-        if (!departmentRepository.existsById(departmentId)) {
-            throw new NotFoundException("Department", "departmentId", departmentId);
+    public void deleteEmployee(UUID employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee", "employeeId", employeeId));
+
+        userRepository.findByEmployeeEmployeeId(employeeId).ifPresent(user -> {
+            user.setIsActive(false);
+            user.setDeleted(true);
+            userRepository.save(user);
+        });
+
+        employeeRepository.delete(employee);
+    }
+
+    @Transactional
+    public EmployeeResponse removeEmployeeFromDepartment(UUID departmentId, UUID employeeId) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new NotFoundException("Department", "departmentId", departmentId));
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee", "employeeId", employeeId));
+
+        if (employee.getDepartment() == null
+                || !department.getDepartmentId().equals(employee.getDepartment().getDepartmentId())) {
+            throw new BadRequestException("Nhân viên không thuộc phòng ban đã chọn.");
         }
 
-        employeeRepository.clearDepartment(departmentId);
-        departmentRepository.deleteById(departmentId);
+        employee.setDepartment(null);
+        return toEmployeeResponse(employeeRepository.save(employee), 0);
+    }
+
+    @Transactional
+    public void deleteDepartment(UUID departmentId) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new NotFoundException("Department", "departmentId", departmentId));
+
+        if (employeeRepository.existsByDepartmentDepartmentId(departmentId)) {
+            throw new BadRequestException(
+                    "Phòng ban vẫn còn nhân viên. Hãy chuyển hoặc xóa nhân viên trước khi xóa phòng ban."
+            );
+        }
+
+        departmentRepository.delete(department);
+    }
+
+    private void validateDepartmentCode(String departmentCode, UUID currentDepartmentId) {
+        if (departmentCode == null) {
+            return;
+        }
+
+        departmentRepository.findByDepartmentCode(departmentCode)
+                .filter(department -> !department.getDepartmentId().equals(currentDepartmentId))
+                .ifPresent(department -> {
+                    throw new DuplicateResourceException("Department", "departmentCode", departmentCode);
+                });
     }
 
     private void applyEmployeeRequest(Employee employee, EmployeeUpsertRequest request) {
         employee.setName(request.getEmployeeName().trim());
         employee.setPhone(blankToNull(request.getPhone()));
+        employee.setEmail(blankToNull(request.getEmail()));
         employee.setWorkLocation(blankToNull(request.getWorkLocation()));
         employee.setDepartment(resolveDepartment(request.getDepartmentId()));
         employee.setPosition(resolvePosition(request.getPositionId()));
@@ -197,19 +264,12 @@ public class HrDirectoryService {
                 .map(user -> !Boolean.TRUE.equals(user.getDeleted()))
                 .orElse(false);
         String employeeCode = index > 0 ? "NV" + String.format("%03d", index) : null;
-        String emailName = employee.getName() == null
-                ? "nhanvien"
-                : employee.getName()
-                        .toLowerCase()
-                        .replaceAll("[^a-z0-9\\s]", "")
-                        .replaceAll("\\s+", "");
-
         return EmployeeResponse.builder()
                 .employeeId(employee.getEmployeeId())
                 .employeeCode(employeeCode)
                 .employeeName(employee.getName())
                 .phone(employee.getPhone())
-                .email(emailName + "@nhm.vn")
+                .email(employee.getEmail())
                 .gender(null)
                 .departmentId(employee.getDepartment() != null
                         ? employee.getDepartment().getDepartmentId()

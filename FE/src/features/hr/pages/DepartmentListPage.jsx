@@ -1,5 +1,5 @@
-import { Building2, Plus, Trash2, UsersRound, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Building2, Edit3, Plus, Trash2, UserMinus, UsersRound, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
@@ -10,11 +10,14 @@ import {
   selectHrDirectoryError,
   selectHrDirectoryLoading,
   selectHrDirectorySaving,
+  selectHrEmployees,
 } from '../store/hr-directory.selectors.js'
 import {
   createDepartment,
   deleteDepartment,
   fetchHrDirectoryData,
+  removeEmployeeFromDepartment,
+  updateDepartment,
 } from '../store/hr-directory.thunks.js'
 
 const emptyDepartmentForm = {
@@ -25,26 +28,50 @@ const emptyDepartmentForm = {
 export function DepartmentListPage() {
   const dispatch = useDispatch()
   const departments = useSelector(selectHrDepartments)
+  const employees = useSelector(selectHrEmployees)
   const loading = useSelector(selectHrDirectoryLoading)
   const saving = useSelector(selectHrDirectorySaving)
   const error = useSelector(selectHrDirectoryError)
   const [departmentToDelete, setDepartmentToDelete] = useState(null)
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(null)
+  const [employeeToRemove, setEmployeeToRemove] = useState(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingDepartment, setEditingDepartment] = useState(null)
   const [form, setForm] = useState(emptyDepartmentForm)
   const [formError, setFormError] = useState('')
+
+  const selectedDepartment = departments.find(
+    (department) => department.departmentId === selectedDepartmentId,
+  ) || null
+  const departmentEmployees = useMemo(
+    () => employees.filter((employee) => employee.departmentId === selectedDepartmentId),
+    [employees, selectedDepartmentId],
+  )
 
   useEffect(() => {
     dispatch(fetchHrDirectoryData())
   }, [dispatch])
 
   const handleOpenCreate = () => {
+    setEditingDepartment(null)
     setForm(emptyDepartmentForm)
+    setFormError('')
+    setIsCreateOpen(true)
+  }
+
+  const handleOpenEdit = (department) => {
+    setEditingDepartment(department)
+    setForm({
+      departmentName: department.departmentName || '',
+      departmentCode: department.departmentCode || '',
+    })
     setFormError('')
     setIsCreateOpen(true)
   }
 
   const handleCloseCreate = () => {
     setIsCreateOpen(false)
+    setEditingDepartment(null)
     setForm(emptyDepartmentForm)
     setFormError('')
   }
@@ -58,13 +85,22 @@ export function DepartmentListPage() {
     }
 
     try {
-      await dispatch(createDepartment({
+      const payload = {
         departmentName: form.departmentName.trim(),
         departmentCode: form.departmentCode.trim(),
-      })).unwrap()
+      }
+
+      if (editingDepartment) {
+        await dispatch(updateDepartment({
+          departmentId: editingDepartment.departmentId,
+          payload,
+        })).unwrap()
+      } else {
+        await dispatch(createDepartment(payload)).unwrap()
+      }
       handleCloseCreate()
     } catch (err) {
-      setFormError(err.message || 'Không thể thêm phòng ban. Vui lòng thử lại.')
+      setFormError(err.message || 'Không thể lưu phòng ban. Vui lòng thử lại.')
     }
   }
 
@@ -76,6 +112,20 @@ export function DepartmentListPage() {
       setDepartmentToDelete(null)
     } catch {
       // Error is stored in Redux and displayed above the list.
+    }
+  }
+
+  const handleConfirmRemoveEmployee = async () => {
+    if (!selectedDepartment || !employeeToRemove) return
+
+    try {
+      await dispatch(removeEmployeeFromDepartment({
+        departmentId: selectedDepartment.departmentId,
+        employeeId: employeeToRemove.employeeId,
+      })).unwrap()
+      setEmployeeToRemove(null)
+    } catch {
+      // Error is stored in Redux and displayed above the department list.
     }
   }
 
@@ -123,15 +173,28 @@ export function DepartmentListPage() {
                   <div className="grid size-10 place-items-center rounded-md bg-violet-100 text-violet-700">
                     <Building2 size={20} />
                   </div>
-                  <Button
-                    className="text-rose-600 hover:bg-rose-50"
-                    disabled={saving}
-                    onClick={() => setDepartmentToDelete(department)}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      className="text-slate-500 hover:bg-violet-50 hover:text-violet-700"
+                      disabled={saving}
+                      onClick={() => handleOpenEdit(department)}
+                      size="icon"
+                      title="Cập nhật phòng ban"
+                      variant="ghost"
+                    >
+                      <Edit3 size={16} />
+                    </Button>
+                    <Button
+                      className="text-rose-600 hover:bg-rose-50"
+                      disabled={saving}
+                      onClick={() => setDepartmentToDelete(department)}
+                      size="icon"
+                      title="Xóa phòng ban"
+                      variant="ghost"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </div>
                 <p className="mt-5 text-xs font-bold uppercase tracking-wide text-slate-400">
                   {department.departmentCode || 'N/A'}
@@ -142,7 +205,11 @@ export function DepartmentListPage() {
                 <p className="mt-2 text-sm text-slate-500">
                   Dữ liệu lấy trực tiếp từ cơ sở dữ liệu.
                 </p>
-                <div className="mt-5 flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
+                <button
+                  className="mt-5 flex w-full items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-left transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-500/15"
+                  onClick={() => setSelectedDepartmentId(department.departmentId)}
+                  type="button"
+                >
                   <span className="flex items-center gap-2 text-sm text-slate-500">
                     <UsersRound size={16} />
                     Nhân sự
@@ -150,7 +217,7 @@ export function DepartmentListPage() {
                   <span className="font-semibold text-slate-950">
                     {department.employeeCount}
                   </span>
-                </div>
+                </button>
               </article>
             ))
           : null}
@@ -158,6 +225,7 @@ export function DepartmentListPage() {
 
       {isCreateOpen ? (
         <DepartmentCreateModal
+          department={editingDepartment}
           error={formError}
           form={form}
           onChange={setForm}
@@ -167,10 +235,30 @@ export function DepartmentListPage() {
         />
       ) : null}
 
+      {selectedDepartment ? (
+        <DepartmentEmployeesModal
+          department={selectedDepartment}
+          employees={departmentEmployees}
+          onClose={() => setSelectedDepartmentId(null)}
+          onRemove={setEmployeeToRemove}
+          saving={saving}
+        />
+      ) : null}
+
+      <ConfirmModal
+        confirmText={saving ? 'Đang xử lý...' : 'Gỡ khỏi phòng ban'}
+        isOpen={Boolean(employeeToRemove)}
+        message={`Nhân viên "${employeeToRemove?.employeeName || ''}" sẽ được gỡ khỏi phòng ban "${selectedDepartment?.departmentName || ''}". Hồ sơ và tài khoản của nhân viên vẫn được giữ nguyên.`}
+        onClose={() => setEmployeeToRemove(null)}
+        onConfirm={handleConfirmRemoveEmployee}
+        title="Xác nhận gỡ nhân viên"
+        type="warning"
+      />
+
       <ConfirmModal
         confirmText={saving ? 'Đang xóa...' : 'Xóa phòng ban'}
         isOpen={Boolean(departmentToDelete)}
-        message={`Phòng ban "${departmentToDelete?.departmentName || ''}" sẽ bị xóa khỏi hệ thống. Nhân viên thuộc phòng ban này sẽ được bỏ liên kết phòng ban theo cấu hình database.`}
+        message={`Phòng ban "${departmentToDelete?.departmentName || ''}" sẽ được xóa mềm khỏi hệ thống. Chỉ có thể xóa khi phòng ban không còn nhân viên.`}
         onClose={() => setDepartmentToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Xác nhận xóa phòng ban"
@@ -180,7 +268,90 @@ export function DepartmentListPage() {
   )
 }
 
+function DepartmentEmployeesModal({ department, employees, onClose, onRemove, saving }) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+      <section className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">
+              Nhân sự phòng ban: {department.departmentName}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Có {employees.length} nhân viên đang thuộc phòng ban này.
+            </p>
+          </div>
+          <Button aria-label="Đóng danh sách nhân sự" onClick={onClose} size="icon" variant="ghost">
+            <X size={18} />
+          </Button>
+        </div>
+
+        <div className="max-h-[65vh] overflow-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="w-16 px-5 py-3 text-center font-semibold">STT</th>
+                <th className="px-5 py-3 font-semibold">Nhân viên</th>
+                <th className="px-5 py-3 font-semibold">Chức vụ</th>
+                <th className="px-5 py-3 font-semibold">Liên hệ</th>
+                <th className="px-5 py-3 font-semibold">Tài khoản</th>
+                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {!employees.length ? (
+                <tr>
+                  <td className="px-5 py-10 text-center text-slate-500" colSpan={6}>
+                    Phòng ban chưa có nhân viên.
+                  </td>
+                </tr>
+              ) : null}
+              {employees.map((employee, index) => (
+                <tr className="hover:bg-slate-50" key={employee.employeeId}>
+                  <td className="px-5 py-4 text-center text-slate-500">{index + 1}</td>
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-slate-950">{employee.employeeName}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{employee.employeeCode}</p>
+                  </td>
+                  <td className="px-5 py-4 text-slate-600">
+                    {employee.positionName || employee.workLocation || 'Chưa cập nhật'}
+                  </td>
+                  <td className="px-5 py-4 text-slate-600">
+                    <p>{employee.phone || 'Chưa có số điện thoại'}</p>
+                    <p className="mt-0.5 text-xs">{employee.email || 'Chưa có email'}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={employee.hasAccount
+                      ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700'
+                      : 'inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600'}>
+                      {employee.hasAccount ? 'Đã có tài khoản' : 'Chưa có tài khoản'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <Button
+                      aria-label={`Gỡ ${employee.employeeName} khỏi phòng ban`}
+                      className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      disabled={saving}
+                      onClick={() => onRemove(employee)}
+                      size="icon"
+                      title="Gỡ khỏi phòng ban"
+                      variant="ghost"
+                    >
+                      <UserMinus size={17} />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function DepartmentCreateModal({
+  department,
   error,
   form,
   onChange,
@@ -200,9 +371,13 @@ function DepartmentCreateModal({
       >
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Thêm phòng ban</h2>
+            <h2 className="text-lg font-bold text-slate-950">
+              {department ? 'Cập nhật phòng ban' : 'Thêm phòng ban'}
+            </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Phòng ban mới sẽ được lưu trực tiếp vào cơ sở dữ liệu.
+              {department
+                ? 'Thông tin mới sẽ được áp dụng cho nhân viên đang thuộc phòng ban.'
+                : 'Phòng ban mới sẽ được lưu trực tiếp vào cơ sở dữ liệu.'}
             </p>
           </div>
           <Button onClick={onClose} size="icon" variant="ghost">
@@ -243,7 +418,7 @@ function DepartmentCreateModal({
             Hủy
           </Button>
           <Button className="bg-violet-600 hover:bg-violet-700" disabled={saving} type="submit">
-            {saving ? 'Đang lưu...' : 'Thêm phòng ban'}
+            {saving ? 'Đang lưu...' : department ? 'Cập nhật' : 'Thêm phòng ban'}
           </Button>
         </div>
       </form>

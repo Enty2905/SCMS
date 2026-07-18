@@ -5,12 +5,17 @@ import com.scms.user.entity.EmployeeRole;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "employee")
+@SQLDelete(sql = "UPDATE employee SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE employee_id = ?")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -28,6 +33,9 @@ public class Employee {
 
     @Column(name = "phone", length = 20)
     String phone;
+
+    @Column(name = "email", length = 150)
+    String email;
 
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
@@ -47,6 +55,13 @@ public class Employee {
     // Vị trí/nơi làm việc: PXVH, PXSCC, kho vật tư...
     @Column(name = "work_location", length = 200)
     String workLocation;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
     @ToString.Exclude
