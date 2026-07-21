@@ -17,6 +17,7 @@ import { clearMaterialError } from '../store/material.reducer.js'
 import { MaterialFormModal } from './MaterialFormModal.jsx'
 import { DeleteConfirmModal } from './DeleteConfirmModal.jsx'
 import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
+import { SparePartImportFormModal } from './SparePartImportFormModal.jsx'
 
 const TABS = [
   { key: 'consumable', label: 'Vật tư tiêu hao' },
@@ -249,15 +250,13 @@ export function MaterialListPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2 text-slate-400">
-                            {activeTab === 'consumable' && (
-                              <button
-                                className="rounded-md p-2 hover:bg-emerald-50 hover:text-emerald-600"
-                                onClick={() => openImportModal(item)}
-                                title="Nhập kho"
-                              >
-                                <Download size={16} />
-                              </button>
-                            )}
+                            <button
+                              className="rounded-md p-2 hover:bg-emerald-50 hover:text-emerald-600"
+                              onClick={() => openImportModal(item)}
+                              title="Nhập kho"
+                            >
+                              <Download size={16} />
+                            </button>
                             <button
                               className="rounded-md p-2 hover:bg-slate-100 hover:text-violet-600"
                               onClick={() => openEditModal(item)}
@@ -361,11 +360,19 @@ export function MaterialListPage() {
       ) : null}
 
       {importModal.open ? (
-        <ConsumableImportFormModal
-          onClose={closeImportModal}
-          onSuccess={handleImportSuccess}
-          initialItem={importModal.item}
-        />
+        activeTab === 'consumable' ? (
+          <ConsumableImportFormModal
+            onClose={closeImportModal}
+            onSuccess={handleImportSuccess}
+            initialItem={importModal.item}
+          />
+        ) : (
+          <SparePartImportFormModal
+            onClose={closeImportModal}
+            onSuccess={handleImportSuccess}
+            initialItem={importModal.item}
+          />
+        )
       ) : null}
     </div>
   )

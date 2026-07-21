@@ -6,7 +6,7 @@ import { fetchConsumableImports } from '../services/consumableImport.service.js'
 import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
 import { ConsumableImportDetailModal } from './ConsumableImportDetailModal.jsx'
 
-export function ConsumableImportPage() {
+export function ConsumableImportPage({ hideHeader }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -50,10 +50,12 @@ export function ConsumableImportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-slate-950">Phiếu nhập kho vật tư tiêu hao</h1>
-      </section>
+    <div className={hideHeader ? "" : "mx-auto max-w-7xl"}>
+      {!hideHeader && (
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-bold text-slate-950">Phiếu nhập kho vật tư tiêu hao</h1>
+        </section>
+      )}
 
       <section className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center justify-end">
         <Button

@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search, AlertTriangle, Eye } from 'lucide-react'
+import { Edit3, Plus, Search, AlertTriangle, Eye, HandHelping } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
@@ -16,6 +16,7 @@ import { fetchToolList } from '../store/tool.thunks.js'
 import { ToolFormModal } from './ToolFormModal.jsx'
 import { ToolDisposeDamagedModal } from './ToolDisposeDamagedModal.jsx'
 import { ToolDetailModal } from './ToolDetailModal.jsx'
+import { ToolBorrowFormModal } from './ToolBorrowFormModal.jsx'
 
 // Status badge mapping (giá trị từ BE: 'available' | 'damaged')
 const STATUS_LABELS = {
@@ -45,6 +46,8 @@ export function ToolListPage() {
   const [formModal, setFormModal] = useState({ open: false, item: null })
   const [disposeModal, setDisposeModal] = useState({ open: false, item: null })
   const [detailModal, setDetailModal] = useState({ open: false, item: null })
+  const [borrowModal, setBorrowModal] = useState({ open: false, item: null })
+  const [borrowSuccessMsg, setBorrowSuccessMsg] = useState(null)
 
   // Derive unique categories from current items for the filter dropdown
   const categories = [...new Set(items.map((item) => item.category).filter(Boolean))]
@@ -117,11 +120,33 @@ export function ToolListPage() {
     setDetailModal({ open: false, item: null })
   }
 
+  function openBorrowModal(item) {
+    setBorrowModal({ open: true, item })
+  }
+
+  function closeBorrowModal() {
+    setBorrowModal({ open: false, item: null })
+  }
+
+  function handleBorrowSuccess() {
+    closeBorrowModal()
+    setBorrowSuccessMsg('Cho mượn CCDC thành công')
+    loadData()
+    setTimeout(() => setBorrowSuccessMsg(null), 3500)
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-slate-950">Quản lý CCDC</h1>
       </section>
+
+      {/* Toast thông báo mượn thành công */}
+      {borrowSuccessMsg && (
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
+          ✓ {borrowSuccessMsg}
+        </div>
+      )}
 
       {/* Summary cards */}
       <section className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -254,6 +279,15 @@ export function ToolListPage() {
                           <div className="flex justify-end gap-2 text-slate-400">
                             {item.availableQuantity > 0 && (
                               <button
+                                className="rounded-md p-2 hover:bg-violet-50 hover:text-violet-600"
+                                onClick={() => openBorrowModal(item)}
+                                title="Cho mượn"
+                              >
+                                <HandHelping size={16} />
+                              </button>
+                            )}
+                            {item.availableQuantity > 0 && (
+                              <button
                                 className="rounded-md p-2 hover:bg-rose-50 hover:text-rose-600"
                                 onClick={() => openDisposeModal(item)}
                                 title="Báo hỏng"
@@ -366,6 +400,14 @@ export function ToolListPage() {
         <ToolDetailModal
           item={detailModal.item}
           onClose={closeDetailModal}
+        />
+      ) : null}
+
+      {borrowModal.open ? (
+        <ToolBorrowFormModal
+          tool={borrowModal.item}
+          onClose={closeBorrowModal}
+          onSuccess={handleBorrowSuccess}
         />
       ) : null}
     </div>

@@ -34,6 +34,9 @@ public enum ErrorCode {
     WORK_ORDER_NOT_FOUND(3002, "Work order not found", HttpStatus.NOT_FOUND),
     WORK_ORDER_INVALID_STATUS(3003, "Invalid status transition for work order", HttpStatus.BAD_REQUEST),
     DUPLICATE_ORDER_NUMBER(3004, "Work order number already exists", HttpStatus.BAD_REQUEST),
+    SAFETY_SUPERVISOR_MUST_BE_UNIQUE(3005, "Giám sát an toàn phải khác Lãnh đạo thi công, Chỉ huy trực tiếp và Thành viên thi công", HttpStatus.BAD_REQUEST),
+    DAILY_LOG_ALREADY_OPEN(3006, "Trong ngày đã có phiên làm việc đang mở. Vui lòng đóng trước khi mở phiên mới.", HttpStatus.BAD_REQUEST),
+    NO_ACTIVE_LOG_TO_CLOSE(3007, "Không có phiên làm việc nào đang mở để đóng.", HttpStatus.BAD_REQUEST),
 
     MATERIAL_NOT_FOUND(4001, "Material not found", HttpStatus.NOT_FOUND),
     NOT_ENOUGH_INVENTORY(4002, "Not enough inventory to issue", HttpStatus.BAD_REQUEST);

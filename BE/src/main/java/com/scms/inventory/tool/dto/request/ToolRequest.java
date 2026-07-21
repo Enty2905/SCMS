@@ -32,4 +32,7 @@ public class ToolRequest {
 
     @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
     String note;
+
+    @Size(max = 500, message = "Đường dẫn ảnh tối đa 500 ký tự")
+    String imageUrl;
 }

@@ -4,9 +4,12 @@ import {
   createDepartmentService,
   createEmployeeService,
   deleteDepartmentService,
+  deleteEmployeeService,
   fetchDepartmentsService,
   fetchEmployeePositionsService,
   fetchEmployeesService,
+  removeEmployeeFromDepartmentService,
+  updateDepartmentService,
   updateEmployeeService,
 } from '../services/hr-directory.service.js'
 
@@ -41,6 +44,15 @@ export const createDepartment = createAsyncThunk(
   },
 )
 
+export const updateDepartment = createAsyncThunk(
+  'hrDirectory/updateDepartment',
+  async ({ departmentId, payload }, { dispatch }) => {
+    const department = await updateDepartmentService(departmentId, payload)
+    await dispatch(fetchHrDirectoryData())
+    return department
+  },
+)
+
 export const createEmployee = createAsyncThunk(
   'hrDirectory/createEmployee',
   async (payload, { dispatch }) => {
@@ -54,6 +66,24 @@ export const updateEmployee = createAsyncThunk(
   'hrDirectory/updateEmployee',
   async ({ employeeId, payload }, { dispatch }) => {
     const employee = await updateEmployeeService(employeeId, payload)
+    await dispatch(fetchHrDirectoryData())
+    return employee
+  },
+)
+
+export const deleteEmployee = createAsyncThunk(
+  'hrDirectory/deleteEmployee',
+  async (employeeId, { dispatch }) => {
+    await deleteEmployeeService(employeeId)
+    await dispatch(fetchHrDirectoryData())
+    return employeeId
+  },
+)
+
+export const removeEmployeeFromDepartment = createAsyncThunk(
+  'hrDirectory/removeEmployeeFromDepartment',
+  async ({ departmentId, employeeId }, { dispatch }) => {
+    const employee = await removeEmployeeFromDepartmentService(departmentId, employeeId)
     await dispatch(fetchHrDirectoryData())
     return employee
   },

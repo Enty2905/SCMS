@@ -11,7 +11,6 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
-import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.scms.auth.entity.User;
@@ -421,11 +420,11 @@ public class TechnicalAssessmentService {
         }
 
         private String generateAssessmentNumber() {
-                long count = assessmentRepository.count();
-                long next = count + 1;
+                String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+                long next = 1;
                 String candidate;
                 do {
-                        candidate = String.format("BB-DGKT-%04d", next);
+                        candidate = String.format("BBKT-%s-%04d", datePrefix, next);
                         next++;
                 } while (assessmentRepository.existsByAssessmentNumber(candidate));
                 return candidate;

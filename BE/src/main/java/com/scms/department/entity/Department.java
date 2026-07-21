@@ -3,11 +3,16 @@ package com.scms.department.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "department")
+@SQLDelete(sql = "UPDATE department SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE department_id = ?")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -28,4 +33,11 @@ public class Department {
 
     @Column(name = "description", length = 500)
     String description;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    LocalDateTime deletedAt;
 }

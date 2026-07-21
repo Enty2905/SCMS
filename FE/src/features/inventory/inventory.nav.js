@@ -1,4 +1,4 @@
-import { ClipboardList, Package2, Wrench } from 'lucide-react'
+import { ClipboardList, Package2, Wrench, HandHelping } from 'lucide-react'
 import { ROLES } from '@/features/auth/utils/roles.js'
 
 export const inventoryNavItems = [
@@ -30,6 +30,12 @@ export const inventoryNavItems = [
     label: 'CCDC hư hỏng',
     href: '/dashboard/inventory/damaged-tools',
     icon: Wrench,
+    roles: [ROLES.WAREHOUSE_TOOL],
+  },
+  {
+    label: 'Mượn / Trả CCDC',
+    href: '/dashboard/inventory/tool-borrows',
+    icon: HandHelping,
     roles: [ROLES.WAREHOUSE_TOOL],
   },
 ]

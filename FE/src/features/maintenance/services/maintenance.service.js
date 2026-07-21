@@ -108,9 +108,60 @@ export async function downloadSignedPdfService(assessmentId) {
 
 // ── Work Orders (PCT List) ───────────────────────────────────────────────────
 
-export async function fetchWorkOrdersService() {
-  const response = await apiClient.get('/maintenance/work-orders')
+export async function fetchWorkOrdersService({ orderNumber, kksCode } = {}) {
+  const params = new URLSearchParams()
+  if (orderNumber) params.set('orderNumber', orderNumber)
+  if (kksCode) params.set('kksCode', kksCode)
+  const query = params.toString()
+  const response = await apiClient.get(`/maintenance/work-orders${query ? '?' + query : ''}`)
   return response.data || []
+}
+
+export async function searchWorkOrdersService({ keyword = '', page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  if (keyword) params.set('keyword', keyword)
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/work-orders/search?${params}`)
+  return response.data
+}
+
+// ── Daily Log (Nhật ký PCT) ──────────────────────────────────────────────────
+
+export async function openDailyLogService(orderId) {
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/daily-logs/open`)
+  return response.data
+}
+
+export async function closeDailyLogService(orderId, note = '') {
+  const body = note ? { note } : {}
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/daily-logs/close`, body)
+  return response.data
+}
+
+export async function fetchDailyLogsService(orderId, { page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/work-orders/${orderId}/daily-logs?${params}`)
+  return response.data || { content: [], totalPages: 0, totalElements: 0 }
+}
+
+export async function exportWorkOrderPdfService(orderId) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const response = await fetch(
+    apiClient.url(`/maintenance/work-orders/${orderId}/export-pdf`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Không thể xuất PDF: ${response.status}`)
+  }
+  return response.blob()
 }
 
 // ── Consumable Request ────────────────────────────────────────────────────────
