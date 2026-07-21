@@ -62,3 +62,38 @@ export async function deleteSystem(id) {
   const response = await apiClient.delete(`/equipment-systems/${id}`)
   return response.data
 }
+
+export async function fetchEquipmentImages(equipmentId) {
+  const response = await apiClient.get(`/equipment/${equipmentId}/images`)
+  return response.data || []
+}
+
+export async function uploadEquipmentImage(equipmentId, file) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(
+    apiClient.url(`/equipment/${equipmentId}/images/upload`),
+    {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }
+  )
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => null)
+    throw new Error(errData?.message || `Upload ảnh thất bại: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  return payload.data
+}
+
+export async function deleteEquipmentImage(imageId) {
+  const response = await apiClient.delete(`/equipment/images/${imageId}`)
+  return response.data
+}

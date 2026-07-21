@@ -54,7 +54,14 @@ export function AppShell() {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
 
+  const canSeeNotifications = hasAnyRole(user, [ROLES.OPS_MANAGER, ROLES.ADMIN])
+
   useEffect(() => {
+    if (!canSeeNotifications) {
+      setNotifications([])
+      return
+    }
+
     async function loadNotifications() {
       try {
         const equipments = await fetchEquipments()
@@ -143,7 +150,7 @@ export function AppShell() {
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, canSeeNotifications])
 
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
