@@ -7,6 +7,7 @@ import {
   fetchPendingRequests,
   uploadSignedPdf,
   fetchWorkOrders,
+  searchWorkOrders,
   fetchConsumableRequests,
   createConsumableRequest,
   fetchSparePartRequests,
@@ -25,6 +26,9 @@ const initialState = {
   // Work Order (PCT)
   workOrder: null,
   workOrders: [],
+  workOrdersPage: 0,
+  workOrdersTotalPages: 0,
+  workOrdersTotalElements: 0,
   workOrderLoading: false,
   workOrderError: null,
 
@@ -160,6 +164,24 @@ const maintenanceSlice = createSlice({
         state.workOrders = action.payload
       })
       .addCase(fetchWorkOrders.rejected, (state, action) => {
+        state.workOrderLoading = false
+        state.workOrderError = action.error.message || 'Không tải được danh sách PCT'
+      })
+
+    // ── searchWorkOrders ───────────────────────────────────────────────────
+    builder
+      .addCase(searchWorkOrders.pending, (state) => {
+        state.workOrderLoading = true
+        state.workOrderError = null
+      })
+      .addCase(searchWorkOrders.fulfilled, (state, action) => {
+        state.workOrderLoading = false
+        state.workOrders = action.payload.content || []
+        state.workOrdersPage = action.payload.page || 0
+        state.workOrdersTotalPages = action.payload.totalPages || 0
+        state.workOrdersTotalElements = action.payload.totalElements || 0
+      })
+      .addCase(searchWorkOrders.rejected, (state, action) => {
         state.workOrderLoading = false
         state.workOrderError = action.error.message || 'Không tải được danh sách PCT'
       })

@@ -117,6 +117,36 @@ export async function fetchWorkOrdersService({ orderNumber, kksCode } = {}) {
   return response.data || []
 }
 
+export async function searchWorkOrdersService({ keyword = '', page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  if (keyword) params.set('keyword', keyword)
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/work-orders/search?${params}`)
+  return response.data
+}
+
+// ── Daily Log (Nhật ký PCT) ──────────────────────────────────────────────────
+
+export async function openDailyLogService(orderId) {
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/daily-logs/open`)
+  return response.data
+}
+
+export async function closeDailyLogService(orderId, note = '') {
+  const body = note ? { note } : {}
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/daily-logs/close`, body)
+  return response.data
+}
+
+export async function fetchDailyLogsService(orderId, { page = 0, size = 10 } = {}) {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const response = await apiClient.get(`/maintenance/work-orders/${orderId}/daily-logs?${params}`)
+  return response.data || { content: [], totalPages: 0, totalElements: 0 }
+}
+
 export async function exportWorkOrderPdfService(orderId) {
   const token = window.localStorage.getItem('scms.auth.token')
   const response = await fetch(

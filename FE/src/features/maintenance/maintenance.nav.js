@@ -37,4 +37,10 @@ export const maintenanceNavItems = [
     icon: ClipboardList,
     roles: MAINTENANCE_ROLES,
   },
+  {
+    label: 'Sổ nhật ký công tác',
+    href: '/dashboard/maintenance/daily-logs',
+    icon: ClipboardList,
+    roles: [ROLES.ADMIN, ROLES.SHIFT_LEADER],
+  },
 ]
