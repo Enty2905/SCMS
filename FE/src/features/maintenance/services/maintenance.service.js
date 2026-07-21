@@ -108,9 +108,30 @@ export async function downloadSignedPdfService(assessmentId) {
 
 // ── Work Orders (PCT List) ───────────────────────────────────────────────────
 
-export async function fetchWorkOrdersService() {
-  const response = await apiClient.get('/maintenance/work-orders')
+export async function fetchWorkOrdersService({ orderNumber, kksCode } = {}) {
+  const params = new URLSearchParams()
+  if (orderNumber) params.set('orderNumber', orderNumber)
+  if (kksCode) params.set('kksCode', kksCode)
+  const query = params.toString()
+  const response = await apiClient.get(`/maintenance/work-orders${query ? '?' + query : ''}`)
   return response.data || []
+}
+
+export async function exportWorkOrderPdfService(orderId) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const response = await fetch(
+    apiClient.url(`/maintenance/work-orders/${orderId}/export-pdf`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Không thể xuất PDF: ${response.status}`)
+  }
+  return response.blob()
 }
 
 // ── Consumable Request ────────────────────────────────────────────────────────
