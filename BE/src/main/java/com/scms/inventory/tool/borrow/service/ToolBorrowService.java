@@ -150,12 +150,21 @@ public class ToolBorrowService {
     // ── Helper: Map to Response ───────────────────────────────
     private ToolBorrowResponse toResponse(ToolBorrow borrow, Tool tool, Employee employee) {
         long overdueDays = 0;
+        String currentStatus = borrow.getStatus();
+
         if (borrow.getDueDate() != null) {
             LocalDateTime reference = (borrow.getReturnedAt() != null)
                     ? borrow.getReturnedAt()
                     : LocalDateTime.now();
-            overdueDays = ChronoUnit.DAYS.between(borrow.getDueDate(), reference);
-            if (overdueDays < 0) overdueDays = 0;
+            
+            if (reference.isAfter(borrow.getDueDate())) {
+                long days = ChronoUnit.DAYS.between(borrow.getDueDate().toLocalDate(), reference.toLocalDate());
+                overdueDays = Math.max(1, days);
+            }
+        }
+
+        if ("borrowing".equals(currentStatus) && borrow.getDueDate() != null && borrow.getDueDate().isBefore(LocalDateTime.now())) {
+            currentStatus = "overdue";
         }
 
         return ToolBorrowResponse.builder()
@@ -169,7 +178,7 @@ public class ToolBorrowService {
                 .borrowedAt(borrow.getBorrowedAt())
                 .dueDate(borrow.getDueDate())
                 .returnedAt(borrow.getReturnedAt())
-                .status(borrow.getStatus())
+                .status(currentStatus)
                 .note(borrow.getNote())
                 .overdueDays(overdueDays)
                 .build();

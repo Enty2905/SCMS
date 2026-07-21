@@ -24,7 +24,10 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
         SELECT tb.* FROM tool_borrow tb
         JOIN tool t ON t.tool_id = tb.tool_id
         JOIN employee e ON e.employee_id = tb.borrowed_by
-        WHERE (:status IS NULL OR tb.status = :status)
+        WHERE (:status IS NULL 
+               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date > CURRENT_TIMESTAMP)
+               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date <= CURRENT_TIMESTAMP)))
+               OR (:status NOT IN ('borrowing', 'overdue') AND tb.status = :status))
           AND (
             :keyword IS NULL
             OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -36,7 +39,10 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
         SELECT COUNT(*) FROM tool_borrow tb
         JOIN tool t ON t.tool_id = tb.tool_id
         JOIN employee e ON e.employee_id = tb.borrowed_by
-        WHERE (:status IS NULL OR tb.status = :status)
+        WHERE (:status IS NULL 
+               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date > CURRENT_TIMESTAMP)
+               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date <= CURRENT_TIMESTAMP)))
+               OR (:status NOT IN ('borrowing', 'overdue') AND tb.status = :status))
           AND (
             :keyword IS NULL
             OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
