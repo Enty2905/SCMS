@@ -1,6 +1,7 @@
 package com.scms.hr.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -19,6 +20,10 @@ public class EmployeeUpsertRequest {
 
     @Size(max = 20, message = "INVALID_KEY")
     String phone;
+
+    @Email(message = "INVALID_KEY")
+    @Size(max = 150, message = "INVALID_KEY")
+    String email;
 
     UUID departmentId;
 

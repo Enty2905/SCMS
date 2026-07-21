@@ -53,6 +53,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
         LEFT JOIN FETCH u.employee e
         LEFT JOIN FETCH e.department
         LEFT JOIN FETCH e.position
+        WHERE u.deleted = false
         ORDER BY u.createdAt DESC
     """)
     List<User> findAllWithEmployeeDetails();

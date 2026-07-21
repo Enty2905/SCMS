@@ -135,19 +135,21 @@ public class WorkOrderService {
         }
 
         /**
-         * Lấy toàn bộ danh sách phiếu công tác
+         * Lấy danh sách phiếu công tác có lọc theo số PCT và mã KKS thiết bị
          */
         @Transactional(readOnly = true)
-        public List<WorkOrderResponse> getAllWorkOrders() {
-                List<WorkOrder> orders = workOrderRepository.findAll();
-                for (WorkOrder wo : orders) {
-                        List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());
-                        wo.getMembers().clear();
-                        wo.getMembers().addAll(members);
-                }
-                return orders.stream()
-                                .map(this::toResponse)
-                                .toList();
+        public List<WorkOrderResponse> getAllWorkOrders(String orderNumber, String kksCode) {
+            String on = (orderNumber != null && !orderNumber.isBlank()) ? orderNumber.trim() : null;
+            String kks = (kksCode != null && !kksCode.isBlank()) ? kksCode.trim() : null;
+            List<WorkOrder> orders = workOrderRepository.findAllWithFilters(on, kks);
+            for (WorkOrder wo : orders) {
+                    List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());
+                    wo.getMembers().clear();
+                    wo.getMembers().addAll(members);
+            }
+            return orders.stream()
+                            .map(this::toResponse)
+                            .toList();
         }
 
         /**

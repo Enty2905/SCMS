@@ -10,8 +10,6 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,7 +22,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class EquipmentController {
 
-    private static final Logger log = LoggerFactory.getLogger(EquipmentController.class);
     EquipmentService equipmentService;
 
     @Operation(summary = "Tạo mới thiết bị")

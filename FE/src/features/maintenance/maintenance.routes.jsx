@@ -5,10 +5,19 @@ import { TechnicalAssessmentPage } from './pages/TechnicalAssessmentPage.jsx'
 import { MaterialRequestPage } from './pages/MaterialRequestPage.jsx'
 import { RepairHistoryPage } from './pages/RepairHistoryPage.jsx'
 import { DailyLogPage } from './pages/DailyLogPage.jsx'
-import { ASSESSMENT_ROLES, MAINTENANCE_ROLES } from './maintenance.nav.js'
+import { WorkOrderPage } from './pages/WorkOrderPage.jsx'
+import { ASSESSMENT_ROLES, MAINTENANCE_ROLES, WORK_ORDER_ROLES } from './maintenance.nav.js'
 import { ROLES } from '@/features/auth/utils/roles.js'
 
 export const maintenanceRoutes = [
+  {
+    path: 'maintenance/work-orders',
+    element: (
+      <RequireRole roles={WORK_ORDER_ROLES}>
+        <WorkOrderPage />
+      </RequireRole>
+    ),
+  },
   {
     path: 'maintenance/requests',
     element: (

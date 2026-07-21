@@ -1,7 +1,6 @@
 package com.scms.inventory.sparepart.service;
 
 import com.itextpdf.io.font.PdfEncodings;
-import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
@@ -9,7 +8,6 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
-import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
@@ -50,7 +48,6 @@ import java.util.UUID;
 public class SparePartRequestService {
 
     SparePartRequestRepository sparePartRequestRepository;
-    SparePartRequestItemRepository sparePartRequestItemRepository;
     WorkOrderRepository workOrderRepository;
     SparePartRepository sparePartRepository;
     UserRepository userRepository;
@@ -199,17 +196,17 @@ public class SparePartRequestService {
                     .add(new Paragraph("NGƯỜI YÊU CẦU").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
             
-            Cell managerCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("TỔ TRƯỞNG DUYỆT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
+            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
+                    .add(new Paragraph("NGƯỜI CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
 
-            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("KHO CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
+            Cell receiverCell = new Cell().setBorder(Border.NO_BORDER)
+                    .add(new Paragraph("NGƯỜI NHẬN").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
 
             signTable.addCell(requesterCell);
-            signTable.addCell(managerCell);
             signTable.addCell(issuerCell);
+            signTable.addCell(receiverCell);
             document.add(signTable);
 
             document.close();
@@ -232,11 +229,11 @@ public class SparePartRequestService {
     }
 
     private String generateReqNumber() {
-        long count = sparePartRequestRepository.count();
-        long next = count + 1;
+        String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+        long next = 1;
         String candidate;
         do {
-            candidate = String.format("YC-VTT-%04d", next);
+            candidate = String.format("YCVTT-%s-%04d", datePrefix, next);
             next++;
         } while (sparePartRequestRepository.existsByReqNumber(candidate));
         return candidate;

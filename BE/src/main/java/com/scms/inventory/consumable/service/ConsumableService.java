@@ -1,6 +1,5 @@
 package com.scms.inventory.consumable.service;
 
-import com.scms.common.exception.DuplicateResourceException;
 import com.scms.common.exception.NotFoundException;
 import com.scms.common.response.PagedResponse;
 import com.scms.inventory.consumable.dto.request.ConsumableRequest;

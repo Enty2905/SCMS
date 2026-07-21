@@ -17,10 +17,31 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
     boolean existsByOrderNumber(String orderNumber);
 
     /**
-     * Đếm tổng số PCT đã tồn tại để sinh số thứ tự tiếp theo (PCT-0001, PCT-0002, ...)
+     * Đếm tổng số PCT đã tồn tại để sinh số thứ tự tiếp theo
      */
     @Query("SELECT COUNT(wo) FROM WorkOrder wo")
     long countAllOrders();
+
+    /**
+     * Tìm kiếm PCT có lọc theo số PCT và mã KKS thiết bị
+     */
+    @Query("""
+        SELECT DISTINCT wo FROM WorkOrder wo
+        LEFT JOIN wo.request r
+        LEFT JOIN r.equipment eq
+        LEFT JOIN FETCH wo.workLeader
+        LEFT JOIN FETCH wo.directCommander
+        LEFT JOIN FETCH wo.safetySupervisor
+        LEFT JOIN FETCH wo.createdBy cb
+        LEFT JOIN FETCH cb.employee
+        WHERE (:orderNumber IS NULL OR LOWER(wo.orderNumber) LIKE LOWER(CONCAT('%', :orderNumber, '%')))
+          AND (:kksCode IS NULL OR (eq IS NOT NULL AND LOWER(eq.kksCode) LIKE LOWER(CONCAT('%', :kksCode, '%'))))
+        ORDER BY wo.createdAt DESC
+    """)
+    java.util.List<WorkOrder> findAllWithFilters(
+        @Param("orderNumber") String orderNumber,
+        @Param("kksCode") String kksCode
+    );
 
 
 

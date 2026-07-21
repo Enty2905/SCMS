@@ -4,8 +4,15 @@ import { ROLES } from '@/features/auth/utils/roles.js'
 
 export const MAINTENANCE_ROLES = [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER]
 export const ASSESSMENT_ROLES = [ROLES.ADMIN, ROLES.TEAM_LEADER]
+export const WORK_ORDER_ROLES = [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER]
 
 export const maintenanceNavItems = [
+  {
+    label: 'Phiếu công tác',
+    href: '/dashboard/maintenance/work-orders',
+    icon: ClipboardList,
+    roles: WORK_ORDER_ROLES,
+  },
   {
     label: 'Yêu cầu sửa chữa',
     href: '/dashboard/maintenance/requests',

@@ -24,6 +24,11 @@ export async function createDepartmentService(payload) {
   return response.data
 }
 
+export async function updateDepartmentService(departmentId, payload) {
+  const response = await apiClient.put(`/hr/departments/${departmentId}`, payload)
+  return response.data
+}
+
 export async function createEmployeeService(payload) {
   const response = await apiClient.post('/hr/employees', toEmployeeFormData(payload))
   return response.data
@@ -34,11 +39,23 @@ export async function updateEmployeeService(employeeId, payload) {
   return response.data
 }
 
+export async function deleteEmployeeService(employeeId) {
+  await apiClient.delete(`/hr/employees/${employeeId}`)
+}
+
+export async function removeEmployeeFromDepartmentService(departmentId, employeeId) {
+  const response = await apiClient.delete(
+    `/hr/departments/${departmentId}/employees/${employeeId}`,
+  )
+  return response.data
+}
+
 function toEmployeeFormData(payload) {
   const formData = new FormData()
   formData.append('employeeName', payload.employeeName || '')
 
   appendIfPresent(formData, 'phone', payload.phone)
+  appendIfPresent(formData, 'email', payload.email)
   appendIfPresent(formData, 'departmentId', payload.departmentId)
   appendIfPresent(formData, 'positionId', payload.positionId)
   appendIfPresent(formData, 'workLocation', payload.workLocation)

@@ -60,6 +60,25 @@ public class HrDirectoryController {
         return ApiResponse.success("Employee updated successfully", hrDirectoryService.updateEmployee(employeeId, request));
     }
 
+    @DeleteMapping("/employees/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<Void> deleteEmployee(@PathVariable UUID employeeId) {
+        hrDirectoryService.deleteEmployee(employeeId);
+        return ApiResponse.success("Employee deleted successfully", null);
+    }
+
+    @DeleteMapping("/departments/{departmentId}/employees/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<EmployeeResponse> removeEmployeeFromDepartment(
+            @PathVariable UUID departmentId,
+            @PathVariable UUID employeeId
+    ) {
+        return ApiResponse.success(
+                "Employee removed from department successfully",
+                hrDirectoryService.removeEmployeeFromDepartment(departmentId, employeeId)
+        );
+    }
+
     @GetMapping("/departments")
     public ApiResponse<List<DepartmentResponse>> getDepartments() {
         return ApiResponse.success("Departments loaded successfully", hrDirectoryService.getDepartments());
@@ -69,6 +88,18 @@ public class HrDirectoryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
     public ApiResponse<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentCreateRequest request) {
         return ApiResponse.created("Department created successfully", hrDirectoryService.createDepartment(request));
+    }
+
+    @PutMapping("/departments/{departmentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
+    public ApiResponse<DepartmentResponse> updateDepartment(
+            @PathVariable UUID departmentId,
+            @Valid @RequestBody DepartmentCreateRequest request
+    ) {
+        return ApiResponse.success(
+                "Department updated successfully",
+                hrDirectoryService.updateDepartment(departmentId, request)
+        );
     }
 
     @DeleteMapping("/departments/{departmentId}")

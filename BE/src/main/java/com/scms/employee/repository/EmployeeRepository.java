@@ -1,9 +1,7 @@
 package com.scms.employee.repository;
 
 import com.scms.employee.entity.Employee;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -34,11 +32,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     """)
     List<Employee> findEmployeesWithoutAccount();
 
-    @Modifying
-    @Query("""
-        UPDATE Employee e
-        SET e.department = null
-        WHERE e.department.departmentId = :departmentId
-    """)
-    void clearDepartment(@Param("departmentId") UUID departmentId);
+    boolean existsByDepartmentDepartmentId(UUID departmentId);
+
+    long countByDepartmentDepartmentId(UUID departmentId);
 }
