@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +16,10 @@ import java.util.UUID;
 @Repository
 public interface WorkOrderDailyLogRepository extends JpaRepository<WorkOrderDailyLog, UUID> {
     
-    // Lấy danh sách nhật ký của một phiếu công tác, sắp xếp theo ngày
+    // Lấy danh sách nhật ký của một phiếu công tác, có phân trang, sắp xếp mới nhất lên đầu
+    Page<WorkOrderDailyLog> findByWorkOrderOrderIdOrderByOpenedAtDesc(UUID orderId, Pageable pageable);
+    
+    // Lấy danh sách nhật ký của một phiếu công tác, sắp xếp theo ngày (cho các trường hợp cũ)
     List<WorkOrderDailyLog> findByWorkOrderOrderIdOrderByDateAsc(UUID orderId);
 
     // Tìm phiên làm việc trong ngày của một phiếu công tác

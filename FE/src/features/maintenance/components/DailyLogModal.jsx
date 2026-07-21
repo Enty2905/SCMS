@@ -24,25 +24,29 @@ function formatDate(iso) {
 
 export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess }) {
   const [logs, setLogs] = useState([])
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+  const size = 10
 
   // Ghi chú khi đóng phiếu
   const [note, setNote] = useState('')
   const [showNoteInput, setShowNoteInput] = useState(false)
 
   useEffect(() => {
-    loadLogs()
+    loadLogs(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId])
+  }, [orderId, page])
 
-  async function loadLogs() {
+  async function loadLogs(currentPage = 0) {
     try {
       setLoading(true)
       setError('')
-      const data = await fetchDailyLogsService(orderId)
-      setLogs(data)
+      const data = await fetchDailyLogsService(orderId, { page: currentPage, size })
+      setLogs(data.content || [])
+      setTotalPages(data.totalPages || 0)
     } catch (err) {
       setError(err.message || 'Không thể tải lịch sử đóng mở phiếu')
     } finally {
@@ -58,7 +62,7 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
       setActionLoading(true)
       setError('')
       await openDailyLogService(orderId)
-      await loadLogs()
+      await loadLogs(0)
       if (onSuccess) onSuccess()
     } catch (err) {
       setError(err.message || 'Lỗi khi mở phiên làm việc')
@@ -74,12 +78,18 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
       await closeDailyLogService(orderId, note)
       setShowNoteInput(false)
       setNote('')
-      await loadLogs()
+      await loadLogs(0)
       if (onSuccess) onSuccess()
     } catch (err) {
       setError(err.message || 'Lỗi khi kết thúc phiên làm việc')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setPage(newPage)
     }
   }
 
@@ -224,7 +234,7 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
                 ) : (
                   logs.map((log, idx) => (
                     <tr key={log.logId} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 text-center text-slate-500">{idx + 1}</td>
+                      <td className="px-4 py-3 text-center text-slate-500">{page * size + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{formatDate(log.date)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 text-slate-700">
@@ -256,6 +266,41 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
                 )}
               </tbody>
             </table>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-end border-t border-slate-200 bg-white px-6 py-3 gap-1.5">
+                <button
+                  onClick={() => handlePageChange(0)}
+                  disabled={page === 0}
+                  className="flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  Đầu
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
+                      p === page
+                        ? 'border-violet-600 bg-violet-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => handlePageChange(totalPages - 1)}
+                  disabled={page === totalPages - 1}
+                  className="flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  Cuối
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

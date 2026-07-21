@@ -190,26 +190,36 @@ export function DailyLogPage() {
 
         {/* Pagination */}
         {workOrdersTotalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3">
-            <span className="text-xs text-slate-500">
-              Trang {workOrdersPage + 1} / {workOrdersTotalPages}
-            </span>
-            <div className="flex gap-2">
+          <div className="flex items-center justify-end border-t border-slate-200 bg-white px-6 py-3 gap-1.5">
+            <button
+              onClick={() => handlePageChange(0)}
+              disabled={workOrdersPage === 0}
+              className="flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              Đầu
+            </button>
+            
+            {Array.from({ length: workOrdersTotalPages }, (_, i) => i).map((p) => (
               <button
-                onClick={() => handlePageChange(workOrdersPage - 1)}
-                disabled={workOrdersPage === 0}
-                className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                key={p}
+                onClick={() => handlePageChange(p)}
+                className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
+                  p === workOrdersPage
+                    ? 'border-violet-600 bg-violet-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                Trước
+                {p + 1}
               </button>
-              <button
-                onClick={() => handlePageChange(workOrdersPage + 1)}
-                disabled={workOrdersPage >= workOrdersTotalPages - 1}
-                className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Sau
-              </button>
-            </div>
+            ))}
+
+            <button
+              onClick={() => handlePageChange(workOrdersTotalPages - 1)}
+              disabled={workOrdersPage >= workOrdersTotalPages - 1}
+              className="flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              Cuối
+            </button>
           </div>
         )}
       </section>

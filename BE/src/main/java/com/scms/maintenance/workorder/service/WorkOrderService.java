@@ -238,12 +238,20 @@ public class WorkOrderService {
         }
 
         @Transactional(readOnly = true)
-        public List<WorkOrderDailyLogResponse> getDailyLogs(UUID orderId) {
+        public PagedResponse<WorkOrderDailyLogResponse> getDailyLogs(UUID orderId, int page, int size) {
                 if (!workOrderRepository.existsById(orderId)) {
                         throw new AppException(ErrorCode.WORK_ORDER_NOT_FOUND);
                 }
-                List<WorkOrderDailyLog> logs = workOrderDailyLogRepository.findByWorkOrderOrderIdOrderByDateAsc(orderId);
-                return logs.stream().map(this::toLogResponse).toList();
+                Pageable pageable = PageRequest.of(page, size);
+                Page<WorkOrderDailyLog> logPage = workOrderDailyLogRepository.findByWorkOrderOrderIdOrderByOpenedAtDesc(orderId, pageable);
+                return PagedResponse.<WorkOrderDailyLogResponse>builder()
+                        .content(logPage.getContent().stream().map(this::toLogResponse).toList())
+                        .page(logPage.getNumber())
+                        .size(logPage.getSize())
+                        .totalElements(logPage.getTotalElements())
+                        .totalPages(logPage.getTotalPages())
+                        .last(logPage.isLast())
+                        .build();
         }
 
         // ── Helper ───────────────────────────────────────────────────────────────

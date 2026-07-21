@@ -112,8 +112,11 @@ public class WorkOrderController {
 
     @GetMapping("/{orderId}/daily-logs")
     @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'SHIFT_LEADER')")
-    @Operation(summary = "Lấy lịch sử nhật ký (đóng/mở) của PCT", description = "Lấy danh sách các phiên làm việc của PCT")
-    public ApiResponse<List<WorkOrderDailyLogResponse>> getDailyLogs(@PathVariable UUID orderId) {
-        return ApiResponse.success(workOrderService.getDailyLogs(orderId));
+    @Operation(summary = "Lấy lịch sử nhật ký (đóng/mở) của PCT", description = "Lấy danh sách các phiên làm việc của PCT có phân trang")
+    public ApiResponse<PagedResponse<WorkOrderDailyLogResponse>> getDailyLogs(
+            @PathVariable UUID orderId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.success(workOrderService.getDailyLogs(orderId, page, size));
     }
 }
