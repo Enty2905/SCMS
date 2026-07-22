@@ -106,7 +106,7 @@ public class ToolBorrowOverdueEmailScheduler {
                     }
 
                     overdueItems.add(new EmailService.OverdueToolInfo(
-                            tool.getName(), borrow.getQuantity(), borrow.getBorrowedAt(), borrow.getDueDate(),
+                            tool.getName(), borrow.getRemainingQuantity(), borrow.getBorrowedAt(), borrow.getDueDate(),
                             overdueDays));
                 }
 

@@ -58,19 +58,19 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
     /**
      * Tìm các phiếu mượn có status = 'borrowing' và dueDate < now (cho scheduler cập nhật overdue).
      */
-    @Query("SELECT tb FROM ToolBorrow tb WHERE tb.status = 'borrowing' AND tb.dueDate < :now")
+    @Query("SELECT tb FROM ToolBorrow tb WHERE tb.status = 'borrowing' AND tb.dueDate < :now AND tb.remainingQuantity > 0")
     List<ToolBorrow> findOverdueBorrows(@Param("now") LocalDateTime now);
 
     /**
      * Bulk update status sang 'overdue' cho tất cả phiếu quá hạn.
      */
     @Modifying
-    @Query("UPDATE ToolBorrow tb SET tb.status = 'overdue' WHERE tb.status = 'borrowing' AND tb.dueDate < :now")
+    @Query("UPDATE ToolBorrow tb SET tb.status = 'overdue' WHERE tb.status = 'borrowing' AND tb.dueDate < :now AND tb.remainingQuantity > 0")
     int markOverdue(@Param("now") LocalDateTime now);
 
     /**
      * Lấy tất cả các phiếu đã quá hạn nhưng chưa trả.
      */
-    @Query("SELECT tb FROM ToolBorrow tb WHERE tb.status = 'overdue' AND tb.returnedAt IS NULL")
+    @Query("SELECT tb FROM ToolBorrow tb WHERE tb.status = 'overdue' AND tb.remainingQuantity > 0")
     List<ToolBorrow> findOverdueBorrowsNotReturned();
 }
