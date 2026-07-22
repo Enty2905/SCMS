@@ -22,6 +22,8 @@ public class ToolBorrowResponse {
     String employeePhone;
 
     Integer quantity;
+    Integer remainingQuantity;
+    Integer returnedQuantity;
 
     LocalDateTime borrowedAt;
     LocalDateTime dueDate;

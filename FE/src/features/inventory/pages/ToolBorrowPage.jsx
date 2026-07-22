@@ -33,6 +33,7 @@ export function ToolBorrowPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [successMsg, setSuccessMsg] = useState(null)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
@@ -84,8 +85,14 @@ export function ToolBorrowPage() {
     setReturnModal({ open: true, borrow })
   }
 
-  function handleReturnSuccess() {
+  function handleReturnSuccess(res) {
     setReturnModal({ open: false, borrow: null })
+    if (res && res.remainingQuantity > 0) {
+      setSuccessMsg(`Đã trả một phần CCDC, còn lại ${res.remainingQuantity}`)
+    } else {
+      setSuccessMsg('Đã hoàn tất trả CCDC')
+    }
+    setTimeout(() => setSuccessMsg(null), 3000)
     loadData()
   }
 
@@ -133,6 +140,11 @@ export function ToolBorrowPage() {
       {error && (
         <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
           {error}
+        </p>
+      )}
+      {successMsg && (
+        <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+          {successMsg}
         </p>
       )}
 
@@ -195,7 +207,9 @@ function BorrowingTable({ items, loading, page, onReturn }) {
           <th className="px-5 py-3">Tên CCDC</th>
           <th className="px-5 py-3">Người mượn</th>
           <th className="px-5 py-3">Số điện thoại</th>
-          <th className="px-5 py-3 text-right">Số lượng</th>
+          <th className="px-5 py-3 text-right">Tổng mượn</th>
+          <th className="px-5 py-3 text-right">Đã trả</th>
+          <th className="px-5 py-3 text-right">Còn lại</th>
           <th className="px-5 py-3">Ngày mượn</th>
           <th className="px-5 py-3">Hạn trả</th>
           <th className="px-5 py-3 text-center">Trạng thái</th>
@@ -203,14 +217,16 @@ function BorrowingTable({ items, loading, page, onReturn }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">
-        <TableRows items={items} loading={loading} colSpan={9} page={page}>
+        <TableRows items={items} loading={loading} colSpan={11} page={page}>
           {(item, index) => (
             <tr className="hover:bg-slate-50/80" key={item.borrowId}>
               <td className="px-5 py-4 text-center text-slate-500">{page * 10 + index + 1}</td>
               <td className="px-5 py-4 font-semibold text-slate-950">{item.toolName}</td>
               <td className="px-5 py-4 text-slate-700">{item.employeeName}</td>
               <td className="px-5 py-4 text-slate-600">{item.employeePhone || '—'}</td>
-              <td className="px-5 py-4 text-right font-semibold text-amber-600">{item.quantity}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{item.quantity}</td>
+              <td className="px-5 py-4 text-right font-semibold text-emerald-600">{item.returnedQuantity ?? 0}</td>
+              <td className="px-5 py-4 text-right font-bold text-amber-600">{item.remainingQuantity ?? item.quantity}</td>
               <td className="px-5 py-4 text-slate-600">{formatDateTime(item.borrowedAt)}</td>
               <td className="px-5 py-4 text-slate-600">{formatDateTime(item.dueDate)}</td>
               <td className="px-5 py-4 text-center">
@@ -237,7 +253,9 @@ function OverdueTable({ items, loading, page, onReturn }) {
           <th className="px-5 py-3">Tên CCDC</th>
           <th className="px-5 py-3">Người mượn</th>
           <th className="px-5 py-3">Số điện thoại</th>
-          <th className="px-5 py-3 text-right">Số lượng</th>
+          <th className="px-5 py-3 text-right">Tổng mượn</th>
+          <th className="px-5 py-3 text-right">Đã trả</th>
+          <th className="px-5 py-3 text-right">Còn lại</th>
           <th className="px-5 py-3">Ngày mượn</th>
           <th className="px-5 py-3">Hạn trả</th>
           <th className="px-5 py-3 text-right">Quá hạn</th>
@@ -246,14 +264,16 @@ function OverdueTable({ items, loading, page, onReturn }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">
-        <TableRows items={items} loading={loading} colSpan={10} page={page}>
+        <TableRows items={items} loading={loading} colSpan={12} page={page}>
           {(item, index) => (
             <tr className="hover:bg-rose-50/50" key={item.borrowId}>
               <td className="px-5 py-4 text-center text-slate-500">{page * 10 + index + 1}</td>
               <td className="px-5 py-4 font-semibold text-slate-950">{item.toolName}</td>
               <td className="px-5 py-4 text-slate-700">{item.employeeName}</td>
               <td className="px-5 py-4 text-slate-600">{item.employeePhone || '—'}</td>
-              <td className="px-5 py-4 text-right font-semibold text-rose-600">{item.quantity}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{item.quantity}</td>
+              <td className="px-5 py-4 text-right font-semibold text-emerald-600">{item.returnedQuantity ?? 0}</td>
+              <td className="px-5 py-4 text-right font-bold text-rose-600">{item.remainingQuantity ?? item.quantity}</td>
               <td className="px-5 py-4 text-slate-600">{formatDateTime(item.borrowedAt)}</td>
               <td className="px-5 py-4 text-rose-600 font-medium">{formatDateTime(item.dueDate)}</td>
               <td className="px-5 py-4 text-right font-bold text-rose-600">
