@@ -67,4 +67,10 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
     @Modifying
     @Query("UPDATE ToolBorrow tb SET tb.status = 'overdue' WHERE tb.status = 'borrowing' AND tb.dueDate < :now")
     int markOverdue(@Param("now") LocalDateTime now);
+
+    /**
+     * Lấy tất cả các phiếu đã quá hạn nhưng chưa trả.
+     */
+    @Query("SELECT tb FROM ToolBorrow tb WHERE tb.status = 'overdue' AND tb.returnedAt IS NULL")
+    List<ToolBorrow> findOverdueBorrowsNotReturned();
 }

@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import com.scms.inventory.tool.entity.ToolBorrow;
+import java.util.List;
+
 /**
  * Scheduler tự động cập nhật trạng thái phiếu mượn quá hạn.
  * Chạy mỗi 15 phút. Chỉ cập nhật status, không thay đổi availableQuantity.
@@ -22,6 +25,7 @@ import java.time.LocalDateTime;
 public class ToolBorrowOverdueScheduler {
 
     ToolBorrowRepository toolBorrowRepository;
+    ToolBorrowOverdueEmailScheduler emailScheduler;
 
     /**
      * Chạy mỗi 15 phút để đánh dấu phiếu mượn quá hạn.
@@ -31,9 +35,17 @@ public class ToolBorrowOverdueScheduler {
     @Transactional
     public void markOverdueBorrows() {
         LocalDateTime now = LocalDateTime.now();
+        // Lấy danh sách sắp bị quá hạn (trước khi update)
+        List<ToolBorrow> newlyOverdue = toolBorrowRepository.findOverdueBorrows(now);
+        
         int updated = toolBorrowRepository.markOverdue(now);
         if (updated > 0) {
             log.info("[Scheduler] Đã cập nhật {} phiếu mượn sang trạng thái 'overdue'", updated);
+            
+            // Gửi email ngay lập tức cho các phiếu vừa chuyển sang quá hạn
+            if (!newlyOverdue.isEmpty()) {
+                emailScheduler.processOverdueEmails(newlyOverdue);
+            }
         }
     }
 }
