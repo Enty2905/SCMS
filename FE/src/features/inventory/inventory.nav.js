@@ -1,4 +1,4 @@
-import { ClipboardList, Package2, Wrench, HandHelping } from 'lucide-react'
+import { ArrowRightLeft, ClipboardList, Package2, Wrench, HandHelping } from 'lucide-react'
 import { ROLES } from '@/features/auth/utils/roles.js'
 
 export const inventoryNavItems = [
@@ -18,6 +18,12 @@ export const inventoryNavItems = [
     label: 'Tồn kho vật tư',
     href: '/dashboard/inventory/consumable-stocks',
     icon: Package2,
+    roles: [ROLES.WAREHOUSE_MAT],
+  },
+  {
+    label: 'Cấp phát vật tư',
+    href: '/dashboard/inventory/material-dispatch',
+    icon: ArrowRightLeft,
     roles: [ROLES.WAREHOUSE_MAT],
   },
   {

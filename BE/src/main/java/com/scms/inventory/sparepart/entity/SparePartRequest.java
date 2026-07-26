@@ -46,6 +46,16 @@ public class SparePartRequest {
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issued_by")
+    User issuedBy;
+
+    @Column(name = "issued_at")
+    LocalDateTime issuedAt;
+
+    @Column(name = "note", columnDefinition = "TEXT")
+    String note;
+
     @OneToMany(mappedBy = "sparePartRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     List<SparePartRequestItem> items = new ArrayList<>();

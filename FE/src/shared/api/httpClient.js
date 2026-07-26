@@ -86,8 +86,6 @@ async function request(path, options = {}) {
     }
   }
 
-  const payload = await parseJson(response)
-
   if (!response.ok) {
     if (response.status === 401) {
       window.localStorage.removeItem('scms.auth.token')
@@ -99,9 +97,16 @@ async function request(path, options = {}) {
       throw new Error('Bạn không có quyền truy cập chức năng này.')
     }
 
-    throw new Error(payload?.message || `API request failed: ${response.status}`)
+    const errorPayload = await parseJson(response)
+    throw new Error(errorPayload?.message || `API request failed: ${response.status}`)
   }
 
+  if (options.responseType === 'blob') {
+    const blob = await response.blob()
+    return Object.assign(blob, { data: blob })
+  }
+
+  const payload = await parseJson(response)
   return payload
 }
 

@@ -23,11 +23,13 @@ public interface SparePartRequestRepository extends JpaRepository<SparePartReque
         LEFT JOIN FETCH r.workOrder w
         WHERE (:reqNumber IS NULL OR r.reqNumber LIKE %:reqNumber%)
           AND (:orderNumber IS NULL OR w.orderNumber LIKE %:orderNumber%)
+          AND (:status IS NULL OR r.status = :status)
         ORDER BY r.createdAt DESC
     """)
     Page<SparePartRequest> findByFilters(
         @Param("reqNumber") String reqNumber,
         @Param("orderNumber") String orderNumber,
+        @Param("status") String status,
         Pageable pageable
     );
 
