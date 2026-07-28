@@ -1,11 +1,15 @@
 package com.scms.hr.controller;
 
 import com.scms.common.response.ApiResponse;
+import com.scms.common.response.PagedResponse;
+import com.scms.hr.dto.request.AssignRolesRequest;
 import com.scms.hr.dto.request.CreateUserAccountRequest;
+import com.scms.hr.dto.request.ResetPasswordRequest;
 import com.scms.hr.dto.request.UpdateUserStatusRequest;
 import com.scms.hr.dto.response.EmployeeAccountOptionResponse;
 import com.scms.hr.dto.response.UserAccountResponse;
 import com.scms.hr.service.UserAccountService;
+import com.scms.user.dto.response.RoleResponse;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -32,9 +38,24 @@ public class UserAccountController {
 
     UserAccountService userAccountService;
 
+    /**
+     * Danh sách tài khoản có phân trang, tìm kiếm và lọc theo trạng thái/phòng ban/vai trò.
+     *
+     * @param status all | active | locked
+     */
     @GetMapping("/accounts")
-    public ApiResponse<List<UserAccountResponse>> getAccounts() {
-        return ApiResponse.success("Accounts loaded successfully", userAccountService.getAccounts());
+    public ApiResponse<PagedResponse<UserAccountResponse>> getAccounts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "all") String status,
+            @RequestParam(required = false) UUID departmentId,
+            @RequestParam(required = false) String roleCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(
+                "Accounts loaded successfully",
+                userAccountService.getAccounts(search, status, departmentId, roleCode, page, size)
+        );
     }
 
     @GetMapping("/employees/without-account")
@@ -45,9 +66,39 @@ public class UserAccountController {
         );
     }
 
+    @GetMapping("/assignable-roles")
+    public ApiResponse<List<RoleResponse>> getAssignableRoles() {
+        return ApiResponse.success(
+                "Assignable roles loaded successfully",
+                userAccountService.getAssignableRoles()
+        );
+    }
+
     @PostMapping("/accounts")
     public ApiResponse<UserAccountResponse> createAccount(@Valid @RequestBody CreateUserAccountRequest request) {
         return ApiResponse.created("Account created successfully", userAccountService.createAccount(request));
+    }
+
+    @PutMapping("/accounts/{userId}/roles")
+    public ApiResponse<UserAccountResponse> updateAccountRoles(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AssignRolesRequest request
+    ) {
+        return ApiResponse.success(
+                "Account roles updated successfully",
+                userAccountService.updateAccountRoles(userId, request)
+        );
+    }
+
+    @PostMapping("/accounts/{userId}/reset-password")
+    public ApiResponse<UserAccountResponse> resetPassword(
+            @PathVariable UUID userId,
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        return ApiResponse.success(
+                "Account password reset successfully",
+                userAccountService.resetPassword(userId, request)
+        );
     }
 
     @PatchMapping("/accounts/{userId}/status")

@@ -1,5 +1,5 @@
-import { Edit3, Filter, ImagePlus, Plus, Search, Trash2, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Edit3, ImagePlus, Plus, Search, Trash2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { apiClient } from '@/shared/api/httpClient.js'
@@ -9,15 +9,20 @@ import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 import {
   selectHrDepartments,
   selectHrDirectoryError,
-  selectHrDirectoryLoading,
   selectHrDirectorySaving,
-  selectHrEmployees,
+  selectHrEmployeeFilters,
+  selectHrEmployeeOptions,
+  selectHrEmployeePage,
+  selectHrEmployeeResults,
+  selectHrEmployeeSearching,
   selectHrPositions,
 } from '../store/hr-directory.selectors.js'
 import {
   createEmployee,
   deleteEmployee,
+  fetchEmployeeOptions,
   fetchHrDirectoryData,
+  searchEmployees,
   updateEmployee,
 } from '../store/hr-directory.thunks.js'
 
@@ -25,50 +30,69 @@ const emptyForm = {
   employeeName: '',
   phone: '',
   email: '',
+  gender: '',
+  status: '',
   departmentId: '',
   positionId: '',
   workLocation: '',
   avatar: null,
 }
 
+const statusStyles = {
+  'Đang làm việc': 'bg-emerald-100 text-emerald-700',
+  'Tạm nghỉ': 'bg-amber-100 text-amber-700',
+  'Đã nghỉ việc': 'bg-slate-200 text-slate-600',
+}
+
+const accountStateOptions = [
+  { value: 'all', label: 'Tất cả tài khoản' },
+  { value: 'has-account', label: 'Đã có tài khoản' },
+  { value: 'no-account', label: 'Chưa có tài khoản' },
+]
+
 export function EmployeeListPage() {
   const dispatch = useDispatch()
-  const employees = useSelector(selectHrEmployees)
+  const employees = useSelector(selectHrEmployeeResults)
+  const employeePage = useSelector(selectHrEmployeePage)
+  const filters = useSelector(selectHrEmployeeFilters)
   const departments = useSelector(selectHrDepartments)
   const positions = useSelector(selectHrPositions)
-  const loading = useSelector(selectHrDirectoryLoading)
+  const options = useSelector(selectHrEmployeeOptions)
+  const loading = useSelector(selectHrEmployeeSearching)
   const saving = useSelector(selectHrDirectorySaving)
   const error = useSelector(selectHrDirectoryError)
-  const [query, setQuery] = useState('')
-  const [department, setDepartment] = useState('all')
-  const [status, setStatus] = useState('all')
+  const [query, setQuery] = useState(filters.search)
   const [editingEmployee, setEditingEmployee] = useState(undefined)
   const [employeeToDelete, setEmployeeToDelete] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
 
-  const filteredEmployees = useMemo(
-    () =>
-      employees.filter((employee) => {
-        const keyword = query.trim().toLowerCase()
-        const matchesQuery =
-          !keyword ||
-          employee.employeeCode?.toLowerCase().includes(keyword) ||
-          employee.employeeName?.toLowerCase().includes(keyword) ||
-          employee.email?.toLowerCase().includes(keyword) ||
-          employee.phone?.includes(keyword)
-        const matchesDepartment =
-          department === 'all' || employee.departmentId === department
-        const matchesStatus = status === 'all' || employee.status === status
-
-        return matchesQuery && matchesDepartment && matchesStatus
-      }),
-    [department, employees, query, status],
-  )
-
   useEffect(() => {
+    // Phòng ban, chức vụ và danh mục cho biểu mẫu, kèm trang nhân viên đầu tiên.
     dispatch(fetchHrDirectoryData())
+    dispatch(fetchEmployeeOptions())
+    dispatch(searchEmployees({ page: 0 }))
   }, [dispatch])
+
+  // Gõ xong 400ms mới gọi API để không bắn request theo từng phím.
+  useEffect(() => {
+    if (query === filters.search) return undefined
+
+    const timer = setTimeout(() => {
+      dispatch(searchEmployees({ search: query, page: 0 }))
+    }, 400)
+
+    return () => clearTimeout(timer)
+  }, [dispatch, filters.search, query])
+
+  const applyFilter = (changes) => {
+    dispatch(searchEmployees({ ...changes, page: 0 }))
+  }
+
+  const goToPage = (page) => {
+    if (page < 0 || page >= employeePage.totalPages) return
+    dispatch(searchEmployees({ page }))
+  }
 
   const openCreateModal = () => {
     setEditingEmployee(null)
@@ -82,6 +106,8 @@ export function EmployeeListPage() {
       employeeName: employee.employeeName || '',
       phone: employee.phone || '',
       email: employee.email || '',
+      gender: employee.gender || '',
+      status: employee.status || '',
       departmentId: employee.departmentId || '',
       positionId: employee.positionId || '',
       workLocation: employee.workLocation || '',
@@ -142,6 +168,7 @@ export function EmployeeListPage() {
   }
 
   const isModalOpen = editingEmployee !== undefined
+  const firstRowIndex = employeePage.page * employeePage.size
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -167,20 +194,17 @@ export function EmployeeListPage() {
           <input
             className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm mã NV, tên, số điện thoại..."
+            placeholder="Tìm mã NV, tên, email, số điện thoại, vị trí làm việc..."
             value={query}
           />
         </label>
         <div className="flex flex-wrap gap-3">
-          <Button size="icon" variant="secondary">
-            <Filter size={17} />
-          </Button>
           <select
             className="h-11 min-w-48 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
-            onChange={(event) => setDepartment(event.target.value)}
-            value={department}
+            onChange={(event) => applyFilter({ departmentId: event.target.value })}
+            value={filters.departmentId}
           >
-            <option value="all">Tất cả phòng ban</option>
+            <option value="">Tất cả phòng ban</option>
             {departments.map((item) => (
               <option key={item.departmentId} value={item.departmentId}>
                 {item.departmentName}
@@ -188,19 +212,34 @@ export function EmployeeListPage() {
             ))}
           </select>
           <select
-            className="h-11 min-w-40 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
-            onChange={(event) => setStatus(event.target.value)}
-            value={status}
+            className="h-11 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            onChange={(event) => applyFilter({ status: event.target.value })}
+            value={filters.status}
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="Đang làm việc">Đang làm việc</option>
+            <option value="all">Tất cả tình trạng</option>
+            {options.statuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-11 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            onChange={(event) => applyFilter({ accountState: event.target.value })}
+            value={filters.accountState}
+          >
+            {accountStateOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </section>
 
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
-          Hiển thị {filteredEmployees.length} / {employees.length} nhân viên
+          Hiển thị {employees.length} / {employeePage.totalElements} nhân viên
         </div>
         {error ? (
           <p className="mx-5 mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
@@ -231,7 +270,7 @@ export function EmployeeListPage() {
                 </tr>
               ) : null}
 
-              {!loading && !filteredEmployees.length ? (
+              {!loading && !employees.length ? (
                 <tr>
                   <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Không có nhân viên phù hợp.
@@ -240,13 +279,13 @@ export function EmployeeListPage() {
               ) : null}
 
               {!loading
-                ? filteredEmployees.map((employee, index) => (
+                ? employees.map((employee, index) => (
                     <tr className="hover:bg-slate-50/80" key={employee.employeeId}>
                       <td className="px-5 py-4 text-center font-medium text-slate-500">
-                        {index + 1}
+                        {firstRowIndex + index + 1}
                       </td>
                       <td className="px-5 py-4 font-semibold text-slate-700">
-                        {employee.employeeCode}
+                        {employee.employeeCode || 'Chưa cấp'}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -256,7 +295,7 @@ export function EmployeeListPage() {
                               {employee.employeeName}
                             </p>
                             <p className="text-xs text-slate-500">
-                              {employee.hasAccount ? 'Đã có tài khoản' : 'Chưa có tài khoản'}
+                              {describeAccount(employee)}
                             </p>
                           </div>
                         </div>
@@ -268,9 +307,14 @@ export function EmployeeListPage() {
                         {employee.positionName || employee.workLocation || 'Chưa cập nhật'}
                       </td>
                       <td className="px-5 py-4 text-slate-600">{employee.phone || 'N/A'}</td>
-                      <td className="px-5 py-4 text-slate-600">{employee.email}</td>
+                      <td className="px-5 py-4 text-slate-600">{employee.email || 'N/A'}</td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                        <span
+                          className={[
+                            'inline-flex rounded-full px-2.5 py-1 text-xs font-bold',
+                            statusStyles[employee.status] || 'bg-slate-100 text-slate-600',
+                          ].join(' ')}
+                        >
                           {employee.status}
                         </span>
                       </td>
@@ -307,6 +351,13 @@ export function EmployeeListPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          disabled={loading}
+          onChange={goToPage}
+          page={employeePage.page}
+          totalPages={employeePage.totalPages}
+        />
       </section>
 
       {isModalOpen ? (
@@ -318,6 +369,7 @@ export function EmployeeListPage() {
           onChange={setForm}
           onClose={closeModal}
           onSubmit={handleSubmit}
+          options={options}
           positions={positions}
           saving={saving}
         />
@@ -334,6 +386,48 @@ export function EmployeeListPage() {
       />
     </div>
   )
+}
+
+export function Pagination({ disabled, onChange, page, totalPages }) {
+  if (totalPages <= 1) {
+    return null
+  }
+
+  return (
+    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+      <p className="text-sm text-slate-500">
+        Trang {page + 1} / {totalPages}
+      </p>
+      <div className="flex gap-2">
+        <Button
+          aria-label="Trang trước"
+          disabled={disabled || page === 0}
+          onClick={() => onChange(page - 1)}
+          size="icon"
+          variant="secondary"
+        >
+          <ChevronLeft size={17} />
+        </Button>
+        <Button
+          aria-label="Trang sau"
+          disabled={disabled || page >= totalPages - 1}
+          onClick={() => onChange(page + 1)}
+          size="icon"
+          variant="secondary"
+        >
+          <ChevronRight size={17} />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function describeAccount(employee) {
+  if (!employee.hasAccount) {
+    return 'Chưa có tài khoản'
+  }
+
+  return employee.accountActive ? 'Đã có tài khoản' : 'Tài khoản đang bị khóa'
 }
 
 function EmployeeAvatar({ employee }) {
@@ -364,6 +458,7 @@ function EmployeeFormModal({
   onChange,
   onClose,
   onSubmit,
+  options,
   positions,
   saving,
 }) {
@@ -394,6 +489,12 @@ function EmployeeFormModal({
         </div>
 
         <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+          {employee?.employeeCode ? (
+            <p className="md:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Mã nhân viên: <strong className="text-slate-900">{employee.employeeCode}</strong>
+            </p>
+          ) : null}
+
           <label className="md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Họ tên *</span>
             <input
@@ -421,6 +522,37 @@ function EmployeeFormModal({
               type="email"
               value={form.email}
             />
+          </label>
+
+          <label>
+            <span className="text-sm font-semibold text-slate-700">Giới tính</span>
+            <select
+              className="mt-2 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => updateField('gender', event.target.value)}
+              value={form.gender}
+            >
+              <option value="">Chưa khai báo</option>
+              {options.genders.map((gender) => (
+                <option key={gender} value={gender}>
+                  {gender}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="text-sm font-semibold text-slate-700">Tình trạng làm việc</span>
+            <select
+              className="mt-2 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => updateField('status', event.target.value)}
+              value={form.status || options.statuses[0] || ''}
+            >
+              {options.statuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
