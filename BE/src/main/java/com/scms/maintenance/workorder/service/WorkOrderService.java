@@ -169,9 +169,9 @@ public class WorkOrderService {
          * Lấy danh sách phiếu công tác có tìm kiếm và phân trang
          */
         @Transactional(readOnly = true)
-        public PagedResponse<WorkOrderResponse> searchWorkOrders(String keyword, int page, int size) {
+        public PagedResponse<WorkOrderResponse> searchWorkOrders(String keyword, String status, int page, int size) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-                Page<WorkOrder> workOrderPage = workOrderRepository.searchWorkOrders(keyword, pageable);
+                Page<WorkOrder> workOrderPage = workOrderRepository.searchWorkOrders(keyword, status, pageable);
                 
                 List<WorkOrderResponse> content = workOrderPage.getContent().stream().map(wo -> {
                         List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());

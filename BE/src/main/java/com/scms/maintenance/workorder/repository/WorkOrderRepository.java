@@ -60,14 +60,20 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
         WHERE (:keyword IS NULL OR :keyword = '' 
                OR LOWER(wo.orderNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) 
                OR LOWER(wo.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR :status = '' OR wo.status = :status)
     """,
     countQuery = """
         SELECT COUNT(wo) FROM WorkOrder wo
         WHERE (:keyword IS NULL OR :keyword = '' 
                OR LOWER(wo.orderNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) 
                OR LOWER(wo.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR :status = '' OR wo.status = :status)
     """)
-    Page<WorkOrder> searchWorkOrders(@Param("keyword") String keyword, Pageable pageable);
+    Page<WorkOrder> searchWorkOrders(
+        @Param("keyword") String keyword, 
+        @Param("status") String status, 
+        Pageable pageable
+    );
 
     /**
      * Lấy WorkOrder kèm toàn bộ quan hệ để tránh N+1 khi build response

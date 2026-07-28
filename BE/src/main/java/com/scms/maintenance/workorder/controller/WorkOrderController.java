@@ -78,9 +78,10 @@ public class WorkOrderController {
     @Operation(summary = "Tìm kiếm phiếu công tác", description = "Lấy danh sách PCT có phân trang, hỗ trợ tìm kiếm theo số PCT hoặc nội dung")
     public ApiResponse<PagedResponse<WorkOrderResponse>> searchWorkOrders(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.success(workOrderService.searchWorkOrders(keyword, page, size));
+        return ApiResponse.success(workOrderService.searchWorkOrders(keyword, status, page, size));
     }
 
     /**
