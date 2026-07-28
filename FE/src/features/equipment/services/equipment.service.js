@@ -97,3 +97,13 @@ export async function deleteEquipmentImage(imageId) {
   const response = await apiClient.delete(`/equipment/images/${imageId}`)
   return response.data
 }
+
+export async function fetchTechnicalParams() {
+  const response = await apiClient.get('/equipment/params')
+  return response.data || []
+}
+
+export async function fetchUnits() {
+  const response = await apiClient.get('/equipment/units')
+  return response.data || []
+}

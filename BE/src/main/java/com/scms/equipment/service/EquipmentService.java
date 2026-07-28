@@ -10,6 +10,14 @@ import com.scms.equipment.entity.EquipmentImage;
 import com.scms.equipment.repository.EquipmentRepository;
 import com.scms.equipment.repository.EquipmentSystemRepository;
 import com.scms.equipment.repository.EquipmentImageRepository;
+import com.scms.equipment.repository.TechnicalSpecRepository;
+import com.scms.equipment.repository.TechnicalParamRepository;
+import com.scms.equipment.repository.UnitRepository;
+import com.scms.equipment.entity.TechnicalSpec;
+import com.scms.equipment.dto.request.TechnicalSpecRequest;
+import com.scms.equipment.dto.response.TechnicalSpecResponse;
+import com.scms.equipment.dto.response.TechnicalParamResponse;
+import com.scms.equipment.dto.response.UnitResponse;
 import com.scms.auth.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +46,9 @@ public class EquipmentService {
     EquipmentSystemRepository equipmentSystemRepository;
     EquipmentImageRepository equipmentImageRepository;
     UserRepository userRepository;
+    TechnicalSpecRepository technicalSpecRepository;
+    TechnicalParamRepository technicalParamRepository;
+    UnitRepository unitRepository;
 
     // ── Tạo mới thiết bị ──────────────────────────────────────
     @Transactional
@@ -59,6 +70,21 @@ public class EquipmentService {
 
         equipment = equipmentRepository.save(equipment);
         log.info("Equipment created with id: {}", equipment.getId());
+
+        if (request.getSpecs() != null) {
+            for (var specReq : request.getSpecs()) {
+                if (specReq.getParamId() != null) {
+                    TechnicalSpec spec = TechnicalSpec.builder()
+                            .equipmentId(equipment.getId())
+                            .paramId(specReq.getParamId())
+                            .paramValue(specReq.getParamValue())
+                            .unitId(specReq.getUnitId())
+                            .build();
+                    technicalSpecRepository.save(spec);
+                }
+            }
+        }
+
         return toEquipmentResponse(equipment);
     }
 
@@ -81,7 +107,25 @@ public class EquipmentService {
         equipment.setLocation(request.getLocation());
         equipment.setSystemId(request.getSystemId());
 
-        return toEquipmentResponse(equipmentRepository.save(equipment));
+        Equipment saved = equipmentRepository.save(equipment);
+
+        // Delete existing specs and insert new ones
+        technicalSpecRepository.deleteByEquipmentId(id);
+        if (request.getSpecs() != null) {
+            for (var specReq : request.getSpecs()) {
+                if (specReq.getParamId() != null) {
+                    TechnicalSpec spec = TechnicalSpec.builder()
+                            .equipmentId(id)
+                            .paramId(specReq.getParamId())
+                            .paramValue(specReq.getParamValue())
+                            .unitId(specReq.getUnitId())
+                            .build();
+                    technicalSpecRepository.save(spec);
+                }
+            }
+        }
+
+        return toEquipmentResponse(saved);
     }
 
     // ── Lấy chi tiết thiết bị theo ID ────────────────────────
@@ -127,6 +171,18 @@ public class EquipmentService {
                 .map(this::toEquipmentImageResponse)
                 .toList();
 
+        List<TechnicalSpecResponse> specs = technicalSpecRepository.findByEquipmentId(equipment.getId())
+                .stream()
+                .map(spec -> TechnicalSpecResponse.builder()
+                        .specId(spec.getSpecId())
+                        .paramId(spec.getParamId())
+                        .paramName(spec.getParameter() != null ? spec.getParameter().getParamName() : null)
+                        .paramValue(spec.getParamValue())
+                        .unitId(spec.getUnitId())
+                        .unitSymbol(spec.getUnit() != null ? spec.getUnit().getSymbol() : null)
+                        .build())
+                .toList();
+
         return EquipmentResponse.builder()
                 .id(equipment.getId())
                 .kksCode(equipment.getKksCode())
@@ -136,6 +192,7 @@ public class EquipmentService {
                 .location(equipment.getLocation())
                 .systemId(equipment.getSystemId())
                 .images(images)
+                .specs(specs)
                 .build();
     }
 
@@ -206,7 +263,7 @@ public class EquipmentService {
 
             EquipmentImage img = EquipmentImage.builder()
                     .equipmentId(equipmentId)
-                    .imageUrl("/equipment/images/file/" + filename)
+                    .imageUrl("/uploads/equipment-images/" + filename)
                     .caption(originalFilename)
                     .uploadedBy(currentUserId)
                     .uploadedAt(LocalDateTime.now())
@@ -253,5 +310,25 @@ public class EquipmentService {
             log.error("Lỗi đọc file ảnh {}", filename, e);
             throw new AppException(ErrorCode.NOT_FOUND);
         }
+    }
+
+    public List<TechnicalParamResponse> getAllTechnicalParams() {
+        return technicalParamRepository.findAll().stream()
+                .map(param -> TechnicalParamResponse.builder()
+                        .paramId(param.getParamId())
+                        .paramName(param.getParamName())
+                        .dataType(param.getDataType())
+                        .build())
+                .toList();
+    }
+
+    public List<UnitResponse> getAllUnits() {
+        return unitRepository.findAll().stream()
+                .map(unit -> UnitResponse.builder()
+                        .unitId(unit.getUnitId())
+                        .symbol(unit.getSymbol())
+                        .fullName(unit.getFullName())
+                        .build())
+                .toList();
     }
 }

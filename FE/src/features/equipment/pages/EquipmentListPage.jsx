@@ -11,6 +11,8 @@ import {
   fetchSystems,
   uploadEquipmentImage,
   deleteEquipmentImage,
+  fetchTechnicalParams,
+  fetchUnits,
 } from '../services/equipment.service.js'
 import { apiClient } from '@/shared/api/httpClient.js'
 
@@ -52,7 +54,10 @@ export function EquipmentListPage() {
     status: 'Hoạt động',
     location: '',
     systemId: '',
+    specs: [],
   })
+  const [availableParams, setAvailableParams] = useState([])
+  const [availableUnits, setAvailableUnits] = useState([])
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -76,12 +81,16 @@ export function EquipmentListPage() {
     setLoading(true)
     setError(null)
     try {
-      const [eqList, sysList] = await Promise.all([
+      const [eqList, sysList, paramList, unitList] = await Promise.all([
         fetchEquipments(),
         fetchSystems(),
+        fetchTechnicalParams(),
+        fetchUnits(),
       ])
       setEquipments(eqList)
       setSystems(sysList)
+      setAvailableParams(paramList)
+      setAvailableUnits(unitList)
     } catch (err) {
       console.error(err)
       setError(err.message || 'Không thể tải dữ liệu thiết bị. Vui lòng thử lại.')
@@ -95,19 +104,23 @@ export function EquipmentListPage() {
 
     async function loadInitialData() {
       try {
-        const [eqList, sysList] = await Promise.all([
+        const [eqList, sysList, paramList, unitList] = await Promise.all([
           fetchEquipments(),
           fetchSystems(),
+          fetchTechnicalParams(),
+          fetchUnits(),
         ])
 
         if (!ignore) {
           setEquipments(eqList)
           setSystems(sysList)
+          setAvailableParams(paramList)
+          setAvailableUnits(unitList)
         }
       } catch (err) {
         console.error(err)
         if (!ignore) {
-          setError(err.message || 'KhĂ´ng thá»ƒ táº£i dá»¯ liá»‡u thiáº¿t bá»‹. Vui lĂ²ng thá»­ láº¡i.')
+          setError(err.message || 'Không thể tải dữ liệu thiết bị. Vui lòng thử lại.')
         }
       } finally {
         if (!ignore) {
@@ -196,6 +209,11 @@ export function EquipmentListPage() {
         status: eq.status || 'Hoạt động',
         location: eq.location || '',
         systemId: eq.systemId || '',
+        specs: (eq.specs || []).map(spec => ({
+          paramId: spec.paramId,
+          paramValue: spec.paramValue,
+          unitId: spec.unitId || '',
+        })),
       })
 
       // Parse KKS Code for builder if standard
@@ -230,6 +248,7 @@ export function EquipmentListPage() {
         status: 'Hoạt động',
         location: '',
         systemId: systemFilter !== 'all' ? systemFilter : '',
+        specs: [],
       })
     }
     setIsModalOpen(true)
@@ -963,6 +982,95 @@ export function EquipmentListPage() {
                 />
               </div>
 
+              {/* Dynamic Specs Section */}
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Thông số vận hành chi tiết</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        specs: [...(prev.specs || []), { paramId: availableParams[0]?.paramId || '', paramValue: '', unitId: '' }]
+                      }))
+                    }}
+                    className="text-xs font-semibold text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1 transition cursor-pointer"
+                  >
+                    + Thêm thông số
+                  </button>
+                </div>
+
+                {(formData.specs || []).length > 0 ? (
+                  <div className="space-y-2">
+                    {formData.specs.map((spec, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <select
+                          value={spec.paramId}
+                          onChange={(e) => {
+                            const newSpecs = [...formData.specs]
+                            newSpecs[index].paramId = e.target.value
+                            setFormData((prev) => ({ ...prev, specs: newSpecs }))
+                          }}
+                          className="h-10 flex-1 min-w-[120px] rounded-md border border-slate-200 bg-white px-2.5 text-xs outline-none focus:border-violet-500 transition"
+                        >
+                          <option value="">-- Tham số --</option>
+                          {availableParams.map((p) => (
+                            <option key={p.paramId} value={p.paramId}>
+                              {p.paramName}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          type="text"
+                          value={spec.paramValue}
+                          onChange={(e) => {
+                            const newSpecs = [...formData.specs]
+                            newSpecs[index].paramValue = e.target.value
+                            setFormData((prev) => ({ ...prev, specs: newSpecs }))
+                          }}
+                          placeholder="Giá trị"
+                          className="h-10 w-24 rounded-md border border-slate-200 bg-white px-2.5 text-xs outline-none focus:border-violet-500 transition"
+                        />
+
+                        <select
+                          value={spec.unitId}
+                          onChange={(e) => {
+                            const newSpecs = [...formData.specs]
+                            newSpecs[index].unitId = e.target.value
+                            setFormData((prev) => ({ ...prev, specs: newSpecs }))
+                          }}
+                          className="h-10 w-24 rounded-md border border-slate-200 bg-white px-2.5 text-xs outline-none focus:border-violet-500 transition"
+                        >
+                          <option value="">-- Đơn vị --</option>
+                          {availableUnits.map((u) => (
+                            <option key={u.unitId} value={u.unitId}>
+                              {u.symbol}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSpecs = formData.specs.filter((_, i) => i !== index)
+                            setFormData((prev) => ({ ...prev, specs: newSpecs }))
+                          }}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Xóa thông số này"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    Chưa có thông số chi tiết nào. Bấm "+ Thêm thông số" để thiết lập.
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Hình ảnh thiết bị</label>
 
@@ -1171,18 +1279,24 @@ export function EquipmentListPage() {
             <div className="mt-6 border-t border-slate-100 pt-5">
               <h3 className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
                 <Network className="text-violet-600 animate-pulse" size={16} />
-                <span>Thông số kỹ thuật đặc trưng ({viewingEquipment.equipmentType})</span>
+                <span>Thông số kỹ thuật vận hành chi tiết</span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/50">
-                {getTechnicalSpecs(viewingEquipment).map((spec, index) => (
-                  <div key={index} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1">{spec.label}</div>
-                    <div className="text-xs font-bold text-slate-800 font-mono">
-                      {spec.value}
+              {viewingEquipment.specs && viewingEquipment.specs.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/50">
+                  {viewingEquipment.specs.map((spec) => (
+                    <div key={spec.specId} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1">{spec.paramName}</div>
+                      <div className="text-xs font-bold text-slate-800 font-mono">
+                        {spec.paramValue} {spec.unitSymbol || ''}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic bg-slate-50 p-3.5 rounded-xl border border-slate-200/50 text-center">
+                  Thiết bị này chưa được cấu hình thông số kỹ thuật vận hành.
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-5 no-print">
@@ -1288,62 +1402,4 @@ export function EquipmentListPage() {
   )
 }
 
-function getTechnicalSpecs(eq) {
-  if (!eq) return [];
 
-  const type = (eq.equipmentType || '').toLowerCase();
-  const kks = eq.kksCode || '';
-
-  // Deterministic hash based on KKS code
-  let hash = 0;
-  for (let i = 0; i < kks.length; i++) {
-    hash = kks.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  hash = Math.abs(hash);
-
-  if (type.includes('cơ khí') || type.includes('co khi') || type.includes('mechanical')) {
-    const powers = ['45 kW', '55 kW', '75 kW', '110 kW', '250 kW', '450 kW'];
-    const pressures = ['6 bar', '10 bar', '16 bar', '25 bar', '40 bar', '100 bar'];
-    const flows = ['50 m³/h', '80 m³/h', '120 m³/h', '250 m³/h', '500 m³/h'];
-    const temps = ['85 °C', '120 °C', '150 °C', '200 °C', '350 °C'];
-    const speeds = ['980 rpm', '1480 rpm', '2950 rpm', '3000 rpm'];
-
-    return [
-      { label: 'Công suất định mức', value: powers[hash % powers.length] },
-      { label: 'Áp suất thiết kế', value: pressures[(hash + 1) % pressures.length] },
-      { label: 'Lưu lượng danh định', value: flows[(hash + 2) % flows.length] },
-      { label: 'Nhiệt độ hoạt động', value: temps[(hash + 3) % temps.length] },
-      { label: 'Tốc độ quay trục', value: speeds[(hash + 4) % speeds.length] },
-    ];
-  }
-
-  if (type.includes('điện') || type.includes('dien') || type.includes('electrical')) {
-    const voltages = ['220 V AC', '380 V AC', '6.6 kV AC', '10 kV AC', '110 V DC', '220 V DC'];
-    const currents = ['12 A', '45 A', '85 A', '120 A', '250 A', '630 A'];
-    const classes = ['Class B', 'Class F', 'Class H'];
-    const cosPhis = ['0.82', '0.85', '0.88', '0.90', '0.92'];
-
-    return [
-      { label: 'Điện áp hoạt động', value: voltages[hash % voltages.length] },
-      { label: 'Dòng điện định mức', value: currents[(hash + 1) % currents.length] },
-      { label: 'Tần số thiết kế', value: '50 Hz' },
-      { label: 'Cấp cách điện', value: classes[(hash + 2) % classes.length] },
-      { label: 'Hệ số công suất (cos φ)', value: cosPhis[(hash + 3) % cosPhis.length] },
-    ];
-  }
-
-  // Default to CI (Control & Instrumentation)
-  const voltagesCI = ['24 V DC', '48 V DC', '110 V AC', '220 V AC'];
-  const signals = ['4 - 20 mA', '0 - 10 V', 'Modbus RTU', 'HART', 'Profibus DP'];
-  const tolerances = ['±0.05 %', '±0.1 %', '±0.2 %', '±0.5 %'];
-  const protocols = ['Modbus RTU/TCP', 'HART Protocol', 'Profibus', 'EtherNet/IP', 'Foundation Fieldbus'];
-  const ips = ['IP54', 'IP65', 'IP67', 'IP68'];
-
-  return [
-    { label: 'Nguồn cấp hoạt động', value: voltagesCI[hash % voltagesCI.length] },
-    { label: 'Tín hiệu điều khiển', value: signals[(hash + 1) % signals.length] },
-    { label: 'Sai số cho phép', value: tolerances[(hash + 2) % tolerances.length] },
-    { label: 'Giao thức truyền thông', value: protocols[(hash + 3) % protocols.length] },
-    { label: 'Cấp bảo vệ vỏ ngoài', value: ips[(hash + 4) % ips.length] },
-  ];
-}

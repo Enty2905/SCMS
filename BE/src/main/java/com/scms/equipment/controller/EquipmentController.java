@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 import com.scms.equipment.dto.response.EquipmentImageResponse;
+import com.scms.equipment.dto.response.TechnicalParamResponse;
+import com.scms.equipment.dto.response.UnitResponse;
 
 @Tag(name = "Equipment Management", description = "API quản lý thiết bị")
 @RestController
@@ -136,5 +138,25 @@ public class EquipmentController {
         headers.setCacheControl(org.springframework.http.CacheControl.maxAge(30, java.util.concurrent.TimeUnit.DAYS).cachePublic());
         
         return new org.springframework.http.ResponseEntity<>(imageBytes, headers, org.springframework.http.HttpStatus.OK);
+    }
+
+    @Operation(summary = "Lấy tất cả tham số kỹ thuật cấu hình sẵn")
+    @GetMapping("/params")
+    public ApiResponse<List<TechnicalParamResponse>> getAllParams() {
+        return ApiResponse.<List<TechnicalParamResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách tham số thành công")
+                .data(equipmentService.getAllTechnicalParams())
+                .build();
+    }
+
+    @Operation(summary = "Lấy tất cả đơn vị cấu hình sẵn")
+    @GetMapping("/units")
+    public ApiResponse<List<UnitResponse>> getAllUnits() {
+        return ApiResponse.<List<UnitResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách đơn vị thành công")
+                .data(equipmentService.getAllUnits())
+                .build();
     }
 }
