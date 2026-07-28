@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Clock, Loader2, Play, Square, X, Upload } from 'lucide-react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 import {
   closeDailyLogService,
   fetchDailyLogsService,
   openDailyLogService,
+  completeWorkOrderService,
 } from '../services/maintenance.service.js'
 
 function formatTime(iso) {
@@ -29,6 +31,7 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
   const size = 10
 
   // Ghi chú khi đóng phiếu
@@ -87,6 +90,29 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
     }
   }
 
+  async function handleCompleteWorkOrder() {
+    if (activeLog) {
+      alert('Vui lòng kết thúc phiên làm việc hiện tại trước khi hoàn thành phiếu công tác.')
+      return
+    }
+    setShowConfirm(true)
+  }
+
+  async function executeCompleteWorkOrder() {
+    try {
+      setActionLoading(true)
+      setError('')
+      await completeWorkOrderService(orderId)
+      if (onSuccess) onSuccess()
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Lỗi khi hoàn thành phiếu công tác')
+    } finally {
+      setActionLoading(false)
+      setShowConfirm(false)
+    }
+  }
+
   const handlePageChange = (newPage) => {
     if (newPage >= 0 && newPage < totalPages) {
       setPage(newPage)
@@ -106,15 +132,17 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8 px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
-              onClick={() => alert('Chức năng upload file cứng đang phát triển')}
-            >
-              <Upload size={14} className="mr-1.5 text-slate-400" />
-              Upload bản cứng (Scan)
-            </Button>
+            {status !== 'locked' && (
+              <Button
+                type="button"
+                variant="primary"
+                className="h-8 px-4 text-xs font-semibold shadow-sm bg-violet-600 hover:bg-violet-700 focus-visible:ring-violet-600/20 text-white"
+                onClick={handleCompleteWorkOrder}
+                disabled={actionLoading}
+              >
+                Hoàn thành
+              </Button>
+            )}
             <button
               type="button"
               className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
@@ -305,6 +333,17 @@ export function DailyLogModal({ orderId, orderNumber, status, onClose, onSuccess
         </div>
 
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={executeCompleteWorkOrder}
+        title="Xác nhận hoàn thành"
+        message="Bạn có chắc chắn muốn HOÀN THÀNH phiếu công tác này? Sau khi hoàn thành sẽ không thể mở lại nhật ký."
+        confirmText="Hoàn thành"
+        cancelText="Huỷ bỏ"
+        type="warning"
+      />
     </div>
   )
 }
