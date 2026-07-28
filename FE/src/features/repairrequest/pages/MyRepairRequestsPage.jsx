@@ -14,7 +14,7 @@ import { CreateRepairRequestModal } from './CreateRepairRequestModal.jsx'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  processing: { label: 'Đang xử lý', cls: 'bg-amber-100 text-amber-700' },
+  processing: { label: 'Chưa xử lý', cls: 'bg-amber-100 text-amber-700' },
   done:       { label: 'Đã xử lý',  cls: 'bg-emerald-100 text-emerald-700' },
 }
 
@@ -137,7 +137,7 @@ export function MyRepairRequestsPage() {
           value={statusFilter}
         >
           <option value="">Tất cả trạng thái</option>
-          <option value="processing">Đang xử lý</option>
+          <option value="processing">Chưa xử lý</option>
           <option value="done">Đã xử lý</option>
         </select>
       </section>
