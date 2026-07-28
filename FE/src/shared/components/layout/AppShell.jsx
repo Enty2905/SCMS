@@ -18,6 +18,7 @@ import {
 } from '@/features/auth/utils/roles.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { apiClient } from '@/shared/api/httpClient.js'
+import { useWebSocket } from '@/shared/contexts/WebSocketContext.jsx'
 
 import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
@@ -54,7 +55,17 @@ export function AppShell() {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
 
-  const canSeeNotifications = hasAnyRole(user, [ROLES.OPS_MANAGER, ROLES.ADMIN])
+  // State cho websocket toast
+  const [realtimeToast, setRealtimeToast] = useState(null)
+
+  const { stompClient, isConnected } = useWebSocket()
+
+  const canSeeNotifications = hasAnyRole(user, [
+    ROLES.OPS_MANAGER, 
+    ROLES.ADMIN,
+    ROLES.REPAIR_MANAGER,
+    ROLES.TEAM_LEADER,
+  ])
 
   useEffect(() => {
     if (!canSeeNotifications) {
@@ -151,6 +162,41 @@ export function AppShell() {
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
   }, [user, canSeeNotifications])
+
+  // Lắng nghe sự kiện realtime qua WebSocket
+  useEffect(() => {
+    if (isConnected && stompClient && canSeeNotifications) {
+      const subscription = stompClient.subscribe('/topic/repair-requests', (message) => {
+        if (message.body) {
+          const data = JSON.parse(message.body)
+          
+          const newNotif = {
+            id: 'ws-' + Date.now(),
+            kksCode: data.equipmentKksCode,
+            name: data.equipmentName,
+            status: 'Sự cố',
+            systemId: 'all',
+            title: 'Yêu cầu sửa chữa mới',
+            message: `Thiết bị ${data.equipmentName} (${data.equipmentKksCode}) vừa có yêu cầu sửa chữa.`,
+            type: 'error',
+            category: 'equipment',
+          }
+
+          // Hiện thông báo popup 5s
+          setRealtimeToast(newNotif)
+          setTimeout(() => {
+            setRealtimeToast(null)
+          }, 5000)
+
+          // Cập nhật mảng thông báo chung
+          setNotifications(prev => [newNotif, ...prev])
+        }
+      })
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [isConnected, stompClient, canSeeNotifications])
 
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
@@ -333,6 +379,28 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      {/* Realtime Toast Notification */}
+      {realtimeToast && (
+        <div className="fixed bottom-4 right-4 z-[999] animate-in slide-in-from-right fade-in duration-300 w-80 rounded-lg border-l-4 border-rose-500 bg-white p-4 shadow-xl">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-full bg-rose-100 p-1">
+              <Bell className="text-rose-600" size={16} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">{realtimeToast.title}</h4>
+              <p className="mt-1 text-xs text-slate-600">{realtimeToast.message}</p>
+            </div>
+            <button
+              onClick={() => setRealtimeToast(null)}
+              className="ml-auto text-slate-400 hover:text-slate-600"
+            >
+              <span className="sr-only">Close</span>
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

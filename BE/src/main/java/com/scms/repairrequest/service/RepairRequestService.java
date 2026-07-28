@@ -10,6 +10,7 @@ import com.scms.repairrequest.dto.request.CreateRepairRequestDto;
 import com.scms.repairrequest.dto.response.RepairRequestResponse;
 import com.scms.repairrequest.entity.RepairRequest;
 import com.scms.repairrequest.repository.RepairRequestRepository;
+import com.scms.common.service.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,6 +31,7 @@ public class RepairRequestService {
     RepairRequestRepository repairRequestRepository;
     EquipmentRepository equipmentRepository;
     UserRepository userRepository;
+    NotificationService notificationService;
 
     // ── User Story 1: Tạo mới yêu cầu sửa chữa ──────────────────────────────
 
@@ -54,7 +56,13 @@ public class RepairRequestService {
                 .priority(dto.getPriority() != null ? dto.getPriority() : "medium")
                 .build();
 
-        return toResponse(repairRequestRepository.save(request));
+        RepairRequest savedRequest = repairRequestRepository.save(request);
+        RepairRequestResponse response = toResponse(savedRequest);
+        
+        // Notify others
+        notificationService.sendRepairRequestNotification(response);
+
+        return response;
     }
 
     // ── User Story 1: Xóa yêu cầu sửa chữa ──────────────────────────────────
