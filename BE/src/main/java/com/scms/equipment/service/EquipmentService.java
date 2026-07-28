@@ -19,6 +19,7 @@ import com.scms.equipment.dto.response.TechnicalSpecResponse;
 import com.scms.equipment.dto.response.TechnicalParamResponse;
 import com.scms.equipment.dto.response.UnitResponse;
 import com.scms.auth.repository.UserRepository;
+import com.scms.common.service.CloudinaryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -49,6 +50,7 @@ public class EquipmentService {
     TechnicalSpecRepository technicalSpecRepository;
     TechnicalParamRepository technicalParamRepository;
     UnitRepository unitRepository;
+    CloudinaryService cloudinaryService;
 
     // ── Tạo mới thiết bị ──────────────────────────────────────
     @Transactional
@@ -241,14 +243,8 @@ public class EquipmentService {
         }
 
         try {
-            Path uploadPath = Paths.get(IMAGE_UPLOAD_DIR).toAbsolutePath().normalize();
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            String filename = "equipment_" + equipmentId + "_" + System.currentTimeMillis() + extension;
-            Path targetPath = uploadPath.resolve(filename).toAbsolutePath().normalize();
-            Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // Upload to Cloudinary under folder "scms/equipment"
+            String imageUrl = cloudinaryService.uploadFile(file, "scms/equipment");
 
             // Lấy ID người dùng hiện tại
             UUID currentUserId = null;
@@ -263,7 +259,7 @@ public class EquipmentService {
 
             EquipmentImage img = EquipmentImage.builder()
                     .equipmentId(equipmentId)
-                    .imageUrl("/uploads/equipment-images/" + filename)
+                    .imageUrl(imageUrl)
                     .caption(originalFilename)
                     .uploadedBy(currentUserId)
                     .uploadedAt(LocalDateTime.now())
@@ -272,8 +268,8 @@ public class EquipmentService {
             img = equipmentImageRepository.save(img);
             return toEquipmentImageResponse(img);
         } catch (Exception e) {
-            log.error("Lỗi khi lưu file ảnh cho thiết bị {}", equipmentId, e);
-            throw new RuntimeException("Lỗi lưu file ảnh: " + e.getMessage(), e);
+            log.error("Lỗi khi tải ảnh lên Cloudinary cho thiết bị {}", equipmentId, e);
+            throw new RuntimeException("Lỗi tải ảnh lên Cloudinary: " + e.getMessage(), e);
         }
     }
 
@@ -283,17 +279,48 @@ public class EquipmentService {
         EquipmentImage img = equipmentImageRepository.findById(imageId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
 
-        // Xóa file vật lý
+        // Xóa file vật lý hoặc trên Cloudinary
         try {
             String imageUrl = img.getImageUrl();
-            String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-            Path path = Paths.get(IMAGE_UPLOAD_DIR).resolve(filename).toAbsolutePath().normalize();
-            Files.deleteIfExists(path);
+            if (imageUrl != null && (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))) {
+                String publicId = extractPublicId(imageUrl);
+                if (publicId != null) {
+                    cloudinaryService.deleteFile(publicId);
+                }
+            } else if (imageUrl != null) {
+                // Xóa file vật lý local đối với dữ liệu cũ
+                String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+                Path path = Paths.get(IMAGE_UPLOAD_DIR).resolve(filename).toAbsolutePath().normalize();
+                Files.deleteIfExists(path);
+            }
         } catch (Exception e) {
-            log.warn("Không thể xóa file ảnh vật lý của imageId {}", imageId, e);
+            log.warn("Không thể xóa file ảnh (Cloudinary hoặc local) của imageId {}", imageId, e);
         }
 
         equipmentImageRepository.delete(img);
+    }
+
+    private String extractPublicId(String url) {
+        if (url == null || !url.contains("image/upload/")) {
+            return null;
+        }
+        try {
+            String afterUpload = url.substring(url.indexOf("image/upload/") + "image/upload/".length());
+            if (afterUpload.startsWith("v")) {
+                int firstSlash = afterUpload.indexOf("/");
+                if (firstSlash != -1) {
+                    afterUpload = afterUpload.substring(firstSlash + 1);
+                }
+            }
+            int lastDot = afterUpload.lastIndexOf(".");
+            if (lastDot != -1) {
+                afterUpload = afterUpload.substring(0, lastDot);
+            }
+            return afterUpload;
+        } catch (Exception e) {
+            log.warn("Không thể parse publicId từ url: {}", url, e);
+            return null;
+        }
     }
 
     public byte[] getEquipmentImageFile(String filename) {
