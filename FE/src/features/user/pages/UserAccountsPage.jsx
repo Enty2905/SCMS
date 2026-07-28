@@ -1,7 +1,5 @@
 import {
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   KeyRound,
   Lock,
   Loader2,
@@ -17,6 +15,7 @@ import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { Pagination } from '@/shared/components/ui/Pagination.jsx'
 
 import {
   selectAssignableRoles,
@@ -490,33 +489,12 @@ export function UserAccountsPage() {
           </table>
         </div>
 
-        {pagination.totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
-            <p className="text-sm text-slate-500">
-              Trang {pagination.page + 1} / {pagination.totalPages}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                aria-label="Trang trước"
-                disabled={loading || pagination.page === 0}
-                onClick={() => goToPage(pagination.page - 1)}
-                size="icon"
-                variant="secondary"
-              >
-                <ChevronLeft size={17} />
-              </Button>
-              <Button
-                aria-label="Trang sau"
-                disabled={loading || pagination.page >= pagination.totalPages - 1}
-                onClick={() => goToPage(pagination.page + 1)}
-                size="icon"
-                variant="secondary"
-              >
-                <ChevronRight size={17} />
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        <Pagination
+          disabled={loading}
+          onChange={goToPage}
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+        />
       </section>
 
       <ConfirmAccountActionModal

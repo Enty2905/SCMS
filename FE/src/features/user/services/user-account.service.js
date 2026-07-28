@@ -9,7 +9,7 @@ export async function fetchAccountsService({
   departmentId = '',
   roleCode = '',
   page = 0,
-  size = 20,
+  size = 10,
 } = {}) {
   const response = await apiClient.get(
     `/hr/accounts${buildQuery({ search, status, departmentId, roleCode, page, size })}`,

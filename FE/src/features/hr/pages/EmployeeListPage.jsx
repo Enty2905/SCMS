@@ -1,10 +1,11 @@
-import { ChevronLeft, ChevronRight, Edit3, ImagePlus, Plus, Search, Trash2, X } from 'lucide-react'
+import { Edit3, ImagePlus, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { apiClient } from '@/shared/api/httpClient.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
+import { Pagination } from '@/shared/components/ui/Pagination.jsx'
 
 import {
   selectHrDepartments,
@@ -384,40 +385,6 @@ export function EmployeeListPage() {
         title="Xác nhận xóa nhân viên"
         type="danger"
       />
-    </div>
-  )
-}
-
-export function Pagination({ disabled, onChange, page, totalPages }) {
-  if (totalPages <= 1) {
-    return null
-  }
-
-  return (
-    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
-      <p className="text-sm text-slate-500">
-        Trang {page + 1} / {totalPages}
-      </p>
-      <div className="flex gap-2">
-        <Button
-          aria-label="Trang trước"
-          disabled={disabled || page === 0}
-          onClick={() => onChange(page - 1)}
-          size="icon"
-          variant="secondary"
-        >
-          <ChevronLeft size={17} />
-        </Button>
-        <Button
-          aria-label="Trang sau"
-          disabled={disabled || page >= totalPages - 1}
-          onClick={() => onChange(page + 1)}
-          size="icon"
-          variant="secondary"
-        >
-          <ChevronRight size={17} />
-        </Button>
-      </div>
     </div>
   )
 }
