@@ -15,7 +15,7 @@ export async function searchEmployeesService({
   status = 'all',
   accountState = 'all',
   page = 0,
-  size = 20,
+  size = 10,
 } = {}) {
   const response = await apiClient.get(
     `/hr/employees/search${buildQuery({ search, departmentId, status, accountState, page, size })}`,
