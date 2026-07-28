@@ -147,6 +147,11 @@ export async function fetchDailyLogsService(orderId, { page = 0, size = 10 } = {
   return response.data || { content: [], totalPages: 0, totalElements: 0 }
 }
 
+export async function completeWorkOrderService(orderId) {
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/complete`)
+  return response.data
+}
+
 export async function exportWorkOrderPdfService(orderId) {
   const token = window.localStorage.getItem('scms.auth.token')
   const response = await fetch(

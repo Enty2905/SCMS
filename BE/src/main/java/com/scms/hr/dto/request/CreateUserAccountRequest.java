@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -29,4 +30,7 @@ public class CreateUserAccountRequest {
     @NotBlank(message = "INVALID_KEY")
     @Size(min = 6, max = 100, message = "INVALID_KEY")
     String password;
+
+    // Vai trò cấp kèm tài khoản. Bỏ trống nếu muốn phân quyền sau.
+    List<UUID> roleIds;
 }

@@ -16,4 +16,7 @@ public class DepartmentCreateRequest {
 
     @Size(max = 50, message = "INVALID_KEY")
     String departmentCode;
+
+    @Size(max = 500, message = "INVALID_KEY")
+    String description;
 }

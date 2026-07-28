@@ -198,6 +198,20 @@ function CreateWorkOrderModal({ onClose, requests, employees }) {
 
   useEffect(() => { dispatch(clearWorkOrderError()) }, [dispatch])
 
+  // Tự động xoá nhân viên ra khỏi danh sách thành viên nếu được chọn làm lãnh đạo
+  useEffect(() => {
+    const leaderIds = new Set([form.workLeaderId, form.directCommanderId, form.safetySupervisorId].filter(Boolean))
+    if (leaderIds.size > 0) {
+      setForm((prev) => {
+        const cleanMembers = prev.memberIds.filter((id) => !leaderIds.has(id))
+        if (cleanMembers.length !== prev.memberIds.length) {
+          return { ...prev, memberIds: cleanMembers }
+        }
+        return prev
+      })
+    }
+  }, [form.workLeaderId, form.directCommanderId, form.safetySupervisorId])
+
   function set(field, value) { setForm((prev) => ({ ...prev, [field]: value })) }
 
   function toggleMember(id) {
@@ -496,6 +510,7 @@ export function WorkOrderPage() {
   const [exportingId, setExportingId] = useState(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailItem, setDetailItem] = useState(null)
+  const [currentPage, setCurrentPage] = useState(0)
 
   // Preview Modal States
   const [previewPdfUrl, setPreviewPdfUrl] = useState('')
@@ -519,17 +534,32 @@ export function WorkOrderPage() {
     return () => clearTimeout(timer)
   }, [dispatch, searchOrderNumber, searchKksCode])
 
-  // Client-side filtering to exclude 'locked' (Hoàn thành) and filter by statusFilter
+  // Client-side filtering by statusFilter (bao gồm cả trạng thái locked - Hoàn thành)
   const displayedWorkOrders = useMemo(() => {
-    return workOrders
-      .filter((wo) => wo.status !== 'locked')
-      .filter((wo) => {
-        if (statusFilter === 'all') return true
-        if (statusFilter === 'draft') return wo.status === 'draft' || wo.status === 'paused'
-        if (statusFilter === 'open') return wo.status === 'open'
-        return true
-      })
+    return workOrders.filter((wo) => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'draft') return wo.status === 'draft' || wo.status === 'paused'
+      if (statusFilter === 'open') return wo.status === 'open'
+      if (statusFilter === 'locked') return wo.status === 'locked'
+      return true
+    })
   }, [workOrders, statusFilter])
+
+  // Pagination logic
+  const pageSize = 10
+  const totalElements = displayedWorkOrders.length
+  const totalPages = Math.ceil(totalElements / pageSize)
+
+  const paginatedWorkOrders = useMemo(() => {
+    const start = currentPage * pageSize
+    return displayedWorkOrders.slice(start, start + pageSize)
+  }, [displayedWorkOrders, currentPage])
+
+  function handlePageChange(newPage) {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
 
   function handleCreateClose() {
     setCreateModalOpen(false)
@@ -578,7 +608,10 @@ export function WorkOrderPage() {
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               placeholder="Tìm theo Số PCT..."
               value={searchOrderNumber}
-              onChange={(e) => setSearchOrderNumber(e.target.value)}
+              onChange={(e) => {
+                setSearchOrderNumber(e.target.value)
+                setCurrentPage(0)
+              }}
             />
           </label>
           <label className="relative flex-1">
@@ -588,18 +621,25 @@ export function WorkOrderPage() {
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               placeholder="Tìm theo Mã KKS thiết bị..."
               value={searchKksCode}
-              onChange={(e) => setSearchKksCode(e.target.value)}
+              onChange={(e) => {
+                setSearchKksCode(e.target.value)
+                setCurrentPage(0)
+              }}
             />
           </label>
           
           <select
             className="h-11 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(0)
+            }}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="draft">Đang đóng</option>
             <option value="open">Đang mở</option>
+            <option value="locked">Hoàn thành</option>
           </select>
         </div>
 
@@ -617,7 +657,7 @@ export function WorkOrderPage() {
 
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
-          Hiển thị {displayedWorkOrders.length} phiếu công tác
+          Hiển thị {paginatedWorkOrders.length} / {totalElements} phiếu công tác
         </div>
 
         <div className="overflow-x-auto">
@@ -639,13 +679,70 @@ export function WorkOrderPage() {
               ) : !displayedWorkOrders.length ? (
                 <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">Không có phiếu công tác nào.</td></tr>
               ) : (
-                displayedWorkOrders.map((wo) => (
+                paginatedWorkOrders.map((wo) => (
                   <WorkOrderRow key={wo.orderId} wo={wo} exportingId={exportingId} onExport={handleOpenPdfPreview} onDetail={() => setDetailItem(wo)} />
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang */}
+        {totalPages > 1 ? (() => {
+          let startPage = Math.max(0, currentPage - 2)
+          let endPage = Math.min(totalPages - 1, currentPage + 2)
+
+          if (endPage - startPage < 4) {
+            if (startPage === 0) {
+              endPage = Math.min(totalPages - 1, startPage + 4)
+            } else if (endPage === totalPages - 1) {
+              startPage = Math.max(0, endPage - 4)
+            }
+          }
+
+          const pages = []
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+          }
+
+          return (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 bg-white">
+              <p className="text-sm text-slate-500">
+                Hiển thị trang {currentPage + 1} / {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage === 0}
+                  onClick={() => handlePageChange(0)}
+                >
+                  Trang đầu
+                </button>
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                      currentPage === p
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => handlePageChange(p)}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => handlePageChange(totalPages - 1)}
+                >
+                  Trang cuối
+                </button>
+              </div>
+            </div>
+          )
+        })() : null}
       </section>
 
       {createModalOpen && (

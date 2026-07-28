@@ -191,8 +191,8 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-72 border-r border-slate-800 bg-slate-950 px-3 py-4 text-white lg:block">
-        <div className="flex items-center gap-3 px-2">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden h-dvh w-72 flex-col overflow-hidden border-r border-slate-800 bg-slate-950 px-3 py-4 text-white lg:flex">
+        <div className="flex shrink-0 items-center gap-3 px-2">
           <div className="grid size-9 place-items-center rounded-lg bg-violet-600 text-white">
             <Zap size={20} />
           </div>
@@ -202,7 +202,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <nav className="mt-6 space-y-2">
+        <nav className="mt-6 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pb-2 pr-1 [scrollbar-color:rgb(71_85_105)_transparent] [scrollbar-width:thin]">
           {visibleNavItems.map((item) => (
             <NavLink
               className={({ isActive }) =>
@@ -223,7 +223,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="absolute inset-x-3 bottom-4 border-t border-slate-800 pt-4">
+        <div className="mt-4 shrink-0 border-t border-slate-800 pt-4">
           <div className="flex items-center gap-3 px-2">
             <div className="grid size-9 place-items-center rounded-full bg-violet-600 text-sm font-bold">
               {initials}

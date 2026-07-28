@@ -127,6 +127,14 @@ public class WorkOrderController {
         return ApiResponse.success(workOrderService.getDailyLogs(orderId, page, size));
     }
 
+    @PostMapping("/{orderId}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SHIFT_LEADER', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Hoàn thành phiếu công tác", description = "Đánh dấu phiếu công tác đã hoàn thành (locked)")
+    public ApiResponse<Void> completeWorkOrder(@PathVariable UUID orderId) {
+        workOrderService.completeWorkOrder(orderId);
+        return ApiResponse.success("Hoàn thành phiếu công tác thành công", null);
+    }
+
     /**
      * Xuất PDF phiếu công tác
      * Quyền: ADMIN, REPAIR_MANAGER, TEAM_LEADER

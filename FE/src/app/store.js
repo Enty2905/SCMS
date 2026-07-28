@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 
 import { authReducer } from '@/features/auth/store/auth.reducer.js'
+import { hrAuditReducer } from '@/features/hr/store/hr-audit.reducer.js'
 import { hrDirectoryReducer } from '@/features/hr/store/hr-directory.reducer.js'
 import { materialReducer } from '@/features/inventory/store/material.reducer.js'
 import { toolReducer } from '@/features/inventory/store/tool.reducer.js'
@@ -11,6 +12,7 @@ import { repairRequestReducer } from '@/features/repairrequest/store/repairreque
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    hrAudit: hrAuditReducer,
     hrDirectory: hrDirectoryReducer,
     materials: materialReducer,
     tools: toolReducer,

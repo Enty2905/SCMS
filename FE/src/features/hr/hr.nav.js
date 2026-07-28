@@ -1,4 +1,4 @@
-import { BarChart3, Building2, UserRoundCog, UsersRound } from 'lucide-react'
+import { BarChart3, Building2, ScrollText, UserRoundCog, UsersRound } from 'lucide-react'
 import { HR_ACCESS_ROLES } from '@/features/auth/utils/roles.js'
 
 export const hrNavItems = [
@@ -18,6 +18,12 @@ export const hrNavItems = [
     label: 'Tài khoản',
     href: '/dashboard/hr/accounts',
     icon: UserRoundCog,
+    roles: HR_ACCESS_ROLES,
+  },
+  {
+    label: 'Nhật ký',
+    href: '/dashboard/hr/audit-logs',
+    icon: ScrollText,
     roles: HR_ACCESS_ROLES,
   },
   {
