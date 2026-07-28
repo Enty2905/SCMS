@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
+import java.util.Optional;
 import com.scms.repairrequest.entity.RepairRequest;
 import com.scms.repairrequest.repository.RepairRequestRepository;
 import com.scms.maintenance.workorder.dto.request.CreateWorkOrderRequest;
@@ -237,6 +238,27 @@ public class WorkOrderService {
                 }
 
                 return toLogResponse(activeLog);
+        }
+
+        @Transactional
+        public void completeWorkOrder(UUID orderId) {
+                WorkOrder workOrder = workOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
+
+                if ("locked".equals(workOrder.getStatus())) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+                }
+
+                // Verify if there is an active daily log session
+                Optional<WorkOrderDailyLog> activeLogOpt = workOrderDailyLogRepository
+                                .findActiveLogByOrderId(orderId);
+                if (activeLogOpt.isPresent()) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS); // Or create a new error code for "shift is open"
+                }
+
+                workOrder.setStatus("locked");
+                workOrder.setEndDate(LocalDateTime.now());
+                workOrderRepository.save(workOrder);
         }
 
         @Transactional(readOnly = true)
