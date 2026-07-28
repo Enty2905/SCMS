@@ -1,9 +1,7 @@
 package com.scms.maintenance.workorder.service;
 
-import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
-import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -15,6 +13,7 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
+import com.scms.common.pdf.PdfFontProvider;
 import com.scms.employee.entity.Employee;
 import com.scms.maintenance.workorder.entity.WorkOrder;
 import com.scms.maintenance.workorder.entity.WorkOrderMember;
@@ -58,20 +57,9 @@ public class WorkOrderPdfService {
             Document document = new Document(pdf, PageSize.A4);
             document.setMargins(30, 45, 30, 45);
 
-            PdfFont boldFont;
-            PdfFont normalFont;
-            try {
-                normalFont = PdfFontFactory.createFont("C:/Windows/Fonts/arial.ttf",
-                        PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-                boldFont = PdfFontFactory.createFont("C:/Windows/Fonts/arialbd.ttf",
-                        PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-            } catch (Exception e) {
-                log.warn("Không tìm thấy font Arial hệ thống, fallback sang Helvetica", e);
-                boldFont = PdfFontFactory.createFont("Helvetica-Bold", PdfEncodings.WINANSI,
-                        PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
-                normalFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.WINANSI,
-                        PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
-            }
+            PdfFontProvider.FontSet fonts = PdfFontProvider.createVietnameseFonts();
+            PdfFont normalFont = fonts.normal();
+            PdfFont boldFont = fonts.bold();
 
             DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter tf = DateTimeFormatter.ofPattern("HH");

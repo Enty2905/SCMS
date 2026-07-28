@@ -1,9 +1,7 @@
 package com.scms.maintenance.assessment.service;
 
-import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
-import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -17,6 +15,7 @@ import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
+import com.scms.common.pdf.PdfFontProvider;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
 import com.scms.equipment.entity.Equipment;
@@ -127,24 +126,9 @@ public class TechnicalAssessmentService {
                         Document document = new Document(pdf, PageSize.A4);
                         document.setMargins(40, 50, 40, 50);
 
-                        // Font: Load Arial từ thư mục Fonts của Windows để hỗ trợ tiếng Việt có dấu đầy đủ
-                        // Nếu không tìm thấy font hệ thống, sẽ fallback về Helvetica (không dấu)
-                        PdfFont boldFont;
-                        PdfFont normalFont;
-                        try {
-                                String fontPath = "C:/Windows/Fonts/arial.ttf";
-                                String boldFontPath = "C:/Windows/Fonts/arialbd.ttf";
-                                normalFont = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H,
-                                                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-                                boldFont = PdfFontFactory.createFont(boldFontPath, PdfEncodings.IDENTITY_H,
-                                                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-                        } catch (Exception e) {
-                                log.warn("Không tìm thấy font Arial hệ thống, fallback sang Helvetica", e);
-                                boldFont = PdfFontFactory.createFont("Helvetica-Bold", PdfEncodings.WINANSI,
-                                                PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
-                                normalFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.WINANSI,
-                                                PdfFontFactory.EmbeddingStrategy.PREFER_NOT_EMBEDDED);
-                        }
+                        PdfFontProvider.FontSet fonts = PdfFontProvider.createVietnameseFonts();
+                        PdfFont normalFont = fonts.normal();
+                        PdfFont boldFont = fonts.bold();
 
                         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
