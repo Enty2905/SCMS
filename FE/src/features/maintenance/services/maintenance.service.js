@@ -117,9 +117,10 @@ export async function fetchWorkOrdersService({ orderNumber, kksCode } = {}) {
   return response.data || []
 }
 
-export async function searchWorkOrdersService({ keyword = '', page = 0, size = 10 } = {}) {
+export async function searchWorkOrdersService({ keyword = '', status = '', page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (keyword) params.set('keyword', keyword)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/work-orders/search?${params}`)
