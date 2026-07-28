@@ -28,6 +28,7 @@ import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.na
 import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
 import { fetchTools } from '@/features/inventory/services/tool.service.js'
+import { fetchAllRepairRequests } from '@/features/repairrequest/services/repairRequest.service.js'
 
 
 const navItems = [
@@ -54,6 +55,7 @@ export function AppShell() {
   // State for dynamic notifications
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [showAllNotifs, setShowAllNotifs] = useState(false)
 
   // State cho websocket toast
   const [realtimeToast, setRealtimeToast] = useState(null)
@@ -152,6 +154,52 @@ export function AppShell() {
           }
         }
 
+        // Load pending repair requests
+        if (hasAnyRole(user, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])) {
+          try {
+            const repairData = await fetchAllRepairRequests('processing')
+            const requests = Array.isArray(repairData) ? repairData : []
+            const requestWarnings = requests.map((req) => {
+              let priorityText = ''
+              let type = 'warning'
+              let title = 'Yêu cầu sửa chữa mới'
+              let statusLabel = 'Bảo dưỡng'
+
+              if (req.priority === 'low') priorityText = 'mức thấp'
+              else if (req.priority === 'medium') priorityText = 'mức trung bình'
+              else if (req.priority === 'high') {
+                priorityText = 'mức cao'
+                type = 'alert'
+                title = 'Cảnh báo Sự cố (Mức cao)'
+                statusLabel = 'Sự cố'
+              }
+              else if (req.priority === 'critical') {
+                priorityText = 'khẩn cấp'
+                type = 'error'
+                title = 'Cảnh báo Sự cố (Khẩn cấp)'
+                statusLabel = 'Sự cố'
+              }
+
+              return {
+                id: `req-${req.requestId}`,
+                kksCode: req.equipmentKksCode,
+                name: req.equipmentName,
+                status: statusLabel,
+                systemId: req.systemId || 'all',
+                title: title,
+                message: `Thiết bị ${req.equipmentName} (${req.equipmentKksCode}) có yêu cầu sửa chữa (${priorityText}).`,
+                type: type,
+                category: 'repair_request',
+                timestamp: req.createdAt ? new Date(req.createdAt).getTime() : Date.now(),
+              }
+            })
+            // Put repair requests at the top, since they are the most urgent/dynamic
+            allNotifications = [...requestWarnings, ...allNotifications]
+          } catch (err) {
+            console.error('Failed to load pending repair requests', err)
+          }
+        }
+
         setNotifications(allNotifications)
       } catch (err) {
         console.error('Failed to load notifications in AppShell', err)
@@ -170,16 +218,38 @@ export function AppShell() {
         if (message.body) {
           const data = JSON.parse(message.body)
           
+          let priorityText = ''
+          let type = 'warning'
+          let title = 'Yêu cầu sửa chữa mới'
+          let statusLabel = 'Bảo dưỡng'
+
+          if (data.priority === 'low') priorityText = 'mức thấp'
+          else if (data.priority === 'medium') priorityText = 'mức trung bình'
+          else if (data.priority === 'high') {
+            priorityText = 'mức cao'
+            type = 'alert'
+            title = 'Cảnh báo Sự cố (Mức cao)'
+            statusLabel = 'Sự cố'
+          }
+          else if (data.priority === 'critical') {
+            priorityText = 'khẩn cấp'
+            type = 'error'
+            title = 'Cảnh báo Sự cố (Khẩn cấp)'
+            statusLabel = 'Sự cố'
+          }
+
           const newNotif = {
             id: 'ws-' + Date.now(),
             kksCode: data.equipmentKksCode,
             name: data.equipmentName,
-            status: 'Sự cố',
+            status: statusLabel,
             systemId: 'all',
-            title: 'Yêu cầu sửa chữa mới',
-            message: `Thiết bị ${data.equipmentName} (${data.equipmentKksCode}) vừa có yêu cầu sửa chữa.`,
-            type: 'error',
-            category: 'equipment',
+            title: title,
+            message: `Thiết bị ${data.equipmentName} (${data.equipmentKksCode}) có yêu cầu sửa chữa (${priorityText}).`,
+            type: type,
+            category: 'repair_request',
+            timestamp: Date.now(),
+            requestId: data.requestId,
           }
 
           // Hiện thông báo popup 5s
@@ -204,6 +274,9 @@ export function AppShell() {
       navigate('/dashboard/inventory/consumable-stocks')
     } else if (notif.category === 'tool') {
       navigate('/dashboard/inventory/tools')
+    } else if (notif.category === 'repair_request') {
+      const requestId = notif.requestId || notif.id.replace('req-', '')
+      navigate(`/dashboard/maintenance/requests?highlight=${requestId}`)
     } else {
       navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
     }
@@ -314,46 +387,87 @@ export function AppShell() {
                 >
                   <Bell size={18} />
                   {notifications.length > 0 && (
-                    <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white animate-pulse">
+                    <span className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white animate-pulse">
                       {notifications.length}
                     </span>
                   )}
-                  <span className="sr-only">Thông báo</span>
                 </Button>
 
                 {isNotifOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-80 rounded-lg border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                      <div className="border-b border-slate-100 px-3 py-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        Thông báo cảnh báo ({notifications.length})
+                    <div className="absolute right-0 top-full mt-2 w-[380px] rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+                      <div className="border-b border-slate-100 px-3 py-2 text-xs font-bold text-slate-900 uppercase tracking-wider flex justify-between items-center">
+                        <span>Thông báo cảnh báo ({notifications.length})</span>
                       </div>
-                      <div className="max-h-64 overflow-y-auto mt-1 divide-y divide-slate-50">
+                      <div className="max-h-[400px] overflow-y-auto mt-1 divide-y divide-slate-50">
                         {notifications.length === 0 ? (
                           <div className="px-3 py-4 text-center text-xs text-slate-500 italic">
                             Không có cảnh báo nào hiện tại.
                           </div>
                         ) : (
-                          notifications.map((notif) => {
-                            const isError = notif.type === 'error'
-                            return (
+                          <>
+                            {(showAllNotifs ? notifications : notifications.slice(0, 15)).map((notif) => {
+                              let dotColor = 'bg-amber-500'
+                              let textColor = 'text-amber-700'
+                              let bgColor = 'hover:bg-slate-50'
+                              let messageColor = 'text-slate-600'
+                              let timeColor = 'text-slate-400'
+                              
+                              if (notif.type === 'error') {
+                                bgColor = 'bg-red-600 hover:bg-red-700 mb-1'
+                                dotColor = 'bg-white animate-pulse'
+                                textColor = 'text-white'
+                                messageColor = 'text-white/90'
+                                timeColor = 'text-red-200'
+                              } else if (notif.type === 'alert') {
+                                bgColor = 'bg-orange-500 hover:bg-orange-600 mb-1'
+                                dotColor = 'bg-white animate-pulse'
+                                textColor = 'text-white'
+                                messageColor = 'text-white/90'
+                                timeColor = 'text-orange-200'
+                              }
+                              
+                              return (
+                                <button
+                                  key={notif.id}
+                                  onClick={() => handleNotifClick(notif)}
+                                  className={`w-full text-left px-3 py-2.5 transition rounded-md block text-xs cursor-pointer ${bgColor}`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className={`inline-block size-2 rounded-full shrink-0 ${dotColor}`} />
+                                    <p className={`font-semibold ${textColor}`}>
+                                      {notif.title}
+                                    </p>
+                                    {notif.timestamp && (
+                                      <span className={`ml-auto text-[10px] ${timeColor}`}>
+                                        {new Date(notif.timestamp).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className={`mt-0.5 leading-normal pl-[18px] ${messageColor}`}>{notif.message}</p>
+                                </button>
+                              )
+                            })}
+                            
+                            {!showAllNotifs && notifications.length > 15 && (
                               <button
-                                key={notif.id}
-                                onClick={() => handleNotifClick(notif)}
-                                className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition rounded-md block text-xs cursor-pointer"
+                                onClick={() => setShowAllNotifs(true)}
+                                className="w-full text-center px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition cursor-pointer"
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <span className={`inline-block size-2 rounded-full shrink-0 ${
-                                    isError ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
-                                  }`} />
-                                  <p className={`font-semibold ${isError ? 'text-rose-700' : 'text-amber-700'}`}>
-                                    {notif.title}
-                                  </p>
-                                </div>
-                                <p className="mt-0.5 text-slate-600 leading-normal pl-[18px]">{notif.message}</p>
+                                Hiển thị thêm ({notifications.length - 15} thông báo)
                               </button>
-                            )
-                          })
+                            )}
+                            
+                            {showAllNotifs && notifications.length > 15 && (
+                              <button
+                                onClick={() => setShowAllNotifs(false)}
+                                className="w-full text-center px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition cursor-pointer"
+                              >
+                                Thu gọn
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -382,18 +496,33 @@ export function AppShell() {
 
       {/* Realtime Toast Notification */}
       {realtimeToast && (
-        <div className="fixed bottom-4 right-4 z-[999] animate-in slide-in-from-right fade-in duration-300 w-80 rounded-lg border-l-4 border-rose-500 bg-white p-4 shadow-xl">
+        <div className={`fixed bottom-4 right-4 z-[999] animate-in slide-in-from-right fade-in duration-300 w-80 rounded-lg border-l-4 p-4 shadow-xl ${
+          realtimeToast.type === 'error' ? 'bg-red-600 border-red-800 text-white' : 
+          realtimeToast.type === 'alert' ? 'bg-orange-500 border-orange-700 text-white' : 
+          'bg-white border-amber-500 text-slate-900'
+        }`}>
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-full bg-rose-100 p-1">
-              <Bell className="text-rose-600" size={16} />
+            <div className={`mt-0.5 rounded-full p-1 ${
+              realtimeToast.type === 'error' ? 'bg-red-700' : 
+              realtimeToast.type === 'alert' ? 'bg-orange-600' : 'bg-amber-100'
+            }`}>
+              <Bell className={
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 'text-amber-600'
+              } size={16} />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900">{realtimeToast.title}</h4>
-              <p className="mt-1 text-xs text-slate-600">{realtimeToast.message}</p>
+              <h4 className={`text-sm font-bold ${
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 'text-slate-900'
+              }`}>{realtimeToast.title}</h4>
+              <p className={`mt-1 text-xs ${
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white/90' : 'text-slate-600'
+              }`}>{realtimeToast.message}</p>
             </div>
             <button
               onClick={() => setRealtimeToast(null)}
-              className="ml-auto text-slate-400 hover:text-slate-600"
+              className={`ml-auto ${
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white/70 hover:text-white' : 'text-slate-400 hover:text-slate-600'
+              }`}
             >
               <span className="sr-only">Close</span>
               &times;
