@@ -65,11 +65,23 @@ public class WorkOrderService {
                 Employee directCommander = getEmployeeOrThrow(req.getDirectCommanderId());
                 Employee safetySupervisor = getEmployeeOrThrow(req.getSafetySupervisorId());
 
-                // Ràng buộc người an toàn khác Lãnh đạo thi công, Chỉ huy trực tiếp và Thành viên thi công
+                // Ràng buộc 3 vị trí lãnh đạo không được trùng nhau
                 if (req.getSafetySupervisorId().equals(req.getWorkLeaderId()) ||
-                    req.getSafetySupervisorId().equals(req.getDirectCommanderId()) ||
-                    (req.getMemberIds() != null && req.getMemberIds().contains(req.getSafetySupervisorId()))) {
+                    req.getSafetySupervisorId().equals(req.getDirectCommanderId())) {
                     throw new AppException(ErrorCode.SAFETY_SUPERVISOR_MUST_BE_UNIQUE);
+                }
+
+                // Tự động xoá các vị trí lãnh đạo khỏi danh sách thành viên thi công nếu bị trùng ở backend
+                List<UUID> cleanMemberIds = new ArrayList<>();
+                if (req.getMemberIds() != null) {
+                    for (UUID mId : req.getMemberIds()) {
+                        if (mId != null &&
+                            !mId.equals(req.getWorkLeaderId()) &&
+                            !mId.equals(req.getDirectCommanderId()) &&
+                            !mId.equals(req.getSafetySupervisorId())) {
+                            cleanMemberIds.add(mId);
+                        }
+                    }
                 }
 
                 // 5. Tạo WorkOrder (status = draft)
@@ -89,9 +101,9 @@ public class WorkOrderService {
 
                 workOrderRepository.save(workOrder);
 
-                // 6. Thêm danh sách thành viên (nếu có)
-                if (req.getMemberIds() != null && !req.getMemberIds().isEmpty()) {
-                        List<WorkOrderMember> members = req.getMemberIds().stream()
+                // 6. Thêm danh sách thành viên (sau khi đã tự động làm sạch các ID trùng lãnh đạo)
+                if (!cleanMemberIds.isEmpty()) {
+                        List<WorkOrderMember> members = cleanMemberIds.stream()
                                         .map(memberId -> {
                                                 Employee emp = getEmployeeOrThrow(memberId);
                                                 return WorkOrderMember.builder()
