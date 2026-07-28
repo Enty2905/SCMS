@@ -20,9 +20,12 @@ import com.scms.maintenance.workorder.entity.WorkOrder;
 import com.scms.maintenance.workorder.entity.WorkOrderMember;
 import com.scms.maintenance.workorder.repository.WorkOrderMemberRepository;
 import com.scms.maintenance.workorder.repository.WorkOrderRepository;
+import org.springframework.web.multipart.MultipartFile;
+import com.scms.common.service.CloudinaryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,10 +36,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.scms.maintenance.workorder.dto.request.CloseDailyLogRequest;
+import com.scms.maintenance.workorder.dto.request.UpdateWorkOrderMembersRequest;
 import com.scms.maintenance.workorder.dto.response.WorkOrderDailyLogResponse;
 import com.scms.maintenance.workorder.entity.WorkOrderDailyLog;
 import com.scms.maintenance.workorder.repository.WorkOrderDailyLogRepository;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -48,6 +53,7 @@ public class WorkOrderService {
         RepairRequestRepository repairRequestRepository;
         EmployeeRepository employeeRepository;
         UserRepository userRepository;
+        CloudinaryService cloudinaryService;
 
         /**
          * Chức năng 2: Tạo phiếu công tác (PCT) từ một repair request
@@ -145,6 +151,90 @@ public class WorkOrderService {
                 wo.getMembers().clear();
                 wo.getMembers().addAll(members);
                 return toResponse(wo);
+        }
+
+        /**
+         * Cập nhật danh sách nhân viên tham gia phiếu công tác
+         */
+        @Transactional
+        public WorkOrderResponse updateWorkOrderMembers(UUID orderId, UpdateWorkOrderMembersRequest req) {
+                WorkOrder workOrder = workOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
+
+                // Không cho phép chỉnh sửa nếu PCT đã hoàn thành (locked)
+                if ("locked".equals(workOrder.getStatus())) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+                }
+
+                // Loại bỏ các ID nhân sự trùng với các vị trí lãnh đạo
+                List<UUID> cleanMemberIds = new ArrayList<>();
+                if (req.getMemberIds() != null) {
+                        for (UUID mId : req.getMemberIds()) {
+                                if (mId != null &&
+                                    (workOrder.getWorkLeader() == null || !mId.equals(workOrder.getWorkLeader().getEmployeeId())) &&
+                                    (workOrder.getDirectCommander() == null || !mId.equals(workOrder.getDirectCommander().getEmployeeId())) &&
+                                    (workOrder.getSafetySupervisor() == null || !mId.equals(workOrder.getSafetySupervisor().getEmployeeId()))) {
+                                        cleanMemberIds.add(mId);
+                                }
+                        }
+                }
+
+                // Lấy danh sách thành viên hiện tại để đối chiếu
+                List<WorkOrderMember> currentMembers = workOrderMemberRepository.findByOrderIdWithEmployee(orderId);
+
+                // Map để tra cứu nhanh các thành viên cũ
+                java.util.Map<UUID, WorkOrderMember> currentMemberMap = new java.util.HashMap<>();
+                for (WorkOrderMember m : currentMembers) {
+                        if (m.getEmployee() != null) {
+                                currentMemberMap.put(m.getEmployee().getEmployeeId(), m);
+                        }
+                }
+
+                List<WorkOrderMember> updatedMembers = new ArrayList<>();
+                List<WorkOrderMember> toDelete = new ArrayList<>();
+
+                // Thêm hoặc giữ lại các thành viên mới
+                for (UUID newEmpId : cleanMemberIds) {
+                        if (currentMemberMap.containsKey(newEmpId)) {
+                                // Nếu thành viên đã tồn tại, giữ nguyên đối tượng cũ (giữ checkInAt/checkOutAt)
+                                updatedMembers.add(currentMemberMap.get(newEmpId));
+                        } else {
+                                // Nếu thành viên mới, tạo mới WorkOrderMember
+                                Employee emp = getEmployeeOrThrow(newEmpId);
+                                WorkOrderMember newMember = WorkOrderMember.builder()
+                                                .order(workOrder)
+                                                .employee(emp)
+                                                .build();
+                                updatedMembers.add(newMember);
+                        }
+                }
+
+                // Xác định thành viên cần xóa
+                java.util.Set<UUID> cleanMemberIdSet = new java.util.HashSet<>(cleanMemberIds);
+                for (WorkOrderMember m : currentMembers) {
+                        if (m.getEmployee() != null && !cleanMemberIdSet.contains(m.getEmployee().getEmployeeId())) {
+                                toDelete.add(m);
+                        }
+                }
+
+                // Xóa các thành viên cũ khỏi DB
+                if (!toDelete.isEmpty()) {
+                        workOrderMemberRepository.deleteAll(toDelete);
+                }
+
+                // Lưu các thành viên mới tạo vào DB
+                List<WorkOrderMember> toSave = updatedMembers.stream()
+                                .filter(m -> m.getId() == null)
+                                .toList();
+                if (!toSave.isEmpty()) {
+                        workOrderMemberRepository.saveAll(toSave);
+                }
+
+                // Cập nhật lại list members trên entity WorkOrder
+                workOrder.getMembers().clear();
+                workOrder.getMembers().addAll(updatedMembers);
+
+                return toResponse(workOrder);
         }
 
         /**
@@ -356,7 +446,39 @@ public class WorkOrderService {
                                                 : null)
                                 // Thành viên
                                 .members(wo.getMembers().stream().map(this::toMemberInfo).toList())
+                                .pdfUrl(wo.getPdfUrl())
                                 .build();
+        }
+
+        @Transactional
+        public WorkOrderResponse uploadSignedPdf(UUID orderId, MultipartFile file) {
+                WorkOrder wo = workOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
+
+                // Ràng buộc: chỉ được upload khi trạng thái ở hoàn thành (locked)
+                if (!"locked".equalsIgnoreCase(wo.getStatus())) {
+                        throw new AppException(ErrorCode.WORK_ORDER_NOT_LOCKED);
+                }
+
+                // Validate file
+                if (file == null || file.isEmpty()) {
+                        throw new IllegalArgumentException("File tải lên trống hoặc không hợp lệ!");
+                }
+                String originalFilename = file.getOriginalFilename();
+                if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
+                        throw new IllegalArgumentException("Chỉ chấp nhận tệp định dạng PDF (.pdf)!");
+                }
+
+                try {
+                        String pdfUrl = cloudinaryService.uploadFile(file, "scms/work-orders");
+                        wo.setPdfUrl(pdfUrl);
+                        workOrderRepository.save(wo);
+                        log.info("Uploaded signed PDF for work order {} to Cloudinary: {}", wo.getOrderNumber(), pdfUrl);
+                        return toResponse(wo);
+                } catch (Exception e) {
+                        log.error("Lỗi khi lưu file PDF cho phiếu công tác {}", orderId, e);
+                        throw new IllegalArgumentException("Không thể lưu file PDF lên máy chủ: " + e.getMessage() + " (" + e.getClass().getSimpleName() + ")", e);
+                }
         }
 
         private WorkOrderResponse.EmployeeInfo toEmployeeInfo(Employee emp) {

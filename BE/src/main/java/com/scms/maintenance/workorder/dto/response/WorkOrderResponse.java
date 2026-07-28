@@ -45,6 +45,8 @@ public class WorkOrderResponse {
     // Danh sách thành viên tham gia
     List<MemberInfo> members;
 
+    String pdfUrl;
+
     // ── Inner DTOs ──────────────────────────────────────────────────────────
 
     @Data

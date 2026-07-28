@@ -252,6 +252,7 @@ export function DailyLogPage() {
         <WorkOrderDetailModal
           workOrder={viewDetailOrder}
           onClose={() => setViewDetailOrder(null)}
+          onSuccess={() => loadData(workOrdersPage, keyword)}
         />
       )}
     </div>

@@ -15,6 +15,7 @@ import {
   createSparePartRequestService,
   fetchRepairHistoriesService,
   createRepairHistoryService,
+  uploadWorkOrderSignedPdfService,
 } from '../services/maintenance.service.js'
 
 
@@ -81,5 +82,10 @@ export const fetchRepairHistories = createAsyncThunk(
 export const createRepairHistory = createAsyncThunk(
   'maintenance/createRepairHistory',
   async (body) => createRepairHistoryService(body),
+)
+
+export const uploadWorkOrderSignedPdf = createAsyncThunk(
+  'maintenance/uploadWorkOrderSignedPdf',
+  async ({ orderId, file }) => uploadWorkOrderSignedPdfService(orderId, file),
 )
 

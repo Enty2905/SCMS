@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.scms.common.service.CloudinaryService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -54,6 +55,7 @@ public class TechnicalAssessmentService {
         final EquipmentRepository equipmentRepository;
         final EmployeeRepository employeeRepository;
         final UserRepository userRepository;
+        final CloudinaryService cloudinaryService;
 
         @Value("${app.upload.pdf-dir:uploads/pdf}")
         String pdfUploadDir;
@@ -265,8 +267,8 @@ public class TechnicalAssessmentService {
         // ── Chức năng 3C: Upload PDF đã ký ────────────────────────────────────────
 
         /**
-         * Upload file PDF biên bản đã ký vật lý lên server
-         * Lưu vào thư mục cấu hình (app.upload.pdf-dir) và cập nhật pdf_url trong DB
+         * Upload file PDF biên bản đã ký vật lý lên Cloudinary
+         * Lưu URL vào database
          */
         @Transactional
         public AssessmentResponse uploadSignedPdf(UUID assessmentId, MultipartFile file) {
@@ -284,27 +286,15 @@ public class TechnicalAssessmentService {
                 }
 
                 try {
-                        // Tạo thư mục nếu chưa có
-                        Path uploadPath = Paths.get(pdfUploadDir).toAbsolutePath().normalize();
-                        if (!Files.exists(uploadPath)) {
-                                Files.createDirectories(uploadPath);
-                        }
-
-                        // Tên file = assessmentId + timestamp để tránh trùng
-                        String fileName = "assessment_" + assessmentId + "_signed_" + System.currentTimeMillis()
-                                        + ".pdf";
-                        Path targetPath = uploadPath.resolve(fileName).toAbsolutePath().normalize();
-
-                        // Sử dụng Files.copy để ghi luồng đầu vào vào đường dẫn đích
-                        Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        String pdfUrl = cloudinaryService.uploadFile(file, "scms/assessments");
 
                         // Cập nhật pdf_url vào DB
-                        ta.setPdfUrl(pdfUploadDir + "/" + fileName);
+                        ta.setPdfUrl(pdfUrl);
                         ta.setRepairSignedAt(
                                         ta.getRepairSignedAt() != null ? ta.getRepairSignedAt() : LocalDateTime.now());
 
                         assessmentRepository.save(ta);
-                        log.info("Uploaded signed PDF for assessment {}: {}", assessmentId, fileName);
+                        log.info("Uploaded signed PDF for assessment {} to Cloudinary: {}", assessmentId, pdfUrl);
 
                         return toResponse(ta);
 
@@ -332,12 +322,27 @@ public class TechnicalAssessmentService {
                         throw new AppException(ErrorCode.NOT_FOUND);
                 }
 
-                try {
-                        Path path = Paths.get(ta.getPdfUrl());
-                        return Files.readAllBytes(path);
-                } catch (IOException e) {
-                        log.error("Lỗi khi đọc file PDF đã ký {}", assessmentId, e);
-                        throw new RuntimeException("Không thể đọc file PDF đã ký: " + e.getMessage(), e);
+                if (ta.getPdfUrl().startsWith("http://") || ta.getPdfUrl().startsWith("https://")) {
+                        try (java.io.InputStream in = new java.net.URL(ta.getPdfUrl()).openStream();
+                             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                                byte[] buffer = new byte[4096];
+                                int n;
+                                while ((n = in.read(buffer)) != -1) {
+                                        out.write(buffer, 0, n);
+                                }
+                                return out.toByteArray();
+                        } catch (IOException e) {
+                                log.error("Lỗi khi tải file PDF từ Cloudinary {}", ta.getPdfUrl(), e);
+                                throw new RuntimeException("Không thể tải file PDF từ Cloudinary: " + e.getMessage(), e);
+                        }
+                } else {
+                        try {
+                                Path path = Paths.get(ta.getPdfUrl());
+                                return Files.readAllBytes(path);
+                        } catch (IOException e) {
+                                log.error("Lỗi khi đọc file PDF đã ký {}", assessmentId, e);
+                                throw new RuntimeException("Không thể đọc file PDF đã ký: " + e.getMessage(), e);
+                        }
                 }
         }
 

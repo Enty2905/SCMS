@@ -19,6 +19,11 @@ export async function getWorkOrderService(orderId) {
   return response.data
 }
 
+export async function updateWorkOrderMembersService(orderId, memberIds) {
+  const response = await apiClient.put(`/maintenance/work-orders/${orderId}/members`, { memberIds })
+  return response.data
+}
+
 // ── Technical Assessment (Biên bản đánh giá kỹ thuật) ───────────────────────
 
 export async function createAssessmentService(body) {
@@ -258,5 +263,30 @@ export async function fetchRepairHistoriesService({ equipmentId, kksCode, equipm
 export async function createRepairHistoryService(body) {
   const response = await apiClient.post('/maintenance/repair-histories', body)
   return response.data
+}
+
+export async function uploadWorkOrderSignedPdfService(orderId, file) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(
+    apiClient.url(`/maintenance/work-orders/${orderId}/upload-signed-pdf`),
+    {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    },
+  )
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new Error(payload?.message || `Upload thất bại: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  return payload.data
 }
 

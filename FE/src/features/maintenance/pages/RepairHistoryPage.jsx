@@ -547,6 +547,7 @@ export function RepairHistoryPage() {
           <table className="w-full min-w-[800px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase font-bold text-slate-700">
               <tr>
+                <th className="w-16 px-5 py-3 text-center">STT</th>
                 <th className="px-5 py-3 w-1/4">Thiết bị</th>
                 <th className="px-5 py-3 w-40">Mã KKS</th>
                 <th className="px-5 py-3 w-40">Thời gian</th>
@@ -558,20 +559,23 @@ export function RepairHistoryPage() {
             <tbody className="divide-y divide-slate-200">
               {loading && !histories.length ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
                     <Loader2 className="animate-spin inline-block mr-2" size={18} />
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : !histories.length ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
                     Chưa có bản ghi lịch sử sửa chữa nào được đăng ký.
                   </td>
                 </tr>
               ) : (
-                histories.map((h) => (
+                histories.map((h, index) => (
                   <tr key={h.historyId} className="hover:bg-slate-50/50 transition align-top">
+                    <td className="px-5 py-4 text-center font-medium text-slate-500">
+                      {currentPage * 10 + index + 1}
+                    </td>
                     <td className="px-5 py-4 font-semibold text-slate-900">{h.equipmentName}</td>
                     <td className="px-5 py-4 font-mono text-slate-600">{h.equipmentKksCode}</td>
                     <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
