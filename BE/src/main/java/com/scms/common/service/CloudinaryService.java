@@ -29,7 +29,9 @@ public class CloudinaryService {
     public String uploadFile(MultipartFile file, String folder) {
         try {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
-                    "folder", folder
+                    "folder", folder,
+                    "resource_type", "auto",
+                    "access_mode", "public"
             );
             Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
             String url = uploadResult.get("secure_url").toString();

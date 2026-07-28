@@ -39,7 +39,7 @@ export function DeleteConfirmModal({ itemName, onClose, onConfirm }) {
                 <strong className="text-slate-950">{itemName}</strong> không?
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Hành động này không thể hoàn tác.
+                Thao tác này không thể hoàn tác.
               </p>
             </div>
           </div>

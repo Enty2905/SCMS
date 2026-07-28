@@ -11,18 +11,25 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
+import com.scms.common.pdf.PdfFontProvider;
+import com.scms.common.service.CloudinaryService;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
-import com.scms.common.pdf.PdfFontProvider;
 import com.scms.inventory.sparepart.dto.request.CreateSparePartRequestDto;
+import com.scms.inventory.sparepart.dto.request.IssueSparePartRequestDto;
 import com.scms.inventory.sparepart.dto.response.SparePartRequestItemResponse;
 import com.scms.inventory.sparepart.dto.response.SparePartRequestResponse;
 import com.scms.inventory.sparepart.entity.SparePart;
+import com.scms.inventory.sparepart.entity.SparePartExport;
+import com.scms.inventory.sparepart.entity.SparePartExportItem;
 import com.scms.inventory.sparepart.entity.SparePartRequest;
 import com.scms.inventory.sparepart.entity.SparePartRequestItem;
+import com.scms.inventory.sparepart.repository.SparePartExportItemRepository;
+import com.scms.inventory.sparepart.repository.SparePartExportRepository;
 import com.scms.inventory.sparepart.repository.SparePartRepository;
 import com.scms.inventory.sparepart.repository.SparePartRequestItemRepository;
 import com.scms.inventory.sparepart.repository.SparePartRequestRepository;
+import com.scms.inventory.sparepart.repository.SparePartStockRepository;
 import com.scms.maintenance.workorder.entity.WorkOrder;
 import com.scms.maintenance.workorder.repository.WorkOrderRepository;
 import lombok.AccessLevel;
@@ -33,12 +40,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +62,11 @@ public class SparePartRequestService {
     WorkOrderRepository workOrderRepository;
     SparePartRepository sparePartRepository;
     UserRepository userRepository;
+    SparePartExportItemRepository sparePartExportItemRepository;
+    SparePartExportRepository sparePartExportRepository;
+    SparePartRequestItemRepository sparePartRequestItemRepository;
+    SparePartStockRepository sparePartStockRepository;
+    CloudinaryService cloudinaryService;
 
     @Transactional
     public SparePartRequestResponse createRequest(CreateSparePartRequestDto dto, String username) {
@@ -92,8 +109,8 @@ public class SparePartRequestService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SparePartRequestResponse> getRequests(String reqNumber, String orderNumber, Pageable pageable) {
-        return sparePartRequestRepository.findByFilters(reqNumber, orderNumber, pageable)
+    public Page<SparePartRequestResponse> getRequests(String reqNumber, String orderNumber, String status, Pageable pageable) {
+        return sparePartRequestRepository.findByFilters(reqNumber, orderNumber, status, pageable)
                 .map(this::toResponse);
     }
 
@@ -101,6 +118,102 @@ public class SparePartRequestService {
     public SparePartRequestResponse getRequestById(UUID reqId) {
         SparePartRequest request = sparePartRequestRepository.findByIdWithDetails(reqId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        return toResponse(request);
+    }
+
+    /**
+     * Nghiệp vụ cấp phát phụ tùng thay thế:
+     * 1. Validate phiếu phải ở trạng thái "pending"
+     * 2. Với từng item: kiểm tra tồn kho >= quantityIssued
+     * 3. Ghi SparePartExportItem (trừ tồn kho)
+     * 4. Cập nhật quantityIssued trong SparePartRequestItem
+     * 5. Chuyển status → "issued", lưu issuedBy, issuedAt
+     */
+    @Transactional
+    public SparePartRequestResponse issueRequest(UUID reqId, IssueSparePartRequestDto dto, String username) {
+        User issuer = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        SparePartRequest request = sparePartRequestRepository.findByIdWithDetails(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        if (!"pending".equals(request.getStatus())) {
+            throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+        }
+
+        // Build map itemId → IssuedItem
+        Map<UUID, IssueSparePartRequestDto.IssuedItem> issuedMap = dto.getItems().stream()
+                .collect(Collectors.toMap(IssueSparePartRequestDto.IssuedItem::getItemId, Function.identity()));
+
+        LocalDateTime now = LocalDateTime.now();
+        SparePartExport export = SparePartExport.builder()
+                .exportNumber(generateExportNumber())
+                .sparePartRequest(request)
+                .workOrder(request.getWorkOrder())
+                .exportedBy(issuer)
+                .exportedAt(now)
+                .note(dto.getNote())
+                .build();
+
+        for (SparePartRequestItem requestItem : request.getItems()) {
+            IssueSparePartRequestDto.IssuedItem issuedItem = issuedMap.get(requestItem.getItemId());
+            if (issuedItem == null) continue;
+
+            int qtyToIssue = issuedItem.getQuantityIssued();
+
+            // Kiểm tra tồn kho
+            long imported = sparePartStockRepository.sumImported(requestItem.getSparePart().getSparePartId());
+            long exported = sparePartStockRepository.sumExported(requestItem.getSparePart().getSparePartId().toString());
+            long currentStock = imported - exported;
+
+            if (currentStock < qtyToIssue) {
+                log.warn("Không đủ tồn kho cho phụ tùng {}: tồn={}, yêu cầu={}",
+                        requestItem.getSparePart().getCode(), currentStock, qtyToIssue);
+                throw new AppException(ErrorCode.NOT_ENOUGH_INVENTORY);
+            }
+
+            // Ghi export item (trừ tồn kho)
+            SparePartExportItem exportItem = SparePartExportItem.builder()
+                    .sparePart(requestItem.getSparePart())
+                    .sparePartExport(export)
+                    .quantity(qtyToIssue)
+                    .note(dto.getNote())
+                    .build();
+            export.getItems().add(exportItem);
+
+            // Cập nhật quantityIssued trong request item
+            requestItem.setQuantityIssued(qtyToIssue);
+        }
+
+        if (!export.getItems().isEmpty()) {
+            sparePartExportRepository.save(export);
+        }
+        sparePartRequestItemRepository.saveAll(request.getItems());
+
+        // Cập nhật trạng thái phiếu
+        request.setStatus("issued");
+        request.setIssuedBy(issuer);
+        request.setIssuedAt(now);
+        request.setNote(dto.getNote());
+        sparePartRequestRepository.save(request);
+
+        log.info("Đã cấp phát phụ tùng thay thế cho phiếu {} bởi {}", request.getReqNumber(), username);
+        return toResponse(request);
+    }
+
+    /**
+     * Upload PDF phiếu cấp phát đã ký lên Cloudinary và lưu URL vào phiếu.
+     */
+    @Transactional
+    public SparePartRequestResponse uploadSignedPdf(UUID reqId, MultipartFile file) {
+        SparePartRequest request = sparePartRequestRepository.findByIdWithDetails(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        String pdfUrl = cloudinaryService.uploadFile(file, "scms/spare-part-requests");
+        request.setPdfUrl(pdfUrl);
+        sparePartRequestRepository.save(request);
+
+        log.info("Đã upload PDF phiếu cấp phụ tùng thay thế {} lên Cloudinary: {}", request.getReqNumber(), pdfUrl);
         return toResponse(request);
     }
 
@@ -142,17 +255,17 @@ public class SparePartRequestService {
                             : (request.getCreatedBy() != null ? request.getCreatedBy().getUsername() : ""));
             addInfoRow(infoTable, normalFont, boldFont, "Phiếu công tác liên quan:",
                     request.getWorkOrder() != null ? request.getWorkOrder().getOrderNumber() : "Không liên kết");
-            addInfoRow(infoTable, normalFont, boldFont, "Trạng thái phiếu:", request.getStatus());
+            addInfoRow(infoTable, normalFont, boldFont, "Trạng thái phiếu:", translateStatus(request.getStatus()));
             document.add(infoTable);
 
             // Table of items
-            Paragraph itemsTitle = new Paragraph("DANH SÁCH VẬT TƯ THAY THẾ YÊU CẦU")
+            Paragraph itemsTitle = new Paragraph("DANH SÁCH VẬT TƯ THAY THẾ CẤP PHÁT")
                     .setFont(boldFont)
                     .setFontSize(12)
                     .setMarginBottom(8);
             document.add(itemsTitle);
 
-            Table itemsTable = new Table(UnitValue.createPercentArray(new float[] { 10, 20, 40, 15, 15 }))
+            Table itemsTable = new Table(UnitValue.createPercentArray(new float[] { 8, 18, 34, 12, 14, 14 }))
                     .setWidth(UnitValue.createPercentValue(100));
 
             // Header row
@@ -161,6 +274,7 @@ public class SparePartRequestService {
             itemsTable.addHeaderCell(new Cell().add(new Paragraph("Tên phụ tùng").setFont(boldFont).setFontSize(10)));
             itemsTable.addHeaderCell(new Cell().add(new Paragraph("Đơn vị").setFont(boldFont).setFontSize(10)));
             itemsTable.addHeaderCell(new Cell().add(new Paragraph("SL yêu cầu").setFont(boldFont).setFontSize(10)));
+            itemsTable.addHeaderCell(new Cell().add(new Paragraph("SL thực cấp").setFont(boldFont).setFontSize(10)));
 
             int index = 1;
             for (SparePartRequestItem item : request.getItems()) {
@@ -169,6 +283,9 @@ public class SparePartRequestService {
                 itemsTable.addCell(new Cell().add(new Paragraph(item.getSparePart().getName()).setFont(normalFont).setFontSize(10)));
                 itemsTable.addCell(new Cell().add(new Paragraph(item.getSparePart().getUnit() != null ? item.getSparePart().getUnit() : "").setFont(normalFont).setFontSize(10)));
                 itemsTable.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantityRequested())).setFont(normalFont).setFontSize(10)));
+                String issuedText = (!"pending".equalsIgnoreCase(request.getStatus()) && item.getQuantityIssued() != null)
+                        ? String.valueOf(item.getQuantityIssued()) : ".....";
+                itemsTable.addCell(new Cell().add(new Paragraph(issuedText).setFont(normalFont).setFontSize(10)));
             }
 
             document.add(itemsTable);
@@ -181,7 +298,7 @@ public class SparePartRequestService {
             Cell requesterCell = new Cell().setBorder(Border.NO_BORDER)
                     .add(new Paragraph("NGƯỜI YÊU CẦU").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
-            
+
             Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
                     .add(new Paragraph("NGƯỜI CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
                     .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
@@ -251,7 +368,35 @@ public class SparePartRequestService {
                 .createdByName(r.getCreatedBy() != null && r.getCreatedBy().getEmployee() != null
                         ? r.getCreatedBy().getEmployee().getName() : null)
                 .createdAt(r.getCreatedAt())
+                .issuedByName(r.getIssuedBy() != null && r.getIssuedBy().getEmployee() != null
+                        ? r.getIssuedBy().getEmployee().getName()
+                        : (r.getIssuedBy() != null ? r.getIssuedBy().getUsername() : null))
+                .issuedAt(r.getIssuedAt())
+                .note(r.getNote())
                 .items(items)
                 .build();
+    }
+
+    private String generateExportNumber() {
+        String datePrefix = java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("yy-MM-dd"));
+        long next = 1;
+        String candidate;
+        do {
+            candidate = String.format("XKTT-%s-%04d", datePrefix, next);
+            next++;
+        } while (sparePartExportRepository.existsByExportNumber(candidate));
+        return candidate;
+    }
+
+    private String translateStatus(String status) {
+        if (status == null) return "";
+        return switch (status.toLowerCase()) {
+            case "pending" -> "Chờ cấp phát";
+            case "issued" -> "Đã cấp phát";
+            case "completed" -> "Hoàn tất";
+            case "rejected" -> "Từ chối";
+            case "cancelled" -> "Đã hủy";
+            default -> status;
+        };
     }
 }

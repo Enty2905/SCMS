@@ -129,7 +129,7 @@ export function ToolReturnConfirmModal({ borrow, onClose, onSuccess }) {
           </div>
 
           <p className="text-sm text-slate-500">
-            Hành động này sẽ cập nhật số lượng trả và hoàn lại số lượng CCDC vào kho. Nếu trả đủ, phiếu sẽ chuyển sang <strong>Đã trả</strong>.
+            Thao tác này sẽ cập nhật số lượng trả và hoàn lại số lượng CCDC vào kho. Nếu trả đủ, phiếu sẽ chuyển sang <strong>Đã trả</strong>.
           </p>
         </div>
 

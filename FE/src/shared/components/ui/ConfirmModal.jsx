@@ -5,7 +5,7 @@ export function ConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Xác nhận hành động',
+  title = 'Xác nhận thao tác',
   message,
   confirmText = 'Xác nhận',
   cancelText = 'Hủy',
