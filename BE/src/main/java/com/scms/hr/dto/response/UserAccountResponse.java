@@ -24,8 +24,10 @@ public class UserAccountResponse {
     Boolean active;
     LocalDateTime createdAt;
     UUID employeeId;
+    String employeeCode;
     String employeeName;
     String phone;
+    UUID departmentId;
     String departmentName;
     String positionName;
     String workLocation;

@@ -30,4 +30,5 @@ public class EmployeeResponse {
     String avatarUrl;
     String status;
     Boolean hasAccount;
+    Boolean accountActive;
 }

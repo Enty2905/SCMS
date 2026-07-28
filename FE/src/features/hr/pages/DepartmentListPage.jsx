@@ -1,20 +1,24 @@
-import { Building2, Edit3, Plus, Trash2, UserMinus, UsersRound, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Building2, Edit3, Plus, Search, Trash2, UserMinus, UsersRound, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 
 import {
+  selectHrDepartmentEmployees,
+  selectHrDepartmentEmployeesLoading,
   selectHrDepartments,
+  selectHrDepartmentSearch,
   selectHrDirectoryError,
   selectHrDirectoryLoading,
   selectHrDirectorySaving,
-  selectHrEmployees,
 } from '../store/hr-directory.selectors.js'
 import {
   createDepartment,
   deleteDepartment,
+  fetchDepartmentEmployees,
+  fetchDepartments,
   fetchHrDirectoryData,
   removeEmployeeFromDepartment,
   updateDepartment,
@@ -23,17 +27,22 @@ import {
 const emptyDepartmentForm = {
   departmentName: '',
   departmentCode: '',
+  description: '',
 }
 
 export function DepartmentListPage() {
   const dispatch = useDispatch()
   const departments = useSelector(selectHrDepartments)
-  const employees = useSelector(selectHrEmployees)
+  const departmentSearch = useSelector(selectHrDepartmentSearch)
+  const departmentEmployees = useSelector(selectHrDepartmentEmployees)
+  const departmentEmployeesLoading = useSelector(selectHrDepartmentEmployeesLoading)
   const loading = useSelector(selectHrDirectoryLoading)
   const saving = useSelector(selectHrDirectorySaving)
   const error = useSelector(selectHrDirectoryError)
+  const [query, setQuery] = useState(departmentSearch)
   const [departmentToDelete, setDepartmentToDelete] = useState(null)
   const [selectedDepartmentId, setSelectedDepartmentId] = useState(null)
+  const [employeeQuery, setEmployeeQuery] = useState('')
   const [employeeToRemove, setEmployeeToRemove] = useState(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingDepartment, setEditingDepartment] = useState(null)
@@ -43,14 +52,45 @@ export function DepartmentListPage() {
   const selectedDepartment = departments.find(
     (department) => department.departmentId === selectedDepartmentId,
   ) || null
-  const departmentEmployees = useMemo(
-    () => employees.filter((employee) => employee.departmentId === selectedDepartmentId),
-    [employees, selectedDepartmentId],
-  )
 
   useEffect(() => {
     dispatch(fetchHrDirectoryData())
   }, [dispatch])
+
+  // Gõ xong 400ms mới gọi API để không bắn request theo từng phím.
+  useEffect(() => {
+    if (query === departmentSearch) return undefined
+
+    const timer = setTimeout(() => {
+      dispatch(fetchDepartments(query))
+    }, 400)
+
+    return () => clearTimeout(timer)
+  }, [departmentSearch, dispatch, query])
+
+  // Tìm kiếm nhân sự bên trong phòng ban đang mở.
+  useEffect(() => {
+    if (!selectedDepartmentId) return undefined
+
+    const timer = setTimeout(() => {
+      dispatch(fetchDepartmentEmployees({
+        departmentId: selectedDepartmentId,
+        search: employeeQuery,
+      }))
+    }, employeeQuery ? 400 : 0)
+
+    return () => clearTimeout(timer)
+  }, [dispatch, employeeQuery, selectedDepartmentId])
+
+  const handleOpenDepartmentEmployees = (departmentId) => {
+    setEmployeeQuery('')
+    setSelectedDepartmentId(departmentId)
+  }
+
+  const handleCloseDepartmentEmployees = () => {
+    setSelectedDepartmentId(null)
+    setEmployeeQuery('')
+  }
 
   const handleOpenCreate = () => {
     setEditingDepartment(null)
@@ -64,6 +104,7 @@ export function DepartmentListPage() {
     setForm({
       departmentName: department.departmentName || '',
       departmentCode: department.departmentCode || '',
+      description: department.description || '',
     })
     setFormError('')
     setIsCreateOpen(true)
@@ -88,6 +129,7 @@ export function DepartmentListPage() {
       const payload = {
         departmentName: form.departmentName.trim(),
         departmentCode: form.departmentCode.trim(),
+        description: form.description.trim(),
       }
 
       if (editingDepartment) {
@@ -122,6 +164,7 @@ export function DepartmentListPage() {
       await dispatch(removeEmployeeFromDepartment({
         departmentId: selectedDepartment.departmentId,
         employeeId: employeeToRemove.employeeId,
+        search: employeeQuery,
       })).unwrap()
       setEmployeeToRemove(null)
     } catch {
@@ -135,7 +178,7 @@ export function DepartmentListPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-950">Quản lý phòng ban</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Xem danh sách, thêm mới và xóa phòng ban không còn sử dụng.
+            Xem danh sách, thêm mới, cập nhật và xóa phòng ban không còn sử dụng.
           </p>
         </div>
         <Button className="bg-violet-600 hover:bg-violet-700" onClick={handleOpenCreate}>
@@ -143,6 +186,19 @@ export function DepartmentListPage() {
           Thêm phòng ban
         </Button>
       </section>
+
+      <label className="relative mt-5 block max-w-xl">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          size={17}
+        />
+        <input
+          className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Tìm theo tên, mã hoặc mô tả phòng ban..."
+          value={query}
+        />
+      </label>
 
       {error ? (
         <p className="mt-5 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
@@ -159,7 +215,7 @@ export function DepartmentListPage() {
 
         {!loading && !departments.length ? (
           <article className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
-            Chưa có phòng ban.
+            {query ? 'Không có phòng ban phù hợp.' : 'Chưa có phòng ban.'}
           </article>
         ) : null}
 
@@ -202,12 +258,12 @@ export function DepartmentListPage() {
                 <h2 className="mt-1 text-lg font-semibold text-slate-950">
                   {department.departmentName}
                 </h2>
-                <p className="mt-2 text-sm text-slate-500">
-                  Dữ liệu lấy trực tiếp từ cơ sở dữ liệu.
+                <p className="mt-2 line-clamp-2 text-sm text-slate-500">
+                  {department.description || 'Chưa có mô tả cho phòng ban này.'}
                 </p>
                 <button
                   className="mt-5 flex w-full items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-left transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-500/15"
-                  onClick={() => setSelectedDepartmentId(department.departmentId)}
+                  onClick={() => handleOpenDepartmentEmployees(department.departmentId)}
                   type="button"
                 >
                   <span className="flex items-center gap-2 text-sm text-slate-500">
@@ -239,9 +295,12 @@ export function DepartmentListPage() {
         <DepartmentEmployeesModal
           department={selectedDepartment}
           employees={departmentEmployees}
-          onClose={() => setSelectedDepartmentId(null)}
+          loading={departmentEmployeesLoading}
+          onClose={handleCloseDepartmentEmployees}
           onRemove={setEmployeeToRemove}
+          onSearchChange={setEmployeeQuery}
           saving={saving}
+          search={employeeQuery}
         />
       ) : null}
 
@@ -268,7 +327,16 @@ export function DepartmentListPage() {
   )
 }
 
-function DepartmentEmployeesModal({ department, employees, onClose, onRemove, saving }) {
+function DepartmentEmployeesModal({
+  department,
+  employees,
+  loading,
+  onClose,
+  onRemove,
+  onSearchChange,
+  saving,
+  search,
+}) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
       <section className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
@@ -278,7 +346,9 @@ function DepartmentEmployeesModal({ department, employees, onClose, onRemove, sa
               Nhân sự phòng ban: {department.departmentName}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Có {employees.length} nhân viên đang thuộc phòng ban này.
+              {search
+                ? `Tìm thấy ${employees.length} nhân viên khớp từ khóa.`
+                : `Có ${employees.length} nhân viên đang thuộc phòng ban này.`}
             </p>
           </div>
           <Button aria-label="Đóng danh sách nhân sự" onClick={onClose} size="icon" variant="ghost">
@@ -286,7 +356,22 @@ function DepartmentEmployeesModal({ department, employees, onClose, onRemove, sa
           </Button>
         </div>
 
-        <div className="max-h-[65vh] overflow-auto">
+        <div className="border-b border-slate-200 px-6 py-3">
+          <label className="relative block">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+            />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Tìm nhân viên trong phòng ban theo mã, tên, email, số điện thoại..."
+              value={search}
+            />
+          </label>
+        </div>
+
+        <div className="max-h-[55vh] overflow-auto">
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
@@ -299,49 +384,62 @@ function DepartmentEmployeesModal({ department, employees, onClose, onRemove, sa
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {!employees.length ? (
+              {loading ? (
                 <tr>
                   <td className="px-5 py-10 text-center text-slate-500" colSpan={6}>
-                    Phòng ban chưa có nhân viên.
+                    Đang tải danh sách nhân sự...
                   </td>
                 </tr>
               ) : null}
-              {employees.map((employee, index) => (
-                <tr className="hover:bg-slate-50" key={employee.employeeId}>
-                  <td className="px-5 py-4 text-center text-slate-500">{index + 1}</td>
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-950">{employee.employeeName}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{employee.employeeCode}</p>
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">
-                    {employee.positionName || employee.workLocation || 'Chưa cập nhật'}
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">
-                    <p>{employee.phone || 'Chưa có số điện thoại'}</p>
-                    <p className="mt-0.5 text-xs">{employee.email || 'Chưa có email'}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={employee.hasAccount
-                      ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700'
-                      : 'inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600'}>
-                      {employee.hasAccount ? 'Đã có tài khoản' : 'Chưa có tài khoản'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Button
-                      aria-label={`Gỡ ${employee.employeeName} khỏi phòng ban`}
-                      className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                      disabled={saving}
-                      onClick={() => onRemove(employee)}
-                      size="icon"
-                      title="Gỡ khỏi phòng ban"
-                      variant="ghost"
-                    >
-                      <UserMinus size={17} />
-                    </Button>
+
+              {!loading && !employees.length ? (
+                <tr>
+                  <td className="px-5 py-10 text-center text-slate-500" colSpan={6}>
+                    {search ? 'Không có nhân viên phù hợp.' : 'Phòng ban chưa có nhân viên.'}
                   </td>
                 </tr>
-              ))}
+              ) : null}
+
+              {!loading
+                ? employees.map((employee, index) => (
+                    <tr className="hover:bg-slate-50" key={employee.employeeId}>
+                      <td className="px-5 py-4 text-center text-slate-500">{index + 1}</td>
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-slate-950">{employee.employeeName}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {employee.employeeCode || 'Chưa cấp mã'}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">
+                        {employee.positionName || employee.workLocation || 'Chưa cập nhật'}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">
+                        <p>{employee.phone || 'Chưa có số điện thoại'}</p>
+                        <p className="mt-0.5 text-xs">{employee.email || 'Chưa có email'}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={employee.hasAccount
+                          ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700'
+                          : 'inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600'}>
+                          {employee.hasAccount ? 'Đã có tài khoản' : 'Chưa có tài khoản'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Button
+                          aria-label={`Gỡ ${employee.employeeName} khỏi phòng ban`}
+                          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          disabled={saving}
+                          onClick={() => onRemove(employee)}
+                          size="icon"
+                          title="Gỡ khỏi phòng ban"
+                          variant="ghost"
+                        >
+                          <UserMinus size={17} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                : null}
             </tbody>
           </table>
         </div>
@@ -391,7 +489,7 @@ function DepartmentCreateModal({
             <input
               className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               onChange={(event) => updateField('departmentName', event.target.value)}
-              placeholder="Ví dụ: Phòng nhân sự"
+              placeholder="Ví dụ: Phân xưởng vận hành"
               value={form.departmentName}
             />
           </label>
@@ -401,8 +499,20 @@ function DepartmentCreateModal({
             <input
               className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm uppercase outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               onChange={(event) => updateField('departmentCode', event.target.value.toUpperCase())}
-              placeholder="Ví dụ: NS"
+              placeholder="Ví dụ: PXVH"
               value={form.departmentCode}
+            />
+          </label>
+
+          <label>
+            <span className="text-sm font-semibold text-slate-700">Mô tả</span>
+            <textarea
+              className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              maxLength={500}
+              onChange={(event) => updateField('description', event.target.value)}
+              placeholder="Chức năng, nhiệm vụ chính của phòng ban..."
+              rows={3}
+              value={form.description}
             />
           </label>
 

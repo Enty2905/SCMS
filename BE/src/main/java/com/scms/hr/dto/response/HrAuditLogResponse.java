@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -14,12 +15,16 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EmployeeAccountOptionResponse {
-    UUID employeeId;
-    String employeeCode;
-    String employeeName;
-    String phone;
-    String departmentName;
-    String positionName;
-    String workLocation;
+public class HrAuditLogResponse {
+    UUID id;
+    String action;
+    String actionLabel;
+    String targetType;
+    String targetTypeLabel;
+    UUID targetId;
+    String targetName;
+    String performedBy;
+    String performedByName;
+    String detail;
+    LocalDateTime createdAt;
 }

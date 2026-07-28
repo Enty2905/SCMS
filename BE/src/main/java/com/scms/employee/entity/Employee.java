@@ -28,6 +28,10 @@ public class Employee {
     @Column(name = "employee_id")
     UUID employeeId;
 
+    // Mã nhân viên hiển thị (NV001, NV002...), sinh tự động khi tạo hồ sơ
+    @Column(name = "employee_code", length = 20, unique = true)
+    String employeeCode;
+
     @Column(name = "name", length = 150, nullable = false)
     String name;
 
@@ -36,6 +40,14 @@ public class Employee {
 
     @Column(name = "email", length = 150)
     String email;
+
+    // Nam | Nữ | Khác — để trống nếu hồ sơ chưa khai báo.
+    @Column(name = "gender", length = 20)
+    String gender;
+
+    // Tình trạng làm việc, xem EmployeeStatus.
+    @Column(name = "status", length = 30)
+    String status;
 
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
