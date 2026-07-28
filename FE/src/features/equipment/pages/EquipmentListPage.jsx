@@ -1,4 +1,4 @@
-import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle, RotateCw, ChevronLeft, ChevronRight, Eye, Network, Printer } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, X, ArrowLeft, CheckCircle2, XCircle, RotateCw, ChevronLeft, ChevronRight, Eye, Network, Printer, FileSpreadsheet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button.jsx'
@@ -13,6 +13,8 @@ import {
   deleteEquipmentImage,
   fetchTechnicalParams,
   fetchUnits,
+  exportEquipmentExcelService,
+  exportSingleEquipmentExcelService,
 } from '../services/equipment.service.js'
 import { apiClient } from '@/shared/api/httpClient.js'
 
@@ -25,6 +27,7 @@ export function EquipmentListPage() {
   const [systems, setSystems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   // Confirm delete & Toast states
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -406,6 +409,54 @@ export function EquipmentListPage() {
     }
   }
 
+  const handleExportExcel = async () => {
+    setExporting(true)
+    try {
+      const blob = await exportEquipmentExcelService({
+        kksCode: searchKksCode,
+        name: searchEquipmentName,
+        systemId: systemFilter,
+        type: typeFilter,
+        status: statusFilter,
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `danh_sach_thiet_bi_${new Date().toISOString().slice(0, 10)}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Lỗi khi tải file Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportSingleExcel = async (eq) => {
+    if (!eq) return
+    setExporting(true)
+    try {
+      const blob = await exportSingleEquipmentExcelService(eq.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const filename = `thiet_bi_${eq.kksCode || eq.id.substring(0, 8)}.xlsx`
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Lỗi khi tải file Excel chi tiết')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       {/* Header section */}
@@ -431,10 +482,20 @@ export function EquipmentListPage() {
             Danh mục toàn bộ thiết bị trong nhà máy nhiệt điện, tra cứu mã KKS, trạng thái vận hành và bảo dưỡng.
           </p>
         </div>
-        <Button onClick={() => openModal(null)} className="bg-violet-600 hover:bg-violet-700 text-white font-medium">
-          <Plus size={17} />
-          Thêm thiết bị
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium"
+          >
+            <FileSpreadsheet size={17} className={exporting ? 'animate-pulse text-emerald-500' : 'text-emerald-600'} />
+            {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+          </Button>
+          <Button onClick={() => openModal(null)} className="bg-violet-600 hover:bg-violet-700 text-white font-medium">
+            <Plus size={17} />
+            Thêm thiết bị
+          </Button>
+        </div>
       </section>
 
       {/* Search & Filter section */}
@@ -1300,6 +1361,15 @@ export function EquipmentListPage() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-5 no-print">
+              <Button
+                onClick={() => handleExportSingleExcel(viewingEquipment)}
+                variant="secondary"
+                disabled={exporting}
+                className="border-slate-200 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1.5"
+              >
+                <FileSpreadsheet size={16} className={exporting ? 'animate-pulse text-emerald-500' : 'text-emerald-600'} />
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </Button>
               <Button
                 onClick={() => handlePrint('equipment-detail-print')}
                 variant="secondary"

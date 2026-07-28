@@ -4,6 +4,7 @@ import com.scms.common.response.ApiResponse;
 import com.scms.equipment.dto.request.EquipmentRequest;
 import com.scms.equipment.dto.response.EquipmentResponse;
 import com.scms.equipment.service.EquipmentService;
+import com.scms.equipment.service.EquipmentExcelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ import com.scms.equipment.dto.response.UnitResponse;
 public class EquipmentController {
 
     EquipmentService equipmentService;
+    EquipmentExcelService equipmentExcelService;
 
     @Operation(summary = "Tạo mới thiết bị")
     @PostMapping
@@ -34,15 +36,68 @@ public class EquipmentController {
         return ApiResponse.created("Tạo thiết bị thành công", equipmentService.createEquipment(request));
     }
 
-    @Operation(summary = "Cập nhật thiết bị")
-    @PutMapping("/{id}")
-    public ApiResponse<EquipmentResponse> updateEquipment(
-            @PathVariable UUID id,
-            @RequestBody @Valid EquipmentRequest request) {
-        return ApiResponse.<EquipmentResponse>builder()
+    @Operation(summary = "Lấy tất cả tham số kỹ thuật cấu hình sẵn")
+    @GetMapping("/params")
+    public ApiResponse<List<TechnicalParamResponse>> getAllParams() {
+        return ApiResponse.<List<TechnicalParamResponse>>builder()
                 .status(200)
-                .message("Cập nhật thiết bị thành công")
-                .data(equipmentService.updateEquipment(id, request))
+                .message("Lấy danh sách tham số thành công")
+                .data(equipmentService.getAllTechnicalParams())
+                .build();
+    }
+
+    @Operation(summary = "Lấy tất cả đơn vị cấu hình sẵn")
+    @GetMapping("/units")
+    public ApiResponse<List<UnitResponse>> getAllUnits() {
+        return ApiResponse.<List<UnitResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách đơn vị thành công")
+                .data(equipmentService.getAllUnits())
+                .build();
+    }
+
+    @Operation(summary = "Tìm kiếm thiết bị theo từ khóa (mã KKS / tên)")
+    @GetMapping("/search")
+    public ApiResponse<List<EquipmentResponse>> searchEquipments(@RequestParam String keyword) {
+        return ApiResponse.<List<EquipmentResponse>>builder()
+                .status(200)
+                .message("Tìm kiếm thiết bị thành công")
+                .data(equipmentService.searchEquipments(keyword))
+                .build();
+    }
+
+    @Operation(summary = "Xuất danh sách thiết bị ra file Excel")
+    @GetMapping("/export-excel")
+    public org.springframework.http.ResponseEntity<byte[]> exportExcel(
+            @RequestParam(required = false) String kksCode,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) UUID systemId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status) {
+        
+        List<EquipmentResponse> list = equipmentService.getFilteredEquipments(kksCode, name, systemId, type, status);
+        byte[] excelBytes = equipmentExcelService.exportToExcel(list);
+        
+        String filename = "danh_sach_thiet_bi.xlsx";
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment().filename(filename).build()
+        );
+        headers.setContentLength(excelBytes.length);
+        
+        return org.springframework.http.ResponseEntity.ok()
+                .headers(headers)
+                .body(excelBytes);
+    }
+
+    @Operation(summary = "Lấy tất cả thiết bị")
+    @GetMapping
+    public ApiResponse<List<EquipmentResponse>> getAllEquipments() {
+        return ApiResponse.<List<EquipmentResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách thiết bị thành công")
+                .data(equipmentService.getAllEquipments())
                 .build();
     }
 
@@ -56,23 +111,34 @@ public class EquipmentController {
                 .build();
     }
 
-    @Operation(summary = "Lấy tất cả thiết bị")
-    @GetMapping
-    public ApiResponse<List<EquipmentResponse>> getAllEquipments() {
-        return ApiResponse.<List<EquipmentResponse>>builder()
-                .status(200)
-                .message("Lấy danh sách thiết bị thành công")
-                .data(equipmentService.getAllEquipments())
-                .build();
+    @Operation(summary = "Xuất chi tiết thiết bị ra file Excel")
+    @GetMapping("/{id}/export-excel")
+    public org.springframework.http.ResponseEntity<byte[]> exportSingleExcel(@PathVariable UUID id) {
+        EquipmentResponse eq = equipmentService.getEquipmentById(id);
+        byte[] excelBytes = equipmentExcelService.exportSingleToExcel(eq);
+        
+        String filename = "thiet_bi_" + (eq.getKksCode() != null ? eq.getKksCode() : id.toString().substring(0, 8)) + ".xlsx";
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(
+                org.springframework.http.ContentDisposition.attachment().filename(filename).build()
+        );
+        headers.setContentLength(excelBytes.length);
+        
+        return org.springframework.http.ResponseEntity.ok()
+                .headers(headers)
+                .body(excelBytes);
     }
 
-    @Operation(summary = "Tìm kiếm thiết bị theo từ khóa (mã KKS / tên)")
-    @GetMapping("/search")
-    public ApiResponse<List<EquipmentResponse>> searchEquipments(@RequestParam String keyword) {
-        return ApiResponse.<List<EquipmentResponse>>builder()
+    @Operation(summary = "Cập nhật thiết bị")
+    @PutMapping("/{id}")
+    public ApiResponse<EquipmentResponse> updateEquipment(
+            @PathVariable UUID id,
+            @RequestBody @Valid EquipmentRequest request) {
+        return ApiResponse.<EquipmentResponse>builder()
                 .status(200)
-                .message("Tìm kiếm thiết bị thành công")
-                .data(equipmentService.searchEquipments(keyword))
+                .message("Cập nhật thiết bị thành công")
+                .data(equipmentService.updateEquipment(id, request))
                 .build();
     }
 
@@ -138,25 +204,5 @@ public class EquipmentController {
         headers.setCacheControl(org.springframework.http.CacheControl.maxAge(30, java.util.concurrent.TimeUnit.DAYS).cachePublic());
         
         return new org.springframework.http.ResponseEntity<>(imageBytes, headers, org.springframework.http.HttpStatus.OK);
-    }
-
-    @Operation(summary = "Lấy tất cả tham số kỹ thuật cấu hình sẵn")
-    @GetMapping("/params")
-    public ApiResponse<List<TechnicalParamResponse>> getAllParams() {
-        return ApiResponse.<List<TechnicalParamResponse>>builder()
-                .status(200)
-                .message("Lấy danh sách tham số thành công")
-                .data(equipmentService.getAllTechnicalParams())
-                .build();
-    }
-
-    @Operation(summary = "Lấy tất cả đơn vị cấu hình sẵn")
-    @GetMapping("/units")
-    public ApiResponse<List<UnitResponse>> getAllUnits() {
-        return ApiResponse.<List<UnitResponse>>builder()
-                .status(200)
-                .message("Lấy danh sách đơn vị thành công")
-                .data(equipmentService.getAllUnits())
-                .build();
     }
 }

@@ -156,6 +156,67 @@ public class EquipmentService {
                 .toList();
     }
 
+    public List<EquipmentResponse> getFilteredEquipments(String kksCode, String name, UUID systemId, String type, String status) {
+        List<Equipment> list = equipmentRepository.findAll();
+        
+        java.util.Set<UUID> allowedSystemIds = null;
+        if (systemId != null) {
+            allowedSystemIds = new java.util.HashSet<>();
+            allowedSystemIds.add(systemId);
+            java.util.List<UUID> queue = new java.util.ArrayList<>();
+            queue.add(systemId);
+            
+            var allSystems = equipmentSystemRepository.findAll();
+            while (!queue.isEmpty()) {
+                UUID currentId = queue.remove(0);
+                for (var sys : allSystems) {
+                    if (currentId.equals(sys.getParentSystemId())) {
+                        if (!allowedSystemIds.contains(sys.getSystemId())) {
+                            allowedSystemIds.add(sys.getSystemId());
+                            queue.add(sys.getSystemId());
+                        }
+                    }
+                }
+            }
+        }
+        
+        final java.util.Set<UUID> finalSystemIds = allowedSystemIds;
+        
+        return list.stream()
+                .filter(eq -> {
+                    if (kksCode != null && !kksCode.isBlank()) {
+                        String kksLower = kksCode.trim().toLowerCase();
+                        if (eq.getKksCode() == null || !eq.getKksCode().toLowerCase().contains(kksLower)) {
+                            return false;
+                        }
+                    }
+                    if (name != null && !name.isBlank()) {
+                        String nameLower = name.trim().toLowerCase();
+                        if (eq.getEquipmentName() == null || !eq.getEquipmentName().toLowerCase().contains(nameLower)) {
+                            return false;
+                        }
+                    }
+                    if (finalSystemIds != null) {
+                        if (eq.getSystemId() == null || !finalSystemIds.contains(eq.getSystemId())) {
+                            return false;
+                        }
+                    }
+                    if (type != null && !type.isBlank() && !type.equalsIgnoreCase("all")) {
+                        if (eq.getEquipmentType() == null || !eq.getEquipmentType().equalsIgnoreCase(type.trim())) {
+                            return false;
+                        }
+                    }
+                    if (status != null && !status.isBlank() && !status.equalsIgnoreCase("all")) {
+                        if (eq.getStatus() == null || !eq.getStatus().equalsIgnoreCase(status.trim())) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+                .map(this::toEquipmentResponse)
+                .toList();
+    }
+
     // ── Xóa thiết bị ─────────────────────────────────────────
     @Transactional
     public void deleteEquipment(UUID id) {

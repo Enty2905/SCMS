@@ -107,3 +107,48 @@ export async function fetchUnits() {
   const response = await apiClient.get('/equipment/units')
   return response.data || []
 }
+
+export async function exportEquipmentExcelService(filters = {}) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const params = new URLSearchParams()
+  if (filters.kksCode) params.set('kksCode', filters.kksCode)
+  if (filters.name) params.set('name', filters.name)
+  if (filters.systemId && filters.systemId !== 'all') params.set('systemId', filters.systemId)
+  if (filters.type && filters.type !== 'all') params.set('type', filters.type)
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+
+  const response = await fetch(
+    apiClient.url(`/equipment/export-excel?${params}`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`Không thể tải file Excel: ${response.status}`)
+  }
+
+  return response.blob()
+}
+
+export async function exportSingleEquipmentExcelService(id) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const response = await fetch(
+    apiClient.url(`/equipment/${id}/export-excel`),
+    {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`Không thể tải file Excel: ${response.status}`)
+  }
+
+  return response.blob()
+}
