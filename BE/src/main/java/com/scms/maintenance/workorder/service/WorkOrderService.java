@@ -4,10 +4,16 @@ import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
+import com.scms.common.response.PagedResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
-import com.scms.maintenance.repairrequest.entity.RepairRequest;
-import com.scms.maintenance.repairrequest.repository.RepairRequestRepository;
+import java.util.Optional;
+import com.scms.repairrequest.entity.RepairRequest;
+import com.scms.repairrequest.repository.RepairRequestRepository;
 import com.scms.maintenance.workorder.dto.request.CreateWorkOrderRequest;
 import com.scms.maintenance.workorder.dto.response.WorkOrderResponse;
 import com.scms.maintenance.workorder.entity.WorkOrder;
@@ -23,6 +29,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import com.scms.maintenance.workorder.dto.request.CloseDailyLogRequest;
+import com.scms.maintenance.workorder.dto.response.WorkOrderDailyLogResponse;
+import com.scms.maintenance.workorder.entity.WorkOrderDailyLog;
+import com.scms.maintenance.workorder.repository.WorkOrderDailyLogRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +44,7 @@ public class WorkOrderService {
 
         WorkOrderRepository workOrderRepository;
         WorkOrderMemberRepository workOrderMemberRepository;
+        WorkOrderDailyLogRepository workOrderDailyLogRepository;
         RepairRequestRepository repairRequestRepository;
         EmployeeRepository employeeRepository;
         UserRepository userRepository;
@@ -52,7 +66,7 @@ public class WorkOrderService {
                 if (req.getRequestId() != null) {
                         repairRequest = repairRequestRepository.findById(req.getRequestId())
                                         .orElseThrow(() -> new AppException(ErrorCode.REPAIR_REQUEST_NOT_FOUND));
-                        repairRequest.setStatus("in_progress");
+                        repairRequest.setStatus("done");
                         repairRequestRepository.save(repairRequest);
                 }
 
@@ -64,6 +78,25 @@ public class WorkOrderService {
                 Employee workLeader = getEmployeeOrThrow(req.getWorkLeaderId());
                 Employee directCommander = getEmployeeOrThrow(req.getDirectCommanderId());
                 Employee safetySupervisor = getEmployeeOrThrow(req.getSafetySupervisorId());
+
+                // Ràng buộc 3 vị trí lãnh đạo không được trùng nhau
+                if (req.getSafetySupervisorId().equals(req.getWorkLeaderId()) ||
+                    req.getSafetySupervisorId().equals(req.getDirectCommanderId())) {
+                    throw new AppException(ErrorCode.SAFETY_SUPERVISOR_MUST_BE_UNIQUE);
+                }
+
+                // Tự động xoá các vị trí lãnh đạo khỏi danh sách thành viên thi công nếu bị trùng ở backend
+                List<UUID> cleanMemberIds = new ArrayList<>();
+                if (req.getMemberIds() != null) {
+                    for (UUID mId : req.getMemberIds()) {
+                        if (mId != null &&
+                            !mId.equals(req.getWorkLeaderId()) &&
+                            !mId.equals(req.getDirectCommanderId()) &&
+                            !mId.equals(req.getSafetySupervisorId())) {
+                            cleanMemberIds.add(mId);
+                        }
+                    }
+                }
 
                 // 5. Tạo WorkOrder (status = draft)
                 WorkOrder workOrder = WorkOrder.builder()
@@ -82,9 +115,9 @@ public class WorkOrderService {
 
                 workOrderRepository.save(workOrder);
 
-                // 6. Thêm danh sách thành viên (nếu có)
-                if (req.getMemberIds() != null && !req.getMemberIds().isEmpty()) {
-                        List<WorkOrderMember> members = req.getMemberIds().stream()
+                // 6. Thêm danh sách thành viên (sau khi đã tự động làm sạch các ID trùng lãnh đạo)
+                if (!cleanMemberIds.isEmpty()) {
+                        List<WorkOrderMember> members = cleanMemberIds.stream()
                                         .map(memberId -> {
                                                 Employee emp = getEmployeeOrThrow(memberId);
                                                 return WorkOrderMember.builder()
@@ -109,8 +142,152 @@ public class WorkOrderService {
                                 .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
                 // Load members riêng để tránh MultipleBagFetchException
                 List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(orderId);
+                wo.getMembers().clear();
                 wo.getMembers().addAll(members);
                 return toResponse(wo);
+        }
+
+        /**
+         * Lấy danh sách phiếu công tác có lọc theo số PCT và mã KKS thiết bị
+         */
+        @Transactional(readOnly = true)
+        public List<WorkOrderResponse> getAllWorkOrders(String orderNumber, String kksCode) {
+            String on = (orderNumber != null && !orderNumber.isBlank()) ? orderNumber.trim() : null;
+            String kks = (kksCode != null && !kksCode.isBlank()) ? kksCode.trim() : null;
+            List<WorkOrder> orders = workOrderRepository.findAllWithFilters(on, kks);
+            for (WorkOrder wo : orders) {
+                    List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());
+                    wo.getMembers().clear();
+                    wo.getMembers().addAll(members);
+            }
+            return orders.stream()
+                            .map(this::toResponse)
+                            .toList();
+        }
+
+        /**
+         * Lấy danh sách phiếu công tác có tìm kiếm và phân trang
+         */
+        @Transactional(readOnly = true)
+        public PagedResponse<WorkOrderResponse> searchWorkOrders(String keyword, int page, int size) {
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                Page<WorkOrder> workOrderPage = workOrderRepository.searchWorkOrders(keyword, pageable);
+                
+                List<WorkOrderResponse> content = workOrderPage.getContent().stream().map(wo -> {
+                        List<WorkOrderMember> members = workOrderMemberRepository.findByOrderIdWithEmployee(wo.getOrderId());
+                        wo.getMembers().clear();
+                        wo.getMembers().addAll(members);
+                        return toResponse(wo);
+                }).toList();
+
+                return PagedResponse.<WorkOrderResponse>builder()
+                                .content(content)
+                                .page(workOrderPage.getNumber())
+                                .size(workOrderPage.getSize())
+                                .totalElements(workOrderPage.getTotalElements())
+                                .totalPages(workOrderPage.getTotalPages())
+                                .last(workOrderPage.isLast())
+                                .build();
+        }
+
+        // ── Daily Log (Mở / Đóng Phiếu Công Tác) ────────────────────────────────
+
+        @Transactional
+        public WorkOrderDailyLogResponse openDailyLog(UUID orderId, String username) {
+                WorkOrder workOrder = workOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
+
+                if ("locked".equals(workOrder.getStatus())) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS); // Cannot open locked order
+                }
+
+                // Check if there is already an active log
+                workOrderDailyLogRepository.findActiveLogByOrderId(orderId).ifPresent(log -> {
+                        throw new AppException(ErrorCode.DAILY_LOG_ALREADY_OPEN);
+                });
+
+                User openedBy = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+                WorkOrderDailyLog newLog = WorkOrderDailyLog.builder()
+                                .workOrder(workOrder)
+                                .date(LocalDate.now())
+                                .openedBy(openedBy)
+                                .openedAt(LocalDateTime.now())
+                                .build();
+
+                workOrderDailyLogRepository.save(newLog);
+
+                // Update work order status if needed (e.g., from draft or paused to open)
+                if ("draft".equals(workOrder.getStatus()) || "paused".equals(workOrder.getStatus())) {
+                        workOrder.setStatus("open");
+                        workOrderRepository.save(workOrder);
+                }
+
+                return toLogResponse(newLog);
+        }
+
+        @Transactional
+        public WorkOrderDailyLogResponse closeDailyLog(UUID orderId, CloseDailyLogRequest req, String username) {
+                WorkOrderDailyLog activeLog = workOrderDailyLogRepository.findActiveLogByOrderId(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.NO_ACTIVE_LOG_TO_CLOSE));
+
+                User closedBy = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+                activeLog.setClosedBy(closedBy);
+                activeLog.setClosedAt(LocalDateTime.now());
+                if (req != null && req.getNote() != null) {
+                        activeLog.setNote(req.getNote());
+                }
+                workOrderDailyLogRepository.save(activeLog);
+
+                // Update Work Order status to paused when shift is closed
+                WorkOrder workOrder = activeLog.getWorkOrder();
+                if ("open".equals(workOrder.getStatus())) {
+                        workOrder.setStatus("paused");
+                        workOrderRepository.save(workOrder);
+                }
+
+                return toLogResponse(activeLog);
+        }
+
+        @Transactional
+        public void completeWorkOrder(UUID orderId) {
+                WorkOrder workOrder = workOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WORK_ORDER_NOT_FOUND));
+
+                if ("locked".equals(workOrder.getStatus())) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+                }
+
+                // Verify if there is an active daily log session
+                Optional<WorkOrderDailyLog> activeLogOpt = workOrderDailyLogRepository
+                                .findActiveLogByOrderId(orderId);
+                if (activeLogOpt.isPresent()) {
+                        throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS); // Or create a new error code for "shift is open"
+                }
+
+                workOrder.setStatus("locked");
+                workOrder.setEndDate(LocalDateTime.now());
+                workOrderRepository.save(workOrder);
+        }
+
+        @Transactional(readOnly = true)
+        public PagedResponse<WorkOrderDailyLogResponse> getDailyLogs(UUID orderId, int page, int size) {
+                if (!workOrderRepository.existsById(orderId)) {
+                        throw new AppException(ErrorCode.WORK_ORDER_NOT_FOUND);
+                }
+                Pageable pageable = PageRequest.of(page, size);
+                Page<WorkOrderDailyLog> logPage = workOrderDailyLogRepository.findByWorkOrderOrderIdOrderByOpenedAtDesc(orderId, pageable);
+                return PagedResponse.<WorkOrderDailyLogResponse>builder()
+                        .content(logPage.getContent().stream().map(this::toLogResponse).toList())
+                        .page(logPage.getNumber())
+                        .size(logPage.getSize())
+                        .totalElements(logPage.getTotalElements())
+                        .totalPages(logPage.getTotalPages())
+                        .last(logPage.isLast())
+                        .build();
         }
 
         // ── Helper ───────────────────────────────────────────────────────────────
@@ -126,11 +303,11 @@ public class WorkOrderService {
          * chưa dùng.
          */
         private String generateOrderNumber() {
-                long count = workOrderRepository.countAllOrders();
-                long next = count + 1;
+                String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));
+                long next = 1;
                 String candidate;
                 do {
-                        candidate = String.format("PCT-%04d", next);
+                        candidate = String.format("PCT-%s-%04d", datePrefix, next);
                         next++;
                 } while (workOrderRepository.existsByOrderNumber(candidate));
                 return candidate;
@@ -202,6 +379,23 @@ public class WorkOrderService {
                                                 : null)
                                 .checkInAt(m.getCheckInAt())
                                 .checkOutAt(m.getCheckOutAt())
+                                .build();
+        }
+
+        private WorkOrderDailyLogResponse toLogResponse(WorkOrderDailyLog log) {
+                return WorkOrderDailyLogResponse.builder()
+                                .logId(log.getLogId())
+                                .orderId(log.getWorkOrder().getOrderId())
+                                .date(log.getDate())
+                                .openedByUserId(log.getOpenedBy().getUserId())
+                                .openedByName(log.getOpenedBy().getEmployee() != null ? log.getOpenedBy().getEmployee().getName() : log.getOpenedBy().getUsername())
+                                .openedAt(log.getOpenedAt())
+                                .closedByUserId(log.getClosedBy() != null ? log.getClosedBy().getUserId() : null)
+                                .closedByName(log.getClosedBy() != null ? 
+                                        (log.getClosedBy().getEmployee() != null ? log.getClosedBy().getEmployee().getName() : log.getClosedBy().getUsername()) 
+                                        : null)
+                                .closedAt(log.getClosedAt())
+                                .note(log.getNote())
                                 .build();
         }
 }

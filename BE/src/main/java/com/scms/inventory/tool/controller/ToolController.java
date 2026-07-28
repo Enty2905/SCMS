@@ -2,6 +2,7 @@ package com.scms.inventory.tool.controller;
 
 import com.scms.common.response.ApiResponse;
 import com.scms.common.response.PagedResponse;
+import com.scms.inventory.tool.dto.request.ToolDisposeRequest;
 import com.scms.inventory.tool.dto.request.ToolRequest;
 import com.scms.inventory.tool.dto.response.ToolResponse;
 import com.scms.inventory.tool.service.ToolService;
@@ -65,4 +66,48 @@ public class ToolController {
         return ApiResponse.success("Cập nhật CCDC thành công",
                 toolService.updateTool(id, request));
     }
+
+    // Xóa CCDC (Soft Delete)
+    @Operation(summary = "Xóa công cụ dụng cụ")
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteTool(@PathVariable("id") UUID id) {
+        toolService.deleteTool(id);
+        return ApiResponse.success("Xóa CCDC thành công", null);
+    }
+
+    // Báo hỏng CCDC
+    @Operation(summary = "Báo hỏng CCDC (giảm available, tăng damaged)")
+    @PatchMapping("/{id}/report-damaged")
+    public ApiResponse<ToolResponse> reportDamaged(
+            @PathVariable("id") UUID id,
+            @RequestBody @Valid ToolDisposeRequest request) {
+        return ApiResponse.success("Báo hỏng CCDC thành công",
+                toolService.reportDamaged(id, request));
+    }
+
+    // Huỷ CCDC bị hư hỏng
+    @Operation(summary = "Huỷ CCDC bị hư hỏng (báo cáo số lượng hỏng)")
+    @PatchMapping("/{id}/dispose-damaged")
+    public ApiResponse<ToolResponse> disposeDamaged(
+            @PathVariable("id") UUID id,
+            @RequestBody @Valid ToolDisposeRequest request) {
+        return ApiResponse.success("Báo cáo hư hỏng CCDC thành công",
+                toolService.disposeDamaged(id, request));
+    }
+
+    // Lấy danh sách CCDC có hư hỏng
+    @Operation(summary = "Lấy danh sách CCDC có hư hỏng (damagedQuantity > 0)")
+    @GetMapping("/damaged")
+    public ApiResponse<PagedResponse<ToolResponse>> getDamagedTools(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.<PagedResponse<ToolResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách CCDC hư hỏng thành công")
+                .data(toolService.getDamagedTools(keyword, category, page, size))
+                .build();
+    }
 }
+

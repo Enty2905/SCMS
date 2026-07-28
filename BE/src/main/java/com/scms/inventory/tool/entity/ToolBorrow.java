@@ -30,6 +30,9 @@ public class ToolBorrow {
     @Column(name = "quantity", nullable = false)
     Integer quantity;
 
+    @Column(name = "remaining_quantity", nullable = false)
+    Integer remainingQuantity;
+
     @Column(name = "borrowed_at", nullable = false)
     LocalDateTime borrowedAt;
 

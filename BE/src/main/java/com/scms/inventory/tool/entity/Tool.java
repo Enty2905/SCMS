@@ -3,11 +3,15 @@ package com.scms.inventory.tool.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "tool")
+@SQLDelete(sql = "UPDATE tool SET is_deleted = true WHERE tool_id = ?")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -41,4 +45,11 @@ public class Tool {
 
     @Column(name = "note", length = 500)
     String note;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    Boolean isDeleted = false;
+
+    @Column(name = "image_url", length = 500)
+    String imageUrl;
 }

@@ -13,11 +13,19 @@ function onRefreshed(token) {
 }
 
 async function request(path, options = {}) {
-  const getHeaders = (token) => ({
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  })
+  const isFormData = options.body instanceof FormData
+  const getHeaders = (token) => {
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    }
+
+    if (!isFormData) {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json'
+    }
+
+    return headers
+  }
 
   let token = window.localStorage.getItem('scms.auth.token')
   let response
@@ -26,7 +34,11 @@ async function request(path, options = {}) {
     response = await fetch(url(path), {
       ...options,
       headers: getHeaders(token),
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined
+        ? undefined
+        : isFormData
+          ? options.body
+          : JSON.stringify(options.body),
     })
   } catch {
     throw new Error('Không kết nối được tới backend. Hãy kiểm tra BE/Docker đang chạy.')

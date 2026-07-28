@@ -14,6 +14,7 @@ import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import {
   getPrimaryRoleLabel,
   hasAnyRole,
+  ROLES,
 } from '@/features/auth/utils/roles.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { apiClient } from '@/shared/api/httpClient.js'
@@ -22,7 +23,10 @@ import { hrNavItems } from '@/features/hr/hr.nav.js'
 import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
 import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
+import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
 import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
+import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
+import { fetchTools } from '@/features/inventory/services/tool.service.js'
 
 
 const navItems = [
@@ -36,6 +40,7 @@ const navItems = [
   ...inventoryNavItems,
   ...equipmentNavItems,
   ...maintenanceNavItems,
+  ...repairRequestNavItems,
 ]
 
 
@@ -49,7 +54,14 @@ export function AppShell() {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
 
+  const canSeeNotifications = hasAnyRole(user, [ROLES.OPS_MANAGER, ROLES.ADMIN])
+
   useEffect(() => {
+    if (!canSeeNotifications) {
+      setNotifications([])
+      return
+    }
+
     async function loadNotifications() {
       try {
         const equipments = await fetchEquipments()
@@ -72,13 +84,64 @@ export function AppShell() {
               name: eq.equipmentName,
               status: eq.status,
               systemId: eq.systemId,
+              title: isBroken ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng',
               message: isBroken
-                ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp SỰ CỐ!`
-                : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang tiến hành BẢO DƯỠNG.`,
-              type: isBroken ? 'warning' : 'info',
+                ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp sự cố!`
+                : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang bảo dưỡng.`,
+              type: isBroken ? 'error' : 'warning',
+              category: 'equipment',
             }
           })
-        setNotifications(warnings)
+          
+        let allNotifications = [...warnings]
+
+        // Load consumable stock warnings for TKVT role (VT)
+        // TODO: Load Spare Part (VTTT) warnings here in the future when VTTT stock is implemented (kể cả VTTT sắp tới sẽ làm)
+        if (hasAnyRole(user, [ROLES.WAREHOUSE_MAT])) {
+          try {
+            const stockData = await fetchConsumableStocks({ size: 1000 })
+            const stocks = stockData.content || []
+            const stockWarnings = stocks
+              .filter((item) => item.status === 'low' || item.status === 'out')
+              .map((item) => ({
+                id: `mat-${item.consumableId}`,
+                code: item.code,
+                name: item.name,
+                status: item.status,
+                title: item.status === 'out' ? 'Hết vật tư' : 'Vật tư sắp hết',
+                message: `${item.name} - Tồn: ${item.stockQuantity}`,
+                type: item.status === 'out' ? 'error' : 'warning',
+                category: 'material',
+              }))
+            allNotifications = [...allNotifications, ...stockWarnings]
+          } catch (err) {
+            console.error('Failed to load material notifications', err)
+          }
+        }
+
+        // Load damaged tool warnings for TKCCDC role
+        if (hasAnyRole(user, [ROLES.WAREHOUSE_TOOL])) {
+          try {
+            const toolData = await fetchTools(null, null, 0, 1000)
+            const tools = toolData.content || []
+            const toolWarnings = tools
+              .filter((item) => item.status === 'damaged')
+              .map((item) => ({
+                id: `tool-${item.toolId}`,
+                name: item.name,
+                status: item.status,
+                title: 'CCDC bị hỏng',
+                message: `${item.name} - Bị hỏng: ${item.damagedQuantity}`,
+                type: 'error',
+                category: 'tool',
+              }))
+            allNotifications = [...allNotifications, ...toolWarnings]
+          } catch (err) {
+            console.error('Failed to load tool notifications', err)
+          }
+        }
+
+        setNotifications(allNotifications)
       } catch (err) {
         console.error('Failed to load notifications in AppShell', err)
       }
@@ -87,11 +150,17 @@ export function AppShell() {
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [user, canSeeNotifications])
 
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
-    navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
+    if (notif.category === 'material') {
+      navigate('/dashboard/inventory/consumable-stocks')
+    } else if (notif.category === 'tool') {
+      navigate('/dashboard/inventory/tools')
+    } else {
+      navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
+    }
   }
   const visibleNavItems = navItems.filter((item) => hasAnyRole(user, item.roles))
   const currentItem =
@@ -122,8 +191,8 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-72 border-r border-slate-800 bg-slate-950 px-3 py-4 text-white lg:block">
-        <div className="flex items-center gap-3 px-2">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden h-dvh w-72 flex-col overflow-hidden border-r border-slate-800 bg-slate-950 px-3 py-4 text-white lg:flex">
+        <div className="flex shrink-0 items-center gap-3 px-2">
           <div className="grid size-9 place-items-center rounded-lg bg-violet-600 text-white">
             <Zap size={20} />
           </div>
@@ -133,7 +202,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <nav className="mt-6 space-y-2">
+        <nav className="mt-6 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pb-2 pr-1 [scrollbar-color:rgb(71_85_105)_transparent] [scrollbar-width:thin]">
           {visibleNavItems.map((item) => (
             <NavLink
               className={({ isActive }) =>
@@ -154,7 +223,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="absolute inset-x-3 bottom-4 border-t border-slate-800 pt-4">
+        <div className="mt-4 shrink-0 border-t border-slate-800 pt-4">
           <div className="flex items-center gap-3 px-2">
             <div className="grid size-9 place-items-center rounded-full bg-violet-600 text-sm font-bold">
               {initials}
@@ -219,23 +288,26 @@ export function AppShell() {
                             Không có cảnh báo nào hiện tại.
                           </div>
                         ) : (
-                          notifications.map((notif) => (
-                            <button
-                              key={notif.id}
-                              onClick={() => handleNotifClick(notif)}
-                              className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition rounded-md flex gap-2.5 items-start text-xs cursor-pointer"
-                            >
-                              <span className={`mt-0.5 inline-block size-2 rounded-full shrink-0 ${
-                                notif.type === 'warning' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
-                              }`} />
-                              <div>
-                                <p className={`font-semibold ${notif.type === 'warning' ? 'text-rose-700' : 'text-amber-700'}`}>
-                                  {notif.type === 'warning' ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng'}
-                                </p>
-                                <p className="mt-0.5 text-slate-600 leading-normal">{notif.message}</p>
-                              </div>
-                            </button>
-                          ))
+                          notifications.map((notif) => {
+                            const isError = notif.type === 'error'
+                            return (
+                              <button
+                                key={notif.id}
+                                onClick={() => handleNotifClick(notif)}
+                                className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition rounded-md block text-xs cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className={`inline-block size-2 rounded-full shrink-0 ${
+                                    isError ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'
+                                  }`} />
+                                  <p className={`font-semibold ${isError ? 'text-rose-700' : 'text-amber-700'}`}>
+                                    {notif.title}
+                                  </p>
+                                </div>
+                                <p className="mt-0.5 text-slate-600 leading-normal pl-[18px]">{notif.message}</p>
+                              </button>
+                            )
+                          })
                         )}
                       </div>
                     </div>

@@ -3,6 +3,7 @@ package com.scms.common.exception;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.scms.common.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -98,6 +99,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(
                 ApiResponse.error(400, ex.getMessage())
         );
+    }
+
+    /**
+     * Xử lý lỗi nghiệp vụ (BadRequestException)
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<?>> handleBadRequestException(BadRequestException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(400, ex.getMessage())
+        );
+    }
+
+    /**
+     * Lỗi ràng buộc dữ liệu của cơ sở dữ liệu (trùng khóa duy nhất, vi phạm khóa ngoại...).
+     * Lưới an toàn cho những trường hợp nghiệp vụ chưa kiểm tra trước: trả 409 dễ hiểu
+     * thay vì 500 "Uncategorized error".
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Database constraint violated", ex);
+
+        return ResponseEntity.status(409).body(ApiResponse.error(409,
+                "Dữ liệu bị trùng hoặc vi phạm ràng buộc. Vui lòng kiểm tra lại các trường không được trùng."));
     }
 
     /**

@@ -3,6 +3,7 @@ package com.scms.equipment.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -18,4 +19,5 @@ public class EquipmentResponse {
     String status;
     String location;
     UUID systemId;
+    List<EquipmentImageResponse> images;
 }

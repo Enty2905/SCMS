@@ -5,12 +5,17 @@ import com.scms.user.entity.EmployeeRole;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "employee")
+@SQLDelete(sql = "UPDATE employee SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE employee_id = ?")
+@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,11 +28,26 @@ public class Employee {
     @Column(name = "employee_id")
     UUID employeeId;
 
+    // Mã nhân viên hiển thị (NV001, NV002...), sinh tự động khi tạo hồ sơ
+    @Column(name = "employee_code", length = 20, unique = true)
+    String employeeCode;
+
     @Column(name = "name", length = 150, nullable = false)
     String name;
 
     @Column(name = "phone", length = 20)
     String phone;
+
+    @Column(name = "email", length = 150)
+    String email;
+
+    // Nam | Nữ | Khác — để trống nếu hồ sơ chưa khai báo.
+    @Column(name = "gender", length = 20)
+    String gender;
+
+    // Tình trạng làm việc, xem EmployeeStatus.
+    @Column(name = "status", length = 30)
+    String status;
 
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
@@ -47,6 +67,13 @@ public class Employee {
     // Vị trí/nơi làm việc: PXVH, PXSCC, kho vật tư...
     @Column(name = "work_location", length = 200)
     String workLocation;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
     @ToString.Exclude

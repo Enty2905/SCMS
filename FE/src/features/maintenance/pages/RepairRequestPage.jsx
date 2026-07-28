@@ -10,10 +10,13 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
-import { fetchHrDirectoryData } from '@/features/hr/store/hr-directory.thunks.js'
+import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
+import { ROLES, hasAnyRole } from '@/features/auth/utils/roles.js'
 import { selectHrEmployees } from '@/features/hr/store/hr-directory.selectors.js'
+import { fetchHrDirectoryData } from '@/features/hr/store/hr-directory.thunks.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 
+import { clearWorkOrderError } from '../store/maintenance.reducer.js'
 import {
   selectRequests,
   selectRequestsError,
@@ -23,7 +26,6 @@ import {
   selectWorkOrderLoading,
 } from '../store/maintenance.selectors.js'
 import { createWorkOrder, fetchPendingRequests } from '../store/maintenance.thunks.js'
-import { clearWorkOrderError } from '../store/maintenance.reducer.js'
 
 // ── Priority config ──────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -178,6 +180,7 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
 
   const prevWorkOrder = useRef(workOrder)
   const [success, setSuccess] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
     if (workOrder && workOrder !== prevWorkOrder.current) setSuccess(true)
@@ -187,6 +190,20 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
   useEffect(() => {
     dispatch(clearWorkOrderError())
   }, [dispatch])
+
+  // Tự động xoá nhân viên ra khỏi danh sách thành viên nếu được chọn làm lãnh đạo
+  useEffect(() => {
+    const leaderIds = new Set([form.workLeaderId, form.directCommanderId, form.safetySupervisorId].filter(Boolean))
+    if (leaderIds.size > 0) {
+      setForm((prev) => {
+        const cleanMembers = prev.memberIds.filter((id) => !leaderIds.has(id))
+        if (cleanMembers.length !== prev.memberIds.length) {
+          return { ...prev, memberIds: cleanMembers }
+        }
+        return prev
+      })
+    }
+  }, [form.workLeaderId, form.directCommanderId, form.safetySupervisorId])
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -203,6 +220,13 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
 
   function handleSubmit(e) {
     e.preventDefault()
+    setValidationError('')
+
+    if (form.safetySupervisorId === form.workLeaderId || form.safetySupervisorId === form.directCommanderId) {
+      setValidationError('Người giám sát an toàn phải khác Lãnh đạo thi công và Chỉ huy trực tiếp')
+      return
+    }
+
     const body = {
       ...(form.requestId ? { requestId: form.requestId } : {}),
       ...(form.content ? { content: form.content } : {}),
@@ -274,13 +298,6 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
           </div>
         ) : (
           <form className="space-y-5 p-6" onSubmit={handleSubmit}>
-            {error ? (
-              <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2">
-                <AlertTriangle className="shrink-0 text-rose-500" size={16} />
-                <p className="text-sm font-medium text-rose-700">{error}</p>
-              </div>
-            ) : null}
-
             {/* Liên kết Request (tuỳ chọn) */}
             <div>
               <label className={labelCls}>Liên kết yêu cầu sửa chữa (tuỳ chọn)</label>
@@ -404,6 +421,13 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
               ) : null}
             </div>
 
+            {error || validationError ? (
+              <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 mt-4">
+                <AlertTriangle className="shrink-0 text-rose-500 mt-0.5" size={16} />
+                <p className="text-sm font-medium text-rose-700">{error || validationError}</p>
+              </div>
+            ) : null}
+
             {/* Footer */}
             <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
               <Button onClick={onClose} type="button" variant="secondary">
@@ -432,93 +456,54 @@ export function RepairRequestPage() {
   const loading = useSelector(selectRequestsLoading)
   const error = useSelector(selectRequestsError)
   const employees = useSelector(selectHrEmployees)
+  const currentUser = useSelector(selectCurrentUser)
 
-  // Live search state
-  const [query, setQuery] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const searchRef = useRef(null)
+  // Search, modal and pagination state
+  const [searchKks, setSearchKks] = useState('')
+  const [searchName, setSearchName] = useState('')
+  const [currentPage, setCurrentPage] = useState(0)
   const [priority, setPriority] = useState('all')
-  const [showModal, setShowModal] = useState(false)
-  const [defaultRequestId, setDefaultRequestId] = useState('')
+  const [selectedRequestId, setSelectedRequestId] = useState(null)
 
-  // Danh sách gợi ý khi gõ (tối đa 6 gợi ý)
-  const suggestions = useMemo(() => {
-    const kw = query.trim().toLowerCase()
-    if (!kw) return []
-    return requests
-      .filter(
-        (r) =>
-          r.equipmentKksCode?.toLowerCase().includes(kw) ||
-          r.equipmentName?.toLowerCase().includes(kw) ||
-          r.description?.toLowerCase().includes(kw) ||
-          r.createdByName?.toLowerCase().includes(kw),
-      )
-      .slice(0, 6)
-  }, [requests, query])
+  const canCreateWorkOrder = useMemo(() => {
+    return hasAnyRole(currentUser, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])
+  }, [currentUser])
 
-  // Danh sách bảng đã lọc (sau khi nhấn Enter hoặc chọn gợi ý)
-  const [activeQuery, setActiveQuery] = useState('')
   const filteredRequests = useMemo(() => {
-    const kw = activeQuery.trim().toLowerCase()
+    const kksKw = searchKks.trim().toLowerCase()
+    const nameKw = searchName.trim().toLowerCase()
     return requests.filter((r) => {
-      const matchQuery =
-        !kw ||
-        r.equipmentKksCode?.toLowerCase().includes(kw) ||
-        r.equipmentName?.toLowerCase().includes(kw) ||
-        r.description?.toLowerCase().includes(kw) ||
-        r.createdByName?.toLowerCase().includes(kw)
+      const matchKks = !kksKw || r.equipmentKksCode?.toLowerCase().includes(kksKw)
+      const matchName = !nameKw || r.equipmentName?.toLowerCase().includes(nameKw)
       const matchPriority = priority === 'all' || r.priority === priority
-      return matchQuery && matchPriority
+      return matchKks && matchName && matchPriority
     })
-  }, [requests, activeQuery, priority])
+  }, [requests, searchKks, searchName, priority])
 
-  // Đóng dropdown gợi ý khi click ra ngoài
-  useEffect(() => {
-    function handler(e) {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowSuggestions(false)
-      }
+  const pageSize = 10
+  const totalElements = filteredRequests.length
+  const totalPages = Math.ceil(totalElements / pageSize)
+
+  const paginatedRequests = useMemo(() => {
+    const start = currentPage * pageSize
+    return filteredRequests.slice(start, start + pageSize)
+  }, [filteredRequests, currentPage])
+
+  function handlePageChange(newPage) {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  }
+
+  function handlePriorityChange(val) {
+    setPriority(val)
+    setCurrentPage(0)
+  }
 
   useEffect(() => {
     dispatch(fetchPendingRequests())
     dispatch(fetchHrDirectoryData())
   }, [dispatch])
-
-  function handleSelectSuggestion(r) {
-    setQuery(r.equipmentName || r.equipmentKksCode)
-    setActiveQuery(r.equipmentName || r.equipmentKksCode)
-    setShowSuggestions(false)
-  }
-
-  function handleSearchKeyDown(e) {
-    if (e.key === 'Enter') {
-      setActiveQuery(query)
-      setShowSuggestions(false)
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-    }
-  }
-
-  function handleClearSearch() {
-    setQuery('')
-    setActiveQuery('')
-    setShowSuggestions(false)
-  }
-
-  function openModal(requestId = '') {
-    setDefaultRequestId(requestId)
-    setShowModal(true)
-  }
-
-  function handleCloseModal() {
-    setShowModal(false)
-    dispatch(fetchPendingRequests())
-  }
-
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -530,76 +515,41 @@ export function RepairRequestPage() {
             Danh sách yêu cầu đang chờ xử lý từ trưởng ca / trưởng kíp.
           </p>
         </div>
-        <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => openModal()}>
-          <Plus size={17} />
-          Tạo phiếu công tác
-        </Button>
       </section>
 
-      {/* Filters với Live Search */}
-      <section className="mt-5 flex flex-col gap-3 xl:flex-row">
-        {/* Live search input */}
-        <div className="relative flex-1" ref={searchRef}>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={17}
-          />
-          <input
-            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-9 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setShowSuggestions(true)
-              if (!e.target.value) {
-                setActiveQuery('')
-              }
-            }}
-            onFocus={() => { if (query) setShowSuggestions(true) }}
-            onKeyDown={handleSearchKeyDown}
-            placeholder="Tìm mã KKS, tên thiết bị, mô tả... (Enter để tìm)"
-            value={query}
-          />
-          {query ? (
-            <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={handleClearSearch}
-            >
-              <X size={15} />
-            </button>
-          ) : null}
-
-          {/* Dropdown gợi ý */}
-          {showSuggestions && suggestions.length > 0 ? (
-            <ul className="absolute z-20 mt-1 w-full rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-              {suggestions.map((r) => (
-                <li key={r.requestId}>
-                  <button
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-violet-50"
-                    onMouseDown={() => handleSelectSuggestion(r)}
-                    type="button"
-                  >
-                    <Search className="shrink-0 text-slate-300" size={14} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-800">
-                        {r.equipmentName}
-                        <span className="ml-2 text-xs text-slate-400">{r.equipmentKksCode}</span>
-                      </p>
-                      <p className="truncate text-xs text-slate-500">{r.description}</p>
-                    </div>
-                    <PriorityBadge priority={r.priority} />
-                  </button>
-                </li>
-              ))}
-              <li className="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">
-                Nhấn <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono">Enter</kbd> để tìm kiếm đầy đủ
-              </li>
-            </ul>
-          ) : null}
+      {/* Filters với Phân tách 2 trường tìm kiếm */}
+      <section className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(e) => {
+                setSearchKks(e.target.value)
+                setCurrentPage(0)
+              }}
+              placeholder="Tìm theo Mã KKS..."
+              value={searchKks}
+            />
+          </label>
+          <label className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+              onChange={(e) => {
+                setSearchName(e.target.value)
+                setCurrentPage(0)
+              }}
+              placeholder="Tìm theo Tên thiết bị..."
+              value={searchName}
+            />
+          </label>
         </div>
 
         <div className="flex items-center gap-3">
           <select
             className="h-11 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
-            onChange={(e) => setPriority(e.target.value)}
+            onChange={(e) => handlePriorityChange(e.target.value)}
             value={priority}
           >
             <option value="all">Tất cả mức độ</option>
@@ -622,7 +572,7 @@ export function RepairRequestPage() {
       {/* Table */}
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
-          Hiển thị {filteredRequests.length} / {requests.length} yêu cầu chờ xử lý
+          Hiển thị {paginatedRequests.length} / {filteredRequests.length} yêu cầu chờ xử lý (Tổng số: {requests.length})
         </div>
 
         {error ? (
@@ -634,18 +584,18 @@ export function RepairRequestPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
-                <th className="px-5 py-3 font-semibold">Thiết bị</th>
-                <th className="px-5 py-3 font-semibold">Mô tả sự cố</th>
-                <th className="px-5 py-3 font-semibold">Mức độ</th>
-                <th className="px-5 py-3 font-semibold">Người tạo</th>
-                <th className="px-5 py-3 font-semibold">Ngày tạo</th>
-                <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
+                <th className="px-5 py-3">Thiết bị</th>
+                <th className="px-5 py-3">Mô tả sự cố</th>
+                <th className="px-5 py-3">Mức độ</th>
+                <th className="px-5 py-3">Người tạo</th>
+                <th className="px-5 py-3">Ngày tạo</th>
+                <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
+              {loading && requests.length === 0 ? (
                 <tr>
                   <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
                     <span className="flex items-center justify-center gap-2">
@@ -665,7 +615,7 @@ export function RepairRequestPage() {
               ) : null}
 
               {!loading
-                ? filteredRequests.map((r) => (
+                ? paginatedRequests.map((r) => (
                   <tr className="hover:bg-slate-50/80" key={r.requestId}>
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800">{r.equipmentKksCode}</p>
@@ -690,12 +640,20 @@ export function RepairRequestPage() {
                       {formatDateTime(r.createdAt)}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        className="rounded-md bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
-                        onClick={() => openModal(r.requestId)}
-                      >
-                        Tạo PCT
-                      </button>
+                      {canCreateWorkOrder ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-violet-600 hover:bg-violet-700 active:scale-95 shadow-sm transition-all border border-violet-700/20"
+                          onClick={() => setSelectedRequestId(r.requestId)}
+                        >
+                          <Plus size={14} className="stroke-[2.5]" />
+                          <span>Tạo PCT</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 bg-slate-100 border border-slate-200">
+                          Xem PCT
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -703,16 +661,78 @@ export function RepairRequestPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang */}
+        {totalPages > 1 ? (() => {
+          let startPage = Math.max(0, currentPage - 2)
+          let endPage = Math.min(totalPages - 1, currentPage + 2)
+
+          if (endPage - startPage < 4) {
+            if (startPage === 0) {
+              endPage = Math.min(totalPages - 1, startPage + 4)
+            } else if (endPage === totalPages - 1) {
+              startPage = Math.max(0, endPage - 4)
+            }
+          }
+
+          const pages = []
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+          }
+
+          return (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 bg-white">
+              <p className="text-sm text-slate-500">
+                Hiển thị trang {currentPage + 1} / {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage === 0}
+                  onClick={() => handlePageChange(0)}
+                >
+                  Trang đầu
+                </button>
+                
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                      currentPage === p
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => handlePageChange(p)}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => handlePageChange(totalPages - 1)}
+                >
+                  Trang cuối
+                </button>
+              </div>
+            </div>
+          )
+        })() : null}
       </section>
 
-      {showModal ? (
+      {selectedRequestId && (
         <CreateWorkOrderModal
-          defaultRequestId={defaultRequestId}
+          defaultRequestId={selectedRequestId}
           employees={employees}
-          onClose={handleCloseModal}
+          onClose={() => {
+            setSelectedRequestId(null)
+            dispatch(fetchPendingRequests())
+          }}
           requests={requests}
         />
-      ) : null}
+      )}
     </div>
   )
 }
