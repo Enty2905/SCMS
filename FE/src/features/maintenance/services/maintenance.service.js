@@ -176,10 +176,11 @@ export async function exportWorkOrderPdfService(orderId) {
 
 // ── Consumable Request ────────────────────────────────────────────────────────
 
-export async function fetchConsumableRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchConsumableRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/consumable-requests?${params}`)
@@ -212,10 +213,11 @@ export async function exportConsumableRequestPdfService(reqId) {
 
 // ── Spare Part Request ────────────────────────────────────────────────────────
 
-export async function fetchSparePartRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchSparePartRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/spare-part-requests?${params}`)

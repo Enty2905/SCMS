@@ -548,12 +548,12 @@ export function RepairHistoryPage() {
             <thead className="bg-slate-100/50 text-sm uppercase font-bold text-slate-700">
               <tr>
                 <th className="w-16 px-5 py-3 text-center">STT</th>
-                <th className="px-5 py-3 w-1/4">Thiết bị</th>
-                <th className="px-5 py-3 w-40">Mã KKS</th>
+                <th className="px-5 py-3 w-[18%]">Thiết bị</th>
+                <th className="px-5 py-3 w-36">Mã KKS</th>
                 <th className="px-5 py-3 w-40">Thời gian</th>
-                <th className="px-5 py-3 w-28">PCT</th>
-                <th className="px-5 py-3 w-1/3">Nội dung sửa chữa</th>
-                <th className="px-5 py-3">Người ghi nhận</th>
+                <th className="px-5 py-3 w-40">PCT</th>
+                <th className="px-5 py-3 w-[28%]">Nội dung sửa chữa</th>
+                <th className="px-5 py-3 w-48">Người ghi nhận</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">

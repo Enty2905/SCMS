@@ -630,6 +630,7 @@ export function MaterialRequestPage() {
   const [activeTab, setActiveTab] = useState('consumable')
   const [searchNumber, setSearchNumber] = useState('')
   const [searchOrder, setSearchOrder] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(0)
 
   // Detail & Form modaling states
@@ -683,12 +684,15 @@ export function MaterialRequestPage() {
     if (searchOrder.trim()) {
       params.orderNumber = searchOrder.trim()
     }
+    if (statusFilter !== 'all') {
+      params.status = statusFilter
+    }
     if (activeTab === 'consumable') {
       dispatch(fetchConsumableRequests(params))
     } else {
       dispatch(fetchSparePartRequests(params))
     }
-  }, [dispatch, activeTab, searchNumber, searchOrder, currentPage])
+  }, [dispatch, activeTab, searchNumber, searchOrder, statusFilter, currentPage])
 
   useEffect(() => {
     loadData()
@@ -704,6 +708,7 @@ export function MaterialRequestPage() {
     setActiveTab(tab)
     setSearchNumber('')
     setSearchOrder('')
+    setStatusFilter('all')
     setCurrentPage(0)
     dispatch(clearMaterialsError())
   }
@@ -817,6 +822,19 @@ export function MaterialRequestPage() {
               }}
             />
           </label>
+
+          <select
+            className="h-11 min-w-[180px] rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(0)
+            }}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Chờ duyệt</option>
+            <option value="issued">Đã cấp</option>
+          </select>
         </div>
 
         {canCreate && (
