@@ -67,6 +67,8 @@ export function AppShell() {
     ROLES.ADMIN,
     ROLES.REPAIR_MANAGER,
     ROLES.TEAM_LEADER,
+    ROLES.WAREHOUSE_MAT,
+    ROLES.WAREHOUSE_TOOL,
   ])
 
   useEffect(() => {
@@ -77,40 +79,48 @@ export function AppShell() {
 
     async function loadNotifications() {
       try {
-        const equipments = await fetchEquipments()
-        const warnings = equipments
-          .filter((eq) => {
-            const statusLower = eq.status?.toLowerCase() || ''
-            return (
-              statusLower === 'sự cố' ||
-              statusLower === 'bảo dưỡng' ||
-              statusLower === 'broken' ||
-              statusLower === 'maintenance'
-            )
-          })
-          .map((eq) => {
-            const statusLower = eq.status?.toLowerCase() || ''
-            const isBroken = statusLower === 'sự cố' || statusLower === 'broken'
-            return {
-              id: eq.id,
-              kksCode: eq.kksCode,
-              name: eq.equipmentName,
-              status: eq.status,
-              systemId: eq.systemId,
-              title: isBroken ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng',
-              message: isBroken
-                ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp sự cố!`
-                : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang bảo dưỡng.`,
-              type: isBroken ? 'error' : 'warning',
-              category: 'equipment',
-            }
-          })
-          
-        let allNotifications = [...warnings]
+        let allNotifications = []
 
-        // Load consumable stock warnings for TKVT role (VT)
-        // TODO: Load Spare Part (VTTT) warnings here in the future when VTTT stock is implemented (kể cả VTTT sắp tới sẽ làm)
-        if (hasAnyRole(user, [ROLES.WAREHOUSE_MAT])) {
+        // Load equipment warnings for equipment-related roles
+        if (hasAnyRole(user, [ROLES.OPS_MANAGER, ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])) {
+          try {
+            const equipments = await fetchEquipments()
+            const warnings = equipments
+              .filter((eq) => {
+                const statusLower = eq.status?.toLowerCase() || ''
+                return (
+                  statusLower === 'sự cố' ||
+                  statusLower === 'bảo dưỡng' ||
+                  statusLower === 'broken' ||
+                  statusLower === 'maintenance'
+                )
+              })
+              .map((eq) => {
+                const statusLower = eq.status?.toLowerCase() || ''
+                const isBroken = statusLower === 'sự cố' || statusLower === 'broken'
+                return {
+                  id: eq.id,
+                  kksCode: eq.kksCode,
+                  name: eq.equipmentName,
+                  status: eq.status,
+                  systemId: eq.systemId,
+                  title: isBroken ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng',
+                  message: isBroken
+                    ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp sự cố!`
+                    : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang bảo dưỡng.`,
+                  type: isBroken ? 'error' : 'warning',
+                  category: 'equipment',
+                }
+              })
+            allNotifications = [...allNotifications, ...warnings]
+          } catch (err) {
+            console.error('Failed to load equipment notifications', err)
+          }
+        }
+
+        // Load consumable stock warnings STRICTLY for TKVT role (VT)
+        // TODO: Load Spare Part (VTTT) warnings here in the future when VTTT stock is implemented
+        if (user?.roles?.includes(ROLES.WAREHOUSE_MAT)) {
           try {
             const stockData = await fetchConsumableStocks({ size: 1000 })
             const stocks = stockData.content || []
@@ -132,8 +142,8 @@ export function AppShell() {
           }
         }
 
-        // Load damaged tool warnings for TKCCDC role
-        if (hasAnyRole(user, [ROLES.WAREHOUSE_TOOL])) {
+        // Load damaged tool warnings STRICTLY for TKCCDC role
+        if (user?.roles?.includes(ROLES.WAREHOUSE_TOOL)) {
           try {
             const toolData = await fetchTools(null, null, 0, 1000)
             const tools = toolData.content || []
@@ -145,7 +155,7 @@ export function AppShell() {
                 status: item.status,
                 title: 'CCDC bị hỏng',
                 message: `${item.name} - Bị hỏng: ${item.damagedQuantity}`,
-                type: 'error',
+                type: 'soft_error',
                 category: 'tool',
               }))
             allNotifications = [...allNotifications, ...toolWarnings]
@@ -213,7 +223,8 @@ export function AppShell() {
 
   // Lắng nghe sự kiện realtime qua WebSocket
   useEffect(() => {
-    if (isConnected && stompClient && canSeeNotifications) {
+    const canSeeRepairRequests = hasAnyRole(user, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])
+    if (isConnected && stompClient && canSeeRepairRequests) {
       const subscription = stompClient.subscribe('/topic/repair-requests', (message) => {
         if (message.body) {
           const data = JSON.parse(message.body)
@@ -420,6 +431,12 @@ export function AppShell() {
                                 textColor = 'text-white'
                                 messageColor = 'text-white/90'
                                 timeColor = 'text-red-200'
+                              } else if (notif.type === 'soft_error') {
+                                bgColor = 'bg-red-50 hover:bg-red-100 mb-1'
+                                dotColor = 'bg-red-600 animate-pulse'
+                                textColor = 'text-red-700'
+                                messageColor = 'text-slate-700'
+                                timeColor = 'text-slate-400'
                               } else if (notif.type === 'alert') {
                                 bgColor = 'bg-orange-500 hover:bg-orange-600 mb-1'
                                 dotColor = 'bg-white animate-pulse'
