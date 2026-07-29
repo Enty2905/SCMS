@@ -6,6 +6,7 @@ import com.scms.inventory.sparepart.dto.response.SparePartStockResponse;
 import com.scms.inventory.sparepart.service.SparePartStockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Spare Part Stock", description = "API tồn kho vật tư thay thế")
 @RestController
 @RequestMapping("/spare-part-stocks")
+@PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT', 'TEAM_LEADER', 'REPAIR_MANAGER')")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SparePartStockController {

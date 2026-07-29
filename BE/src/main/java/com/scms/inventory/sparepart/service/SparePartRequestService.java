@@ -63,7 +63,6 @@ public class SparePartRequestService {
     WorkOrderRepository workOrderRepository;
     SparePartRepository sparePartRepository;
     UserRepository userRepository;
-    SparePartExportItemRepository sparePartExportItemRepository;
     SparePartExportRepository sparePartExportRepository;
     SparePartRequestItemRepository sparePartRequestItemRepository;
     SparePartStockRepository sparePartStockRepository;
@@ -164,6 +163,12 @@ public class SparePartRequestService {
             if (issuedItem == null) continue;
 
             int qtyToIssue = issuedItem.getQuantityIssued();
+
+            if (qtyToIssue > requestItem.getQuantityRequested()) {
+                log.warn("Số lượng cấp phát vượt quá yêu cầu cho phụ tùng {}: yêu cầu={}, cấp={}",
+                        requestItem.getSparePart().getCode(), requestItem.getQuantityRequested(), qtyToIssue);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
 
             // Kiểm tra tồn kho
             long imported = sparePartStockRepository.sumImported(requestItem.getSparePart().getSparePartId());

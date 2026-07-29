@@ -11,6 +11,7 @@ public enum ErrorCode {
     NOT_FOUND(404, "Resource not found", HttpStatus.NOT_FOUND),
     ACCESS_DENIED(403, "Access Denied", HttpStatus.FORBIDDEN),
     INVALID_KEY(400, "Invalid request or ID format", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST(400, "Invalid request parameter", HttpStatus.BAD_REQUEST),
 
     UNAUTHENTICATED(401, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     USER_EXISTED(1001, "User already exists", HttpStatus.BAD_REQUEST),

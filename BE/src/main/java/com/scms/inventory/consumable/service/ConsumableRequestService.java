@@ -63,7 +63,6 @@ public class ConsumableRequestService {
     WorkOrderRepository workOrderRepository;
     ConsumableRepository consumableRepository;
     UserRepository userRepository;
-    ConsumableExportItemRepository consumableExportItemRepository;
     ConsumableExportRepository consumableExportRepository;
     ConsumableRequestItemRepository consumableRequestItemRepository;
     ConsumableStockRepository consumableStockRepository;
@@ -164,6 +163,12 @@ public class ConsumableRequestService {
             if (issuedItem == null) continue; // Bỏ qua nếu không có trong dto (không cấp)
 
             int qtyToIssue = issuedItem.getQuantityIssued();
+
+            if (qtyToIssue > requestItem.getQuantityRequested()) {
+                log.warn("Số lượng cấp phát vượt quá yêu cầu cho vật tư {}: yêu cầu={}, cấp={}",
+                        requestItem.getConsumable().getCode(), requestItem.getQuantityRequested(), qtyToIssue);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
 
             // Kiểm tra tồn kho
             long imported = consumableStockRepository.sumImported(requestItem.getConsumable().getConsumableId());

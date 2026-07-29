@@ -35,7 +35,6 @@ public class ToolBorrowOverdueEmailScheduler {
     EmailService emailService;
 
     private static final String ACTION_EMAIL_SENT = "TOOL_BORROW_OVERDUE_EMAIL_SENT";
-    private static final String TABLE_NAME = "tool_borrow";
 
     /**
      * Chạy mỗi ngày lúc 08:00

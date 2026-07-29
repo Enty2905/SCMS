@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @Tag(name = "Tool Management", description = "API quản lý công cụ dụng cụ (CCDC)")
 @RestController
 @RequestMapping("/tools")
+@PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_TOOL')")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ToolController {
