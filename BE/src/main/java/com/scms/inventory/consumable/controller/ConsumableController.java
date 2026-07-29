@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Tag(name = "Consumable Management", description = "API quản lý vật tư tiêu hao")
 @RestController
 @RequestMapping("/consumables")
+
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ConsumableController {
@@ -27,6 +29,7 @@ public class ConsumableController {
     // Thêm mới vật tư tiêu hao
     @Operation(summary = "Thêm mới vật tư tiêu hao")
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<ConsumableResponse> createConsumable(
             @RequestBody @Valid ConsumableRequest request) {
         return ApiResponse.created("Thêm vật tư tiêu hao thành công",
@@ -59,6 +62,7 @@ public class ConsumableController {
     // Cập nhật vật tư tiêu hao
     @Operation(summary = "Cập nhật vật tư tiêu hao")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<ConsumableResponse> updateConsumable(
             @PathVariable("id") UUID id,
             @RequestBody @Valid ConsumableRequest request) {
@@ -69,6 +73,7 @@ public class ConsumableController {
     // Xóa vật tư tiêu hao
     @Operation(summary = "Xóa vật tư tiêu hao")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<Void> deleteConsumable(@PathVariable("id") UUID id) {
         consumableService.deleteConsumable(id);
         return ApiResponse.success("Xóa vật tư tiêu hao thành công", null);

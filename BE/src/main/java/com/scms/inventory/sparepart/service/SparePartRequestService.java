@@ -13,6 +13,7 @@ import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.pdf.PdfFontProvider;
 import com.scms.common.service.CloudinaryService;
+import com.scms.common.service.NotificationService;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
 import com.scms.inventory.sparepart.dto.request.CreateSparePartRequestDto;
@@ -62,11 +63,11 @@ public class SparePartRequestService {
     WorkOrderRepository workOrderRepository;
     SparePartRepository sparePartRepository;
     UserRepository userRepository;
-    SparePartExportItemRepository sparePartExportItemRepository;
     SparePartExportRepository sparePartExportRepository;
     SparePartRequestItemRepository sparePartRequestItemRepository;
     SparePartStockRepository sparePartStockRepository;
     CloudinaryService cloudinaryService;
+    NotificationService notificationService;
 
     @Transactional
     public SparePartRequestResponse createRequest(CreateSparePartRequestDto dto, String username) {
@@ -105,7 +106,9 @@ public class SparePartRequestService {
         request.setItems(items);
         sparePartRequestRepository.save(request);
 
-        return toResponse(request);
+        SparePartRequestResponse response = toResponse(request);
+        notificationService.sendMaterialRequestNotification(response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +163,12 @@ public class SparePartRequestService {
             if (issuedItem == null) continue;
 
             int qtyToIssue = issuedItem.getQuantityIssued();
+
+            if (qtyToIssue > requestItem.getQuantityRequested()) {
+                log.warn("Số lượng cấp phát vượt quá yêu cầu cho phụ tùng {}: yêu cầu={}, cấp={}",
+                        requestItem.getSparePart().getCode(), requestItem.getQuantityRequested(), qtyToIssue);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
 
             // Kiểm tra tồn kho
             long imported = sparePartStockRepository.sumImported(requestItem.getSparePart().getSparePartId());

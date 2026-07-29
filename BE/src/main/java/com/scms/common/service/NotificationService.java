@@ -16,4 +16,9 @@ public class NotificationService {
         log.info("Sending repair request notification...");
         messagingTemplate.convertAndSend("/topic/repair-requests", message);
     }
+
+    public void sendMaterialRequestNotification(Object message) {
+        log.info("Sending material request notification...");
+        messagingTemplate.convertAndSend("/topic/material-requests", message);
+    }
 }

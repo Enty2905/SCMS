@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Tag(name = "Spare Part Management", description = "API quản lý vật tư thay thế")
 @RestController
 @RequestMapping("/spare-parts")
+
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SparePartController {
@@ -27,6 +29,7 @@ public class SparePartController {
     // Thêm mới vật tư thay thế
     @Operation(summary = "Thêm mới vật tư thay thế")
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<SparePartResponse> createSparePart(
             @RequestBody @Valid SparePartRequest request) {
         return ApiResponse.created("Thêm vật tư thay thế thành công",
@@ -59,6 +62,7 @@ public class SparePartController {
     // Cập nhật vật tư thay thế
     @Operation(summary = "Cập nhật vật tư thay thế")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<SparePartResponse> updateSparePart(
             @PathVariable("id") UUID id,
             @RequestBody @Valid SparePartRequest request) {
@@ -69,6 +73,7 @@ public class SparePartController {
     // Xóa vật tư thay thế
     @Operation(summary = "Xóa vật tư thay thế")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     public ApiResponse<Void> deleteSparePart(@PathVariable("id") UUID id) {
         sparePartService.deleteSparePart(id);
         return ApiResponse.success("Xóa vật tư thay thế thành công", null);

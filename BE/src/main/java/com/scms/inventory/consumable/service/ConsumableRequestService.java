@@ -14,6 +14,7 @@ import com.scms.auth.repository.UserRepository;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
 import com.scms.common.service.CloudinaryService;
+import com.scms.common.service.NotificationService;
 import com.scms.common.pdf.PdfFontProvider;
 import com.scms.inventory.consumable.dto.request.CreateConsumableRequestDto;
 import com.scms.inventory.consumable.dto.request.IssueConsumableRequestDto;
@@ -62,11 +63,11 @@ public class ConsumableRequestService {
     WorkOrderRepository workOrderRepository;
     ConsumableRepository consumableRepository;
     UserRepository userRepository;
-    ConsumableExportItemRepository consumableExportItemRepository;
     ConsumableExportRepository consumableExportRepository;
     ConsumableRequestItemRepository consumableRequestItemRepository;
     ConsumableStockRepository consumableStockRepository;
     CloudinaryService cloudinaryService;
+    NotificationService notificationService;
 
     @Transactional
     public ConsumableRequestResponse createRequest(CreateConsumableRequestDto dto, String username) {
@@ -105,7 +106,9 @@ public class ConsumableRequestService {
         request.setItems(items);
         consumableRequestRepository.save(request);
 
-        return toResponse(request);
+        ConsumableRequestResponse response = toResponse(request);
+        notificationService.sendMaterialRequestNotification(response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +163,12 @@ public class ConsumableRequestService {
             if (issuedItem == null) continue; // Bỏ qua nếu không có trong dto (không cấp)
 
             int qtyToIssue = issuedItem.getQuantityIssued();
+
+            if (qtyToIssue > requestItem.getQuantityRequested()) {
+                log.warn("Số lượng cấp phát vượt quá yêu cầu cho vật tư {}: yêu cầu={}, cấp={}",
+                        requestItem.getConsumable().getCode(), requestItem.getQuantityRequested(), qtyToIssue);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
 
             // Kiểm tra tồn kho
             long imported = consumableStockRepository.sumImported(requestItem.getConsumable().getConsumableId());
