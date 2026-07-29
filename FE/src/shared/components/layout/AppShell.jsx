@@ -279,6 +279,40 @@ export function AppShell() {
     }
   }, [isConnected, stompClient, canSeeNotifications])
 
+  // Lắng nghe sự kiện realtime qua WebSocket cho yêu cầu cấp phát vật tư
+  useEffect(() => {
+    const canSeeMaterialRequests = hasAnyRole(user, [ROLES.ADMIN, ROLES.WAREHOUSE_MAT])
+    if (isConnected && stompClient && canSeeMaterialRequests) {
+      const subscription = stompClient.subscribe('/topic/material-requests', (message) => {
+        if (message.body) {
+          const data = JSON.parse(message.body)
+          
+          const newNotif = {
+            id: 'ws-mat-' + Date.now(),
+            title: 'Yêu cầu cấp phát vật tư mới',
+            message: `Mã phiếu: ${data.reqNumber} vừa được tạo.`,
+            type: 'info',
+            category: 'material_request',
+            timestamp: Date.now(),
+            reqId: data.reqId,
+          }
+
+          // Hiện thông báo popup 5s
+          setRealtimeToast(newNotif)
+          setTimeout(() => {
+            setRealtimeToast(null)
+          }, 5000)
+
+          // Cập nhật mảng thông báo chung
+          setNotifications(prev => [newNotif, ...prev])
+        }
+      })
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [isConnected, stompClient])
+
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
     if (notif.category === 'material') {
@@ -288,6 +322,8 @@ export function AppShell() {
     } else if (notif.category === 'repair_request') {
       const requestId = notif.requestId || notif.id.replace('req-', '')
       navigate(`/dashboard/maintenance/requests?highlight=${requestId}`)
+    } else if (notif.category === 'material_request') {
+      navigate('/dashboard/inventory/material-dispatch')
     } else {
       navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
     }
@@ -431,18 +467,24 @@ export function AppShell() {
                                 textColor = 'text-white'
                                 messageColor = 'text-white/90'
                                 timeColor = 'text-red-200'
-                              } else if (notif.type === 'soft_error') {
-                                bgColor = 'bg-red-50 hover:bg-red-100 mb-1'
-                                dotColor = 'bg-red-600 animate-pulse'
-                                textColor = 'text-red-700'
-                                messageColor = 'text-slate-700'
-                                timeColor = 'text-slate-400'
                               } else if (notif.type === 'alert') {
                                 bgColor = 'bg-orange-500 hover:bg-orange-600 mb-1'
                                 dotColor = 'bg-white animate-pulse'
                                 textColor = 'text-white'
                                 messageColor = 'text-white/90'
                                 timeColor = 'text-orange-200'
+                              } else if (notif.type === 'info') {
+                                bgColor = 'bg-blue-50 hover:bg-blue-100 mb-1'
+                                dotColor = 'bg-blue-500 animate-pulse'
+                                textColor = 'text-blue-800'
+                                messageColor = 'text-slate-600'
+                                timeColor = 'text-slate-400'
+                              } else if (notif.type === 'soft_error') {
+                                bgColor = 'bg-red-50 hover:bg-red-100 mb-1'
+                                dotColor = 'bg-red-600 animate-pulse'
+                                textColor = 'text-red-700'
+                                messageColor = 'text-slate-700'
+                                timeColor = 'text-slate-400'
                               }
                               
                               return (
@@ -516,15 +558,18 @@ export function AppShell() {
         <div className={`fixed bottom-4 right-4 z-[999] animate-in slide-in-from-right fade-in duration-300 w-80 rounded-lg border-l-4 p-4 shadow-xl ${
           realtimeToast.type === 'error' ? 'bg-red-600 border-red-800 text-white' : 
           realtimeToast.type === 'alert' ? 'bg-orange-500 border-orange-700 text-white' : 
+          realtimeToast.type === 'info' ? 'bg-white border-blue-500 text-slate-900' :
           'bg-white border-amber-500 text-slate-900'
         }`}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-full p-1 ${
               realtimeToast.type === 'error' ? 'bg-red-700' : 
-              realtimeToast.type === 'alert' ? 'bg-orange-600' : 'bg-amber-100'
+              realtimeToast.type === 'alert' ? 'bg-orange-600' : 
+              realtimeToast.type === 'info' ? 'bg-blue-100' : 'bg-amber-100'
             }`}>
               <Bell className={
-                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 'text-amber-600'
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 
+                realtimeToast.type === 'info' ? 'text-blue-600' : 'text-amber-600'
               } size={16} />
             </div>
             <div>

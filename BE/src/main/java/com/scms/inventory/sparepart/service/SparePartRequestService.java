@@ -13,6 +13,7 @@ import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.pdf.PdfFontProvider;
 import com.scms.common.service.CloudinaryService;
+import com.scms.common.service.NotificationService;
 import com.scms.common.exception.AppException;
 import com.scms.common.exception.ErrorCode;
 import com.scms.inventory.sparepart.dto.request.CreateSparePartRequestDto;
@@ -67,6 +68,7 @@ public class SparePartRequestService {
     SparePartRequestItemRepository sparePartRequestItemRepository;
     SparePartStockRepository sparePartStockRepository;
     CloudinaryService cloudinaryService;
+    NotificationService notificationService;
 
     @Transactional
     public SparePartRequestResponse createRequest(CreateSparePartRequestDto dto, String username) {
@@ -105,7 +107,9 @@ public class SparePartRequestService {
         request.setItems(items);
         sparePartRequestRepository.save(request);
 
-        return toResponse(request);
+        SparePartRequestResponse response = toResponse(request);
+        notificationService.sendMaterialRequestNotification(response);
+        return response;
     }
 
     @Transactional(readOnly = true)
