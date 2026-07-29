@@ -613,6 +613,7 @@ export function RepairRequestPage() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="w-16 px-5 py-3 text-center">STT</th>
                 <th className="px-5 py-3">Thiết bị</th>
                 <th className="px-5 py-3">Mô tả sự cố</th>
                 <th className="px-5 py-3">Mức độ</th>
@@ -624,7 +625,7 @@ export function RepairRequestPage() {
             <tbody className="divide-y divide-slate-100">
               {loading && requests.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                  <td className="px-5 py-10 text-center text-slate-400" colSpan={7}>
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="animate-spin text-violet-500" size={18} />
                       Đang tải dữ liệu...
@@ -635,13 +636,18 @@ export function RepairRequestPage() {
 
               {!loading && !filteredRequests.length ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                  <td className="px-5 py-10 text-center text-slate-400" colSpan={7}>
                     Không có yêu cầu nào phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
+                ? paginatedRequests.map((r, index) => (
+                  <tr className="hover:bg-slate-50/80" key={r.requestId}>
+                    <td className="px-5 py-4 text-center font-medium text-slate-500">
+                      {currentPage * pageSize + index + 1}
+                    </td>
                 ? paginatedRequests.map((r) => (
                   <tr 
                     id={`row-${r.requestId}`}

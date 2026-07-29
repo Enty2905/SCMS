@@ -3,6 +3,7 @@ package com.scms.maintenance.workorder.controller;
 import com.scms.common.response.ApiResponse;
 import com.scms.common.response.PagedResponse;
 import com.scms.maintenance.workorder.dto.request.CreateWorkOrderRequest;
+import com.scms.maintenance.workorder.dto.request.UpdateWorkOrderMembersRequest;
 import com.scms.maintenance.workorder.dto.response.WorkOrderResponse;
 import com.scms.maintenance.workorder.service.WorkOrderService;
 import com.scms.maintenance.workorder.dto.request.CloseDailyLogRequest;
@@ -22,6 +23,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 import java.util.UUID;
 
@@ -95,6 +99,20 @@ public class WorkOrderController {
         return ApiResponse.success(workOrderService.getWorkOrderById(orderId));
     }
 
+    /**
+     * Cập nhật nhân viên tham gia trong phiếu công tác
+     * Quyền: ADMIN, REPAIR_MANAGER, TEAM_LEADER
+     */
+    @PutMapping("/{orderId}/members")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Cập nhật nhân viên tham gia trong phiếu công tác", description = "Cập nhật danh sách thành viên thực hiện của PCT theo ID")
+    public ApiResponse<WorkOrderResponse> updateWorkOrderMembers(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody UpdateWorkOrderMembersRequest request) {
+        WorkOrderResponse response = workOrderService.updateWorkOrderMembers(orderId, request);
+        return ApiResponse.success("Cập nhật nhân viên tham gia thành công", response);
+    }
+
     // ── Daily Log APIs ───────────────────────────────────────────────────────
 
     @PostMapping("/{orderId}/daily-logs/open")
@@ -149,5 +167,16 @@ public class WorkOrderController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"PCT-" + orderId + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @PostMapping(value = "/{orderId}/upload-signed-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Upload PDF phiếu công tác đã ký lên Cloudinary", description = "Upload file PDF phiếu công tác đã được ký. Chỉ chấp nhận khi PCT đã hoàn thành (status = locked).")
+    public ApiResponse<WorkOrderResponse> uploadSignedPdf(
+            @PathVariable UUID orderId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        WorkOrderResponse response = workOrderService.uploadSignedPdf(orderId, file);
+        return ApiResponse.success("Upload PDF phiếu công tác đã ký thành công", response);
     }
 }

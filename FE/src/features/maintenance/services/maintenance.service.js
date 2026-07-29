@@ -19,6 +19,11 @@ export async function getWorkOrderService(orderId) {
   return response.data
 }
 
+export async function updateWorkOrderMembersService(orderId, memberIds) {
+  const response = await apiClient.put(`/maintenance/work-orders/${orderId}/members`, { memberIds })
+  return response.data
+}
+
 // ── Technical Assessment (Biên bản đánh giá kỹ thuật) ───────────────────────
 
 export async function createAssessmentService(body) {
@@ -172,10 +177,11 @@ export async function exportWorkOrderPdfService(orderId) {
 
 // ── Consumable Request ────────────────────────────────────────────────────────
 
-export async function fetchConsumableRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchConsumableRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/consumable-requests?${params}`)
@@ -208,10 +214,11 @@ export async function exportConsumableRequestPdfService(reqId) {
 
 // ── Spare Part Request ────────────────────────────────────────────────────────
 
-export async function fetchSparePartRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchSparePartRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/spare-part-requests?${params}`)
@@ -259,5 +266,30 @@ export async function fetchRepairHistoriesService({ equipmentId, kksCode, equipm
 export async function createRepairHistoryService(body) {
   const response = await apiClient.post('/maintenance/repair-histories', body)
   return response.data
+}
+
+export async function uploadWorkOrderSignedPdfService(orderId, file) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(
+    apiClient.url(`/maintenance/work-orders/${orderId}/upload-signed-pdf`),
+    {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    },
+  )
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new Error(payload?.message || `Upload thất bại: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  return payload.data
 }
 

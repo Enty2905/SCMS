@@ -42,6 +42,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
+import lombok.experimental.NonFinal;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.layout.borders.SolidBorder;
+import com.itextpdf.layout.properties.VerticalAlignment;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
@@ -68,6 +73,10 @@ public class ConsumableRequestService {
     ConsumableStockRepository consumableStockRepository;
     CloudinaryService cloudinaryService;
     NotificationService notificationService;
+
+    @Value("${app.company.request:CÔNG TY SCSM}")
+    @NonFinal
+    String companyRequest;
 
     @Transactional
     public ConsumableRequestResponse createRequest(CreateConsumableRequestDto dto, String username) {
@@ -235,86 +244,187 @@ public class ConsumableRequestService {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf, PageSize.A4);
-            document.setMargins(40, 50, 40, 50);
+            document.setMargins(30, 40, 30, 40);
 
             PdfFontProvider.FontSet fonts = PdfFontProvider.createVietnameseFonts();
             PdfFont normalFont = fonts.normal();
             PdfFont boldFont = fonts.bold();
 
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-            // Header/Title
-            Paragraph title = new Paragraph("PHIẾU CẤP VẬT TƯ TIÊU HAO")
-                    .setFont(boldFont)
-                    .setFontSize(16)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(15);
-            document.add(title);
-
-            // Information details
-            Table infoTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
+            // ── Header Table (2 columns) ──────────────────────────────────────
+            Table headerTable = new Table(UnitValue.createPercentArray(new float[] { 50, 50 }))
                     .setWidth(UnitValue.createPercentValue(100))
                     .setMarginBottom(15);
 
-            addInfoRow(infoTable, normalFont, boldFont, "Số phiếu yêu cầu:", request.getReqNumber());
-            addInfoRow(infoTable, normalFont, boldFont, "Ngày lập:", request.getCreatedAt().format(dtf));
-            addInfoRow(infoTable, normalFont, boldFont, "Người lập:",
-                    request.getCreatedBy() != null && request.getCreatedBy().getEmployee() != null
-                            ? request.getCreatedBy().getEmployee().getName()
-                            : (request.getCreatedBy() != null ? request.getCreatedBy().getUsername() : ""));
-            addInfoRow(infoTable, normalFont, boldFont, "Phiếu công tác liên quan:",
-                    request.getWorkOrder() != null ? request.getWorkOrder().getOrderNumber() : "Không liên kết");
-            addInfoRow(infoTable, normalFont, boldFont, "Trạng thái phiếu:", translateStatus(request.getStatus()));
-            document.add(infoTable);
-
-            // Table of items
-            Paragraph itemsTitle = new Paragraph("DANH SÁCH VẬT TƯ TIÊU HAO CẤP PHÁT")
+            // Left column (Company and branch)
+            Cell leftHeaderCell = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.CENTER);
+            leftHeaderCell.add(new Paragraph(companyRequest)
                     .setFont(boldFont)
-                    .setFontSize(12)
-                    .setMarginBottom(8);
-            document.add(itemsTitle);
+                    .setFontSize(9)
+                    .setMarginBottom(4));
+            
+            String reqNumStr = request.getReqNumber() != null ? request.getReqNumber() : "....";
+            leftHeaderCell.add(new Paragraph("Số: " + reqNumStr + "/PX")
+                    .setFont(normalFont)
+                    .setFontSize(9));
 
-            Table itemsTable = new Table(UnitValue.createPercentArray(new float[] { 8, 18, 34, 12, 14, 14 }))
+            // Right column (National motto & date)
+            Cell rightHeaderCell = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.CENTER);
+            rightHeaderCell.add(new Paragraph("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM")
+                    .setFont(boldFont)
+                    .setFontSize(9)
+                    .setMarginBottom(1));
+            rightHeaderCell.add(new Paragraph("Độc lập - Tự do - Hạnh phúc")
+                    .setFont(boldFont)
+                    .setFontSize(9)
+                    .setUnderline()
+                    .setMarginBottom(6));
+            rightHeaderCell.add(new Paragraph("Ngày ..... tháng ..... năm .....")
+                    .setFont(normalFont)
+                    .setFontSize(9)
+                    .setItalic());
+
+            headerTable.addCell(leftHeaderCell);
+            headerTable.addCell(rightHeaderCell);
+            document.add(headerTable);
+
+            // ── Document Title ────────────────────────────────────────────────
+            Paragraph title = new Paragraph("GIẤY ĐỀ NGHỊ CẤP VẬT TƯ TIÊU HAO")
+                    .setFont(boldFont)
+                    .setFontSize(14)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginTop(10)
+                    .setMarginBottom(4);
+            document.add(title);
+
+            Paragraph subtitle = new Paragraph("Kính gửi: ........................................................................")
+                    .setFont(normalFont)
+                    .setFontSize(10)
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(12);
+            document.add(subtitle);
+
+            // ── Requester & Reason Details ────────────────────────────────────
+            // Tên người đề nghị, Tổ, Phân xưởng
+            Paragraph p1 = new Paragraph().setFont(normalFont).setFontSize(10).setMarginBottom(4);
+            p1.add(new Text("Tên người đề nghị: ").setFont(boldFont));
+            p1.add(new Text("..................................................").setFont(normalFont));
+            p1.add(new Text("    Tổ: ").setFont(boldFont));
+            p1.add(new Text("........................").setFont(normalFont));
+            p1.add(new Text("    Phân xưởng: ").setFont(boldFont));
+            String deptName = "";
+            if (request.getCreatedBy() != null && request.getCreatedBy().getEmployee() != null && request.getCreatedBy().getEmployee().getDepartment() != null) {
+                deptName = request.getCreatedBy().getEmployee().getDepartment().getDepartmentName();
+            }
+            p1.add(new Text(deptName.isEmpty() ? "........................" : deptName).setFont(normalFont));
+            document.add(p1);
+
+            // Lý do sử dụng
+            Paragraph p2 = new Paragraph().setFont(normalFont).setFontSize(10).setMarginBottom(4);
+            p2.add(new Text("Lý do sử dụng: ").setFont(boldFont));
+            String note = request.getNote() != null ? request.getNote() : "";
+            p2.add(new Text(note.isEmpty() ? "................................................................................................................................................................................" : note).setFont(normalFont));
+            document.add(p2);
+
+            // PCT
+            Paragraph p3 = new Paragraph().setFont(normalFont).setFontSize(10).setMarginBottom(4);
+            p3.add(new Text("PCT: ").setFont(boldFont));
+            String woNum = request.getWorkOrder() != null ? request.getWorkOrder().getOrderNumber() : "";
+            p3.add(new Text(woNum.isEmpty() ? ".................................................." : woNum).setFont(normalFont));
+            document.add(p3);
+
+            // Tại kho
+            Paragraph p4 = new Paragraph().setFont(normalFont).setFontSize(10).setMarginBottom(8);
+            p4.add(new Text("Tại kho: ").setFont(boldFont));
+            p4.add(new Text("........................................................................................................................").setFont(normalFont));
+            document.add(p4);
+
+            Paragraph p5 = new Paragraph("Đề nghị cấp số vật tư dưới đây:")
+                    .setFont(normalFont)
+                    .setFontSize(10)
+                    .setMarginBottom(6);
+            document.add(p5);
+
+            // ── Items Table ──────────────────────────────────────────────────
+            Table itemsTable = new Table(UnitValue.createPercentArray(new float[] { 8, 15, 37, 10, 10, 10, 10 }))
                     .setWidth(UnitValue.createPercentValue(100));
 
-            // Header row
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("STT").setFont(boldFont).setFontSize(10)));
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("Mã vật tư").setFont(boldFont).setFontSize(10)));
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("Tên vật tư").setFont(boldFont).setFontSize(10)));
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("Đơn vị").setFont(boldFont).setFontSize(10)));
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("SL yêu cầu").setFont(boldFont).setFontSize(10)));
-            itemsTable.addHeaderCell(new Cell().add(new Paragraph("SL thực cấp").setFont(boldFont).setFontSize(10)));
+            // Row 1 Header
+            itemsTable.addHeaderCell(new Cell(2, 1).add(new Paragraph("STT").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell(2, 1).add(new Paragraph("Mã vật tư").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell(2, 1).add(new Paragraph("Tên, nhãn hiệu, quy cách vật tư").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell(2, 1).add(new Paragraph("ĐVT").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell(1, 2).add(new Paragraph("Số lượng").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell(2, 1).add(new Paragraph("Ghi chú").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+
+            // Row 2 Header
+            itemsTable.addHeaderCell(new Cell().add(new Paragraph("Yêu cầu").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
+            itemsTable.addHeaderCell(new Cell().add(new Paragraph("Thực cấp").setFont(boldFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE));
 
             int index = 1;
             for (ConsumableRequestItem item : request.getItems()) {
-                itemsTable.addCell(new Cell().add(new Paragraph(String.valueOf(index++)).setFont(normalFont).setFontSize(10)));
-                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getCode()).setFont(normalFont).setFontSize(10)));
-                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getName()).setFont(normalFont).setFontSize(10)));
-                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getUnit() != null ? item.getConsumable().getUnit() : "").setFont(normalFont).setFontSize(10)));
-                itemsTable.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantityRequested())).setFont(normalFont).setFontSize(10)));
-                String issuedText = (!"pending".equalsIgnoreCase(request.getStatus()) && item.getQuantityIssued() != null)
-                        ? String.valueOf(item.getQuantityIssued()) : ".....";
-                itemsTable.addCell(new Cell().add(new Paragraph(issuedText).setFont(normalFont).setFontSize(10)));
+                itemsTable.addCell(new Cell().add(new Paragraph(String.valueOf(index++)).setFont(normalFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER));
+                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getCode() != null ? item.getConsumable().getCode() : "").setFont(normalFont).setFontSize(9)));
+                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getName() != null ? item.getConsumable().getName() : "").setFont(normalFont).setFontSize(9)));
+                itemsTable.addCell(new Cell().add(new Paragraph(item.getConsumable().getUnit() != null ? item.getConsumable().getUnit() : "").setFont(normalFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER));
+                itemsTable.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantityRequested())).setFont(normalFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER));
+                
+                String issuedText = "";
+                if (!"pending".equalsIgnoreCase(request.getStatus()) && item.getQuantityIssued() != null) {
+                    issuedText = String.valueOf(item.getQuantityIssued());
+                }
+                itemsTable.addCell(new Cell().add(new Paragraph(issuedText).setFont(normalFont).setFontSize(9)).setTextAlignment(TextAlignment.CENTER));
+                itemsTable.addCell(new Cell().add(new Paragraph("").setFont(normalFont).setFontSize(9)));
             }
 
             document.add(itemsTable);
 
-            // Signatures block
+            // ── Signatures block ─────────────────────────────────────────────
             Table signTable = new Table(UnitValue.createPercentArray(new float[] { 33, 34, 33 }))
                     .setWidth(UnitValue.createPercentValue(100))
                     .setMarginTop(30);
 
-            Cell requesterCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("NGƯỜI YÊU CẦU").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
-                    .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
+            // Column 1: NGƯỜI YÊU CẦU
+            Cell requesterCell = new Cell().setBorder(Border.NO_BORDER);
+            requesterCell.add(new Paragraph("NGƯỜI YÊU CẦU")
+                    .setFont(boldFont)
+                    .setFontSize(10)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(2));
+            requesterCell.add(new Paragraph("(Ký và ghi họ tên)")
+                    .setFont(normalFont)
+                    .setFontSize(8)
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(60));
 
-            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("NGƯỜI CẤP PHÁT").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
-                    .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
+            // Column 2: NGƯỜI CẤP PHÁT
+            Cell issuerCell = new Cell().setBorder(Border.NO_BORDER);
+            issuerCell.add(new Paragraph("NGƯỜI CẤP PHÁT")
+                    .setFont(boldFont)
+                    .setFontSize(10)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(2));
+            issuerCell.add(new Paragraph("(Ký và ghi họ tên)")
+                    .setFont(normalFont)
+                    .setFontSize(8)
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(60));
 
-            Cell receiverCell = new Cell().setBorder(Border.NO_BORDER)
-                    .add(new Paragraph("NGƯỜI NHẬN").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
-                    .add(new Paragraph("\n\n\n\n(Ký và ghi họ tên)").setFont(normalFont).setFontSize(9).setTextAlignment(TextAlignment.CENTER));
+            // Column 3: NGƯỜI NHẬN
+            Cell receiverCell = new Cell().setBorder(Border.NO_BORDER);
+            receiverCell.add(new Paragraph("NGƯỜI NHẬN")
+                    .setFont(boldFont)
+                    .setFontSize(10)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(2));
+            receiverCell.add(new Paragraph("(Ký và ghi họ tên)")
+                    .setFont(normalFont)
+                    .setFontSize(8)
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(60));
 
             signTable.addCell(requesterCell);
             signTable.addCell(issuerCell);

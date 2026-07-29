@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux'
+import { Navigate } from 'react-router-dom'
 import {
   Boxes,
   ClipboardCheck,
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react'
 
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
-import { getPrimaryRoleLabel } from '@/features/auth/utils/roles.js'
+import { getPrimaryRoleLabel, ROLES } from '@/features/auth/utils/roles.js'
 
 const overviewCards = [
   {
@@ -41,6 +42,11 @@ const overviewCards = [
 export function DashboardPage() {
   const user = useSelector(selectCurrentUser)
   const roleLabel = getPrimaryRoleLabel(user)
+
+  const userRoles = user?.roles || []
+  if (userRoles.includes(ROLES.TEAM_LEADER) || userRoles.includes(ROLES.REPAIR_MANAGER)) {
+    return <Navigate to="/dashboard/maintenance/requests" replace />
+  }
 
   return (
     <div className="space-y-6">

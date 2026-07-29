@@ -80,6 +80,9 @@ public class WorkOrder {
     @Builder.Default
     List<WorkOrderMember> members = new ArrayList<>();
 
+    @Column(name = "pdf_url", length = 255)
+    String pdfUrl;
+
     @PrePersist
     public void prePersist() {
         if (status == null) status = "draft";

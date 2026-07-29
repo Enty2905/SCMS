@@ -1,6 +1,7 @@
 package com.scms.maintenance.assessment.service;
 
 import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -11,6 +12,7 @@ import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
+import com.itextpdf.layout.properties.VerticalAlignment;
 import com.scms.auth.entity.User;
 import com.scms.auth.repository.UserRepository;
 import com.scms.common.exception.AppException;
@@ -19,7 +21,9 @@ import com.scms.common.pdf.PdfFontProvider;
 import com.scms.employee.entity.Employee;
 import com.scms.employee.repository.EmployeeRepository;
 import com.scms.equipment.entity.Equipment;
+import com.scms.equipment.entity.EquipmentSystem;
 import com.scms.equipment.repository.EquipmentRepository;
+import com.scms.equipment.repository.EquipmentSystemRepository;
 import com.scms.maintenance.assessment.dto.request.CreateAssessmentRequest;
 import com.scms.maintenance.assessment.dto.response.AssessmentResponse;
 import com.scms.maintenance.assessment.entity.TechnicalAssessment;
@@ -32,6 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.scms.common.service.CloudinaryService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,6 +46,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -54,9 +60,17 @@ public class TechnicalAssessmentService {
         final EquipmentRepository equipmentRepository;
         final EmployeeRepository employeeRepository;
         final UserRepository userRepository;
+        final CloudinaryService cloudinaryService;
+        final EquipmentSystemRepository equipmentSystemRepository;
 
         @Value("${app.upload.pdf-dir:uploads/pdf}")
         String pdfUploadDir;
+
+        @Value("${app.company.owner:CÔNG TY SCMS}")
+        String companyOwner;
+
+        @Value("${app.company.repair:CTY CP SCMS}")
+        String companyRepair;
 
         // ── Chức năng 3A: Tạo biên bản ───────────────────────────────────────────
 
@@ -112,8 +126,7 @@ public class TechnicalAssessmentService {
         // ── Chức năng 3B: Xuất PDF ────────────────────────────────────────────────
 
         /**
-         * Generate file PDF biên bản đánh giá kỹ thuật (layout tạm thời, thay thế sau
-         * khi có mẫu chính thức)
+         * Generate file PDF biên bản đánh giá kỹ thuật (layout chính thức theo mẫu)
          */
         @Transactional(readOnly = true)
         public byte[] exportPdf(UUID assessmentId) {
@@ -124,132 +137,422 @@ public class TechnicalAssessmentService {
                         PdfWriter writer = new PdfWriter(baos);
                         PdfDocument pdf = new PdfDocument(writer);
                         Document document = new Document(pdf, PageSize.A4);
-                        document.setMargins(40, 50, 40, 50);
+                        document.setMargins(30, 40, 30, 40);
 
                         PdfFontProvider.FontSet fonts = PdfFontProvider.createVietnameseFonts();
                         PdfFont normalFont = fonts.normal();
                         PdfFont boldFont = fonts.bold();
 
-                        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-                        // ── Tiêu đề ──────────────────────────────────────────────────────
-                        Paragraph title = new Paragraph("BIÊN BẢN ĐÁNH GIÁ KỸ THUẬT")
-                                        .setFont(boldFont)
-                                        .setFontSize(16)
+                        // ── Header Table ──────────────────────────────────────────────────
+                        Table headerTable = new Table(UnitValue.createPercentArray(new float[] { 22, 56, 22 }))
+                                        .setWidth(UnitValue.createPercentValue(100))
+                                        .setMarginBottom(10);
+
+                        // Left Logo Cell
+                        Cell leftLogoCell = new Cell()
+                                        .setVerticalAlignment(VerticalAlignment.MIDDLE)
                                         .setTextAlignment(TextAlignment.CENTER)
-                                        .setMarginBottom(4);
-                        document.add(title);
+                                        .setPadding(5);
+                        try {
+                                Path path = Paths.get("src/main/resources/images/logo_left.png");
+                                if (Files.exists(path)) {
+                                        Image img = new Image(com.itextpdf.io.image.ImageDataFactory.create(path.toString()))
+                                                        .setAutoScale(true);
+                                        leftLogoCell.add(img);
+                                } else {
+                                        leftLogoCell.add(new Paragraph(companyOwner)
+                                                        .setFont(boldFont)
+                                                        .setFontSize(10)
+                                                        .setFontColor(new DeviceRgb(0, 84, 166))
+                                                        .setTextAlignment(TextAlignment.CENTER));
+                                }
+                        } catch (Exception e) {
+                                leftLogoCell.add(new Paragraph(companyOwner).setFont(boldFont).setFontSize(10).setFontColor(new DeviceRgb(0, 84, 166)));
+                        }
 
-                        addSectionTitle(document, boldFont, "I. THÔNG TIN BIÊN BẢN");
+                        // Right Logo Cell
+                        Cell rightLogoCell = new Cell()
+                                        .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setPadding(5);
+                        try {
+                                Path path = Paths.get("src/main/resources/images/logo_right.png");
+                                if (Files.exists(path)) {
+                                        Image img = new Image(com.itextpdf.io.image.ImageDataFactory.create(path.toString()))
+                                                        .setAutoScale(true);
+                                        rightLogoCell.add(img);
+                                } else {
+                                        rightLogoCell.add(new Paragraph(companyRepair)
+                                                        .setFont(boldFont)
+                                                        .setFontSize(10)
+                                                        .setFontColor(new DeviceRgb(0, 84, 166))
+                                                        .setTextAlignment(TextAlignment.CENTER));
+                                }
+                        } catch (Exception e) {
+                                rightLogoCell.add(new Paragraph(companyRepair).setFont(boldFont).setFontSize(10).setFontColor(new DeviceRgb(0, 84, 166)));
+                        }
 
-                        Table infoTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
-                                        .setWidth(UnitValue.createPercentValue(100));
+                        // Center Cell
+                        Cell centerCell = new Cell()
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setVerticalAlignment(VerticalAlignment.MIDDLE)
+                                        .setPadding(5);
+                        centerCell.add(new Paragraph("BIÊN BẢN ĐÁNH GIÁ KỸ THUẬT")
+                                        .setFont(boldFont)
+                                        .setFontSize(12)
+                                        .setTextAlignment(TextAlignment.CENTER));
+                        centerCell.add(new Paragraph("(Áp dụng cho các thiết bị khi có hư hỏng bất thường)")
+                                        .setFont(normalFont)
+                                        .setFontSize(9)
+                                        .setItalic()
+                                        .setTextAlignment(TextAlignment.CENTER));
+                        String assessmentNum = ta.getAssessmentNumber() != null ? ta.getAssessmentNumber() : "....................";
+                        centerCell.add(new Paragraph("Số: " + assessmentNum + "/ĐGKT")
+                                        .setFont(normalFont)
+                                        .setFontSize(10)
+                                        .setTextAlignment(TextAlignment.CENTER));
 
-                        addInfoRow(infoTable, normalFont, boldFont, "Mã biên bản:",
-                                        ta.getAssessmentNumber() != null ? ta.getAssessmentNumber() : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Ngày lập:",
-                                        ta.getCreatedAt() != null ? ta.getCreatedAt().format(dtf) : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Người lập:",
-                                        ta.getCreatedBy() != null ? ta.getCreatedBy().getName() : "");
-                        addInfoRow(infoTable, normalFont, boldFont, "Chức vụ:",
-                                        ta.getCreatedBy() != null && ta.getCreatedBy().getPosition() != null
-                                                         ? ta.getCreatedBy().getPosition().getPositionName()
-                                                         : "");
-                        document.add(infoTable);
+                        headerTable.addCell(leftLogoCell);
+                        headerTable.addCell(centerCell);
+                        headerTable.addCell(rightLogoCell);
 
-                        // ── Thông tin thiết bị ────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "II. THÔNG TIN THIẾT BỊ");
+                        document.add(headerTable);
+
+                        // ── Equipment & Info Table ──────────────────────────────────────
+                        Table infoTable = new Table(UnitValue.createPercentArray(new float[] { 20, 30, 20, 30 }))
+                                        .setWidth(UnitValue.createPercentValue(100))
+                                        .setMarginBottom(12);
 
                         Equipment eq = ta.getEquipment();
-                        Table eqTable = new Table(UnitValue.createPercentArray(new float[] { 35, 65 }))
-                                        .setWidth(UnitValue.createPercentValue(100));
+                        String equipmentName = eq != null ? eq.getEquipmentName() : "";
+                        String kksCode = eq != null ? eq.getKksCode() : "";
 
-                        addInfoRow(eqTable, normalFont, boldFont, "Mã KKS:", eq != null ? eq.getKksCode() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Tên thiết bị:", eq != null ? eq.getEquipmentName() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Loại:", eq != null ? eq.getEquipmentType() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Vị trí:", eq != null ? eq.getLocation() : "");
-                        addInfoRow(eqTable, normalFont, boldFont, "Trạng thái:", eq != null ? eq.getStatus() : "");
-                        document.add(eqTable);
+                        // Fetch system name
+                        String systemName = "";
+                        if (eq != null && eq.getSystemId() != null) {
+                                Optional<EquipmentSystem> systemOpt = equipmentSystemRepository.findById(eq.getSystemId());
+                                if (systemOpt.isPresent()) {
+                                        systemName = systemOpt.get().getSystemName();
+                                }
+                        }
 
-                        // ── Nội dung đánh giá ─────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "III. MÔ TẢ HƯ HỎNG");
+                        // Row 1: Tên thiết bị (colspan 3)
+                        infoTable.addCell(new Cell().add(new Paragraph("Tên thiết bị").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell(1, 3).add(new Paragraph(equipmentName).setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        // Row 2: Hệ thống (colspan 3)
+                        infoTable.addCell(new Cell().add(new Paragraph("Hệ thống").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell(1, 3).add(new Paragraph(systemName).setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        // Row 3: Mã KKS & Số serial/Model
+                        infoTable.addCell(new Cell().add(new Paragraph("Mã KKS").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph(kksCode).setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph("Số serial/Model").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph("").setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        // Row 4: Tên công việc (colspan 3)
+                        infoTable.addCell(new Cell().add(new Paragraph("Tên công việc").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell(1, 3).add(new Paragraph("").setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        // Row 5: Người thực hiện (colspan 3) - Left blank for manual entry
+                        infoTable.addCell(new Cell().add(new Paragraph("Người thực hiện").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell(1, 3).add(new Paragraph("").setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        // Row 6: Ngày bắt đầu
+                        String startDate = ta.getCreatedAt() != null ? ta.getCreatedAt().format(df) : "";
+                        infoTable.addCell(new Cell().add(new Paragraph("Ngày bắt đầu").setFont(boldFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph(startDate).setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph("").setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+                        infoTable.addCell(new Cell().add(new Paragraph("").setFont(normalFont).setFontSize(10))
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1)).setPadding(5));
+
+                        document.add(infoTable);
+
+                        // ── Numbered Sections ──────────────────────────────────────────
+                        // 1. Nội dung thực hiện
+                        document.add(new Paragraph("1. Nội dung thực hiện")
+                                        .setFont(boldFont)
+                                        .setFontSize(11)
+                                        .setMarginTop(6)
+                                        .setMarginBottom(4));
+
                         String damageVal = ta.getDamageDescription();
-                        if (damageVal == null || damageVal.trim().isEmpty()) {
-                                damageVal = "......................................................................................................................................\n" +
-                                            "......................................................................................................................................\n" +
-                                            "......................................................................................................................................";
+                        if (damageVal != null && !damageVal.trim().isEmpty()) {
+                                document.add(new Paragraph(damageVal)
+                                                .setFont(normalFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(6));
+                        } else {
+                                for (int i = 0; i < 3; i++) {
+                                        document.add(new Paragraph("........................................................................................................................................................")
+                                                        .setFont(normalFont)
+                                                        .setFontSize(10)
+                                                        .setMarginLeft(15)
+                                                        .setMarginBottom(2));
+                                }
                         }
-                        Paragraph damageDesc = new Paragraph(damageVal)
-                                        .setFont(normalFont)
-                                        .setFontSize(11)
-                                        .setBorder(new SolidBorder(ColorConstants.LIGHT_GRAY, 1))
-                                        .setPadding(8)
-                                        .setMarginBottom(15);
-                        document.add(damageDesc);
 
-                        addSectionTitle(document, boldFont, "IV. PHƯƠNG ÁN XỬ LÝ ĐỀ XUẤT");
+                        // 2. Kết quả:
+                        document.add(new Paragraph("2. Kết quả:")
+                                        .setFont(boldFont)
+                                        .setFontSize(11)
+                                        .setMarginTop(6)
+                                        .setMarginBottom(4));
+                        for (int i = 0; i < 2; i++) {
+                                document.add(new Paragraph("........................................................................................................................................................")
+                                                .setFont(normalFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(2));
+                        }
+
+                        Paragraph attachmentPara = new Paragraph()
+                                        .setFont(normalFont)
+                                        .setFontSize(9)
+                                        .setMarginLeft(15)
+                                        .setMarginTop(3)
+                                        .setMarginBottom(6);
+                        attachmentPara.add(new Text("Đính kèm:\n").setFont(boldFont).setItalic().setFontSize(9));
+                        attachmentPara.add(new Text("☐ Biên bản đo đạc    ☐ Biên bản thử nghiệm    ☐ Hình ảnh    ☐ Bản vẽ    ☐ Khác       có .... trang;"));
+                        document.add(attachmentPara);
+
+                        // 3. Phân tích nguyên nhân:
+                        document.add(new Paragraph("3. Phân tích nguyên nhân:")
+                                        .setFont(boldFont)
+                                        .setFontSize(11)
+                                        .setMarginTop(6)
+                                        .setMarginBottom(4));
+                        for (int i = 0; i < 3; i++) {
+                                document.add(new Paragraph("........................................................................................................................................................")
+                                                .setFont(normalFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(2));
+                        }
+
+                        // 4. Biện pháp xử lý:
+                        document.add(new Paragraph("4. Biện pháp xử lý:")
+                                        .setFont(boldFont)
+                                        .setFontSize(11)
+                                        .setMarginTop(6)
+                                        .setMarginBottom(4));
+
                         String actionVal = ta.getProposedAction();
-                        if (actionVal == null || actionVal.trim().isEmpty()) {
-                                actionVal = "......................................................................................................................................\n" +
-                                            "......................................................................................................................................\n" +
-                                            "......................................................................................................................................";
+                        if (actionVal != null && !actionVal.trim().isEmpty()) {
+                                document.add(new Paragraph(actionVal)
+                                                .setFont(normalFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(6));
+                                
+                                document.add(new Paragraph("4.3 Vật tư cần thiết:")
+                                                .setFont(boldFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginTop(3)
+                                                .setMarginBottom(3));
+                                for (int i = 0; i < 2; i++) {
+                                        document.add(new Paragraph(".................................................................................................................................................")
+                                                        .setFont(normalFont)
+                                                        .setFontSize(10)
+                                                        .setMarginLeft(30)
+                                                        .setMarginBottom(2));
+                                }
+                        } else {
+                                document.add(new Paragraph("4.1 Phương án 1: triệt để")
+                                                .setFont(boldFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(3));
+                                for (int i = 0; i < 2; i++) {
+                                        document.add(new Paragraph(".................................................................................................................................................")
+                                                        .setFont(normalFont)
+                                                        .setFontSize(10)
+                                                        .setMarginLeft(30)
+                                                        .setMarginBottom(2));
+                                }
+
+                                document.add(new Paragraph("4.2 Phương án 2: tạm thời")
+                                                .setFont(boldFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginTop(3)
+                                                .setMarginBottom(3));
+                                for (int i = 0; i < 2; i++) {
+                                        document.add(new Paragraph(".................................................................................................................................................")
+                                                        .setFont(normalFont)
+                                                        .setFontSize(10)
+                                                        .setMarginLeft(30)
+                                                        .setMarginBottom(2));
+                                }
+
+                                document.add(new Paragraph("4.3 Vật tư cần thiết:")
+                                                .setFont(boldFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginTop(3)
+                                                .setMarginBottom(3));
+                                for (int i = 0; i < 2; i++) {
+                                        document.add(new Paragraph(".................................................................................................................................................")
+                                                        .setFont(normalFont)
+                                                        .setFontSize(10)
+                                                        .setMarginLeft(30)
+                                                        .setMarginBottom(2));
+                                }
                         }
-                        Paragraph proposedAction = new Paragraph(actionVal)
-                                        .setFont(normalFont)
+
+                        // 5. Nhận xét và kiến nghị:
+                        document.add(new Paragraph("5. Nhận xét và kiến nghị:")
+                                        .setFont(boldFont)
                                         .setFontSize(11)
-                                        .setBorder(new SolidBorder(ColorConstants.LIGHT_GRAY, 1))
-                                        .setPadding(8)
-                                        .setMarginBottom(20);
-                        document.add(proposedAction);
+                                        .setMarginTop(6)
+                                        .setMarginBottom(4));
+                        for (int i = 0; i < 3; i++) {
+                                document.add(new Paragraph("........................................................................................................................................................")
+                                                .setFont(normalFont)
+                                                .setFontSize(10)
+                                                .setMarginLeft(15)
+                                                .setMarginBottom(2));
+                        }
 
-                        // ── Khung ký tên ──────────────────────────────────────────────────
-                        addSectionTitle(document, boldFont, "V. KÝ TÊN XÁC NHẬN");
-
+                        // ── Signature Table ─────────────────────────────────────────────
                         Table signTable = new Table(UnitValue.createPercentArray(new float[] { 50, 50 }))
                                         .setWidth(UnitValue.createPercentValue(100))
-                                        .setMarginTop(10);
+                                        .setMarginTop(15)
+                                        .setMarginBottom(10);
 
-                        // Ô ký bên sửa chữa
-                        Cell repairCell = new Cell()
-                                        .setBorder(Border.NO_BORDER)
-                                        .setPadding(10);
-                        repairCell.add(new Paragraph("BÊN SỬA CHỮA").setFont(boldFont).setFontSize(11)
-                                        .setTextAlignment(TextAlignment.CENTER));
-                        if (ta.getRepairSignedBy() != null) {
-                                repairCell.add(new Paragraph("Đã ký: " + ta.getRepairSignedBy().getName())
-                                                .setFont(normalFont).setFontSize(10)
-                                                .setTextAlignment(TextAlignment.CENTER));
-                                repairCell.add(new Paragraph(
-                                                ta.getRepairSignedAt() != null ? ta.getRepairSignedAt().format(df) : "")
-                                                .setFont(normalFont).setFontSize(9)
-                                                .setTextAlignment(TextAlignment.CENTER));
-                        } else {
-                                repairCell.add(new Paragraph("\n\n\n\n(Chữ ký và họ tên)").setFont(normalFont)
-                                                .setFontSize(10).setTextAlignment(TextAlignment.CENTER));
-                        }
-                        signTable.addCell(repairCell);
+                        // Headers (light grey background)
+                        Cell leftHeader = new Cell()
+                                        .add(new Paragraph(companyOwner)
+                                                        .setFont(boldFont)
+                                                        .setFontSize(9)
+                                                        .setTextAlignment(TextAlignment.CENTER))
+                                        .setBackgroundColor(new DeviceRgb(220, 220, 220))
+                                        .setPadding(6)
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1));
 
-                        // Ô ký bên vận hành
-                        Cell opCell = new Cell()
-                                        .setBorder(Border.NO_BORDER)
-                                        .setPadding(10);
-                        opCell.add(new Paragraph("BÊN VẬN HÀNH").setFont(boldFont).setFontSize(11)
-                                        .setTextAlignment(TextAlignment.CENTER));
+                        Cell rightHeader = new Cell()
+                                        .add(new Paragraph(companyRepair)
+                                                        .setFont(boldFont)
+                                                        .setFontSize(9)
+                                                        .setTextAlignment(TextAlignment.CENTER))
+                                        .setBackgroundColor(new DeviceRgb(220, 220, 220))
+                                        .setPadding(6)
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1));
+
+                        signTable.addCell(leftHeader);
+                        signTable.addCell(rightHeader);
+
+                        // Content Cells
+                        Cell leftContent = new Cell()
+                                        .setPadding(8)
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1));
+                        
+                        // Block 1: Phân xưởng (Đơn vị QLTB)
+                        leftContent.add(new Paragraph("Phân xưởng (Đơn vị QLTB)")
+                                        .setFont(boldFont)
+                                        .setFontSize(9)
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(2));
                         if (ta.getOperationSignedBy() != null) {
-                                opCell.add(new Paragraph("Đã ký: " + ta.getOperationSignedBy().getName())
-                                                .setFont(normalFont).setFontSize(10)
-                                                .setTextAlignment(TextAlignment.CENTER));
-                                opCell.add(new Paragraph(
-                                                ta.getOperationSignedAt() != null ? ta.getOperationSignedAt().format(df)
-                                                                : "")
-                                                .setFont(normalFont).setFontSize(9)
-                                                .setTextAlignment(TextAlignment.CENTER));
+                                leftContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                                .setFont(normalFont)
+                                                .setFontSize(8)
+                                                .setItalic()
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(30));
+                                leftContent.add(new Paragraph(ta.getOperationSignedBy().getName())
+                                                .setFont(boldFont)
+                                                .setFontSize(9)
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(15));
                         } else {
-                                opCell.add(new Paragraph("\n\n\n\n(Chữ ký và họ tên)").setFont(normalFont)
-                                                .setFontSize(10).setTextAlignment(TextAlignment.CENTER));
+                                leftContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                                .setFont(normalFont)
+                                                .setFontSize(8)
+                                                .setItalic()
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(55));
                         }
-                        signTable.addCell(opCell);
+
+                        // Block 2: Phòng Kỹ thuật Công nghệ
+                        leftContent.add(new Paragraph("Phòng Kỹ thuật Công nghệ")
+                                        .setFont(boldFont)
+                                        .setFontSize(9)
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(2));
+                        leftContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                        .setFont(normalFont)
+                                        .setFontSize(8)
+                                        .setItalic()
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(55));
+                        
+                        signTable.addCell(leftContent);
+
+                        Cell rightContent = new Cell()
+                                        .setPadding(8)
+                                        .setBorder(new SolidBorder(ColorConstants.BLACK, 1));
+
+                        // Block 1: Người kiểm tra
+                        rightContent.add(new Paragraph("Người kiểm tra")
+                                        .setFont(boldFont)
+                                        .setFontSize(9)
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(2));
+                        if (ta.getRepairSignedBy() != null) {
+                                rightContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                                .setFont(normalFont)
+                                                .setFontSize(8)
+                                                .setItalic()
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(30));
+                                rightContent.add(new Paragraph(ta.getRepairSignedBy().getName())
+                                                .setFont(boldFont)
+                                                .setFontSize(9)
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(15));
+                        } else {
+                                rightContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                                .setFont(normalFont)
+                                                .setFontSize(8)
+                                                .setItalic()
+                                                .setTextAlignment(TextAlignment.CENTER)
+                                                .setMarginBottom(55));
+                        }
+
+                        // Block 2: Phân xưởng
+                        rightContent.add(new Paragraph("Phân xưởng")
+                                        .setFont(boldFont)
+                                        .setFontSize(9)
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(2));
+                        rightContent.add(new Paragraph("(Ký và ghi rõ họ tên)")
+                                        .setFont(normalFont)
+                                        .setFontSize(8)
+                                        .setItalic()
+                                        .setTextAlignment(TextAlignment.CENTER)
+                                        .setMarginBottom(55));
+
+                        signTable.addCell(rightContent);
 
                         document.add(signTable);
 
@@ -265,8 +568,8 @@ public class TechnicalAssessmentService {
         // ── Chức năng 3C: Upload PDF đã ký ────────────────────────────────────────
 
         /**
-         * Upload file PDF biên bản đã ký vật lý lên server
-         * Lưu vào thư mục cấu hình (app.upload.pdf-dir) và cập nhật pdf_url trong DB
+         * Upload file PDF biên bản đã ký vật lý lên Cloudinary
+         * Lưu URL vào database
          */
         @Transactional
         public AssessmentResponse uploadSignedPdf(UUID assessmentId, MultipartFile file) {
@@ -284,27 +587,15 @@ public class TechnicalAssessmentService {
                 }
 
                 try {
-                        // Tạo thư mục nếu chưa có
-                        Path uploadPath = Paths.get(pdfUploadDir).toAbsolutePath().normalize();
-                        if (!Files.exists(uploadPath)) {
-                                Files.createDirectories(uploadPath);
-                        }
-
-                        // Tên file = assessmentId + timestamp để tránh trùng
-                        String fileName = "assessment_" + assessmentId + "_signed_" + System.currentTimeMillis()
-                                        + ".pdf";
-                        Path targetPath = uploadPath.resolve(fileName).toAbsolutePath().normalize();
-
-                        // Sử dụng Files.copy để ghi luồng đầu vào vào đường dẫn đích
-                        Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        String pdfUrl = cloudinaryService.uploadFile(file, "scms/assessments");
 
                         // Cập nhật pdf_url vào DB
-                        ta.setPdfUrl(pdfUploadDir + "/" + fileName);
+                        ta.setPdfUrl(pdfUrl);
                         ta.setRepairSignedAt(
                                         ta.getRepairSignedAt() != null ? ta.getRepairSignedAt() : LocalDateTime.now());
 
                         assessmentRepository.save(ta);
-                        log.info("Uploaded signed PDF for assessment {}: {}", assessmentId, fileName);
+                        log.info("Uploaded signed PDF for assessment {} to Cloudinary: {}", assessmentId, pdfUrl);
 
                         return toResponse(ta);
 
@@ -332,12 +623,27 @@ public class TechnicalAssessmentService {
                         throw new AppException(ErrorCode.NOT_FOUND);
                 }
 
-                try {
-                        Path path = Paths.get(ta.getPdfUrl());
-                        return Files.readAllBytes(path);
-                } catch (IOException e) {
-                        log.error("Lỗi khi đọc file PDF đã ký {}", assessmentId, e);
-                        throw new RuntimeException("Không thể đọc file PDF đã ký: " + e.getMessage(), e);
+                if (ta.getPdfUrl().startsWith("http://") || ta.getPdfUrl().startsWith("https://")) {
+                        try (java.io.InputStream in = new java.net.URL(ta.getPdfUrl()).openStream();
+                             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                                byte[] buffer = new byte[4096];
+                                int n;
+                                while ((n = in.read(buffer)) != -1) {
+                                        out.write(buffer, 0, n);
+                                }
+                                return out.toByteArray();
+                        } catch (IOException e) {
+                                log.error("Lỗi khi tải file PDF từ Cloudinary {}", ta.getPdfUrl(), e);
+                                throw new RuntimeException("Không thể tải file PDF từ Cloudinary: " + e.getMessage(), e);
+                        }
+                } else {
+                        try {
+                                Path path = Paths.get(ta.getPdfUrl());
+                                return Files.readAllBytes(path);
+                        } catch (IOException e) {
+                                log.error("Lỗi khi đọc file PDF đã ký {}", assessmentId, e);
+                                throw new RuntimeException("Không thể đọc file PDF đã ký: " + e.getMessage(), e);
+                        }
                 }
         }
 
@@ -382,26 +688,6 @@ public class TechnicalAssessmentService {
         }
 
         // ── PDF helpers ───────────────────────────────────────────────────────────
-
-        private void addSectionTitle(Document doc, PdfFont font, String text) {
-                doc.add(new Paragraph(text)
-                                .setFont(font)
-                                .setFontSize(12)
-                                .setFontColor(ColorConstants.DARK_GRAY)
-                                .setMarginTop(15)
-                                .setMarginBottom(8));
-        }
-
-        private void addInfoRow(Table table, PdfFont normalFont, PdfFont boldFont, String label, String value) {
-                table.addCell(new Cell()
-                                .add(new Paragraph(label).setFont(boldFont).setFontSize(10))
-                                .setBorder(Border.NO_BORDER)
-                                .setPaddingBottom(4));
-                table.addCell(new Cell()
-                                .add(new Paragraph(value != null ? value : "").setFont(normalFont).setFontSize(10))
-                                .setBorder(Border.NO_BORDER)
-                                .setPaddingBottom(4));
-        }
 
         private String generateAssessmentNumber() {
                 String datePrefix = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yy-MM-dd"));

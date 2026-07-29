@@ -583,6 +583,7 @@ export function TechnicalAssessmentPage() {
                 <table className="w-full min-w-[900px] border-collapse text-left text-sm">
                   <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
                     <tr className="border-b border-slate-200">
+                      <th className="w-16 px-6 py-4 text-center">STT</th>
                       <th className="px-6 py-4">Số biên bản</th>
                       <th className="px-6 py-4">Thiết bị</th>
                       <th className="px-6 py-4">Người lập</th>
@@ -595,7 +596,7 @@ export function TechnicalAssessmentPage() {
                   <tbody className="divide-y divide-slate-100">
                     {loading && assessments.length === 0 ? (
                       <tr>
-                        <td className="px-6 py-10 text-center text-slate-400" colSpan={7}>
+                        <td className="px-6 py-10 text-center text-slate-400" colSpan={8}>
                           <span className="flex items-center justify-center gap-2">
                             <Loader2 className="animate-spin text-violet-500" size={18} />
                             Đang tải danh sách biên bản...
@@ -604,15 +605,18 @@ export function TechnicalAssessmentPage() {
                       </tr>
                     ) : filteredAssessments.length === 0 ? (
                       <tr>
-                        <td className="px-6 py-10 text-center text-slate-400" colSpan={7}>
+                        <td className="px-6 py-10 text-center text-slate-400" colSpan={8}>
                           Không tìm thấy biên bản đánh giá kỹ thuật nào.
                         </td>
                       </tr>
                     ) : (
-                      paginatedAssessments.map((a) => {
+                      paginatedAssessments.map((a, index) => {
                         const isSigned = a.completionStatus === 'signed'
                         return (
                           <tr className="hover:bg-slate-50/50 transition-colors" key={a.assessmentId}>
+                            <td className="px-6 py-4 text-center font-medium text-slate-500">
+                              {currentPage * pageSize + index + 1}
+                            </td>
                             {/* Số biên bản */}
                             <td className="px-6 py-4 font-semibold text-slate-800">
                               {a.assessmentNumber || 'BB-DGKT-xxxx'}

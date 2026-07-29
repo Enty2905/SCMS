@@ -40,7 +40,7 @@ public class RepairHistoryController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER', 'REPAIR_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER')")
     @Operation(summary = "Danh sách lịch sử sửa chữa thiết bị (Phân trang, hỗ trợ lọc theo ID thiết bị, mã KKS, tên thiết bị, số PCT)")
     public ApiResponse<Page<RepairHistoryResponse>> getHistories(
             @RequestParam(required = false) UUID equipmentId,
@@ -55,7 +55,7 @@ public class RepairHistoryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER', 'REPAIR_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEAM_LEADER')")
     @Operation(summary = "Xem chi tiết một bản ghi lịch sử sửa chữa")
     public ApiResponse<RepairHistoryResponse> getHistoryById(@PathVariable UUID id) {
         return ApiResponse.success(repairHistoryService.getHistoryById(id));

@@ -6,7 +6,7 @@ import { MaterialRequestPage } from './pages/MaterialRequestPage.jsx'
 import { RepairHistoryPage } from './pages/RepairHistoryPage.jsx'
 import { DailyLogPage } from './pages/DailyLogPage.jsx'
 import { WorkOrderPage } from './pages/WorkOrderPage.jsx'
-import { ASSESSMENT_ROLES, MAINTENANCE_ROLES, WORK_ORDER_ROLES } from './maintenance.nav.js'
+import { ASSESSMENT_ROLES, MAINTENANCE_ROLES, WORK_ORDER_ROLES, REPAIR_HISTORY_ROLES } from './maintenance.nav.js'
 import { ROLES } from '@/features/auth/utils/roles.js'
 
 export const maintenanceRoutes = [
@@ -45,7 +45,7 @@ export const maintenanceRoutes = [
   {
     path: 'maintenance/repair-histories',
     element: (
-      <RequireRole roles={MAINTENANCE_ROLES}>
+      <RequireRole roles={REPAIR_HISTORY_ROLES}>
         <RepairHistoryPage />
       </RequireRole>
     ),
