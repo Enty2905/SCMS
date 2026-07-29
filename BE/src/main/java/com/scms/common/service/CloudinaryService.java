@@ -26,6 +26,7 @@ public class CloudinaryService {
      * @param folder The folder in Cloudinary where the file should be stored (e.g. "scms/avatars").
      * @return The secure URL of the uploaded image.
      */
+    @SuppressWarnings("unchecked")
     public String uploadFile(MultipartFile file, String folder) {
         try {
             Map<String, Object> uploadParams = ObjectUtils.asMap(

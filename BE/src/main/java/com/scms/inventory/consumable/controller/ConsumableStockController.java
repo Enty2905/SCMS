@@ -9,11 +9,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Consumable Stock", description = "API xem tồn kho vật tư tiêu hao")
 @RestController
 @RequestMapping("/consumable-stocks")
+@PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT', 'TEAM_LEADER', 'REPAIR_MANAGER')")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ConsumableStockController {

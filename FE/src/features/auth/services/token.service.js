@@ -65,6 +65,21 @@ export function getStoredAuth() {
   }
 }
 
+export function setStoredAuth({ token, refreshToken }) {
+  if (!token) return
+
+  globalThis.localStorage.setItem(TOKEN_KEY, token)
+
+  if (refreshToken) {
+    globalThis.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  }
+
+  // Trigger WebSocketContext to pick up new token
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-token-changed'))
+  }
+}
+
 export function persistAuthTokens({ token, refreshToken }) {
   if (!canUseStorage()) {
     return
@@ -75,6 +90,10 @@ export function persistAuthTokens({ token, refreshToken }) {
   if (refreshToken) {
     globalThis.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
   }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-token-changed'))
+  }
 }
 
 export function clearStoredAuth() {
@@ -84,6 +103,10 @@ export function clearStoredAuth() {
 
   globalThis.localStorage.removeItem(TOKEN_KEY)
   globalThis.localStorage.removeItem(REFRESH_TOKEN_KEY)
+  
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-token-changed'))
+  }
 }
 
 export function parseScope(scope) {

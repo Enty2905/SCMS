@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -163,8 +163,9 @@ public class EquipmentService {
     public EquipmentImageResponse uploadEquipmentImage(UUID equipmentId, MultipartFile file) {
         log.info("Uploading image for equipment: {}", equipmentId);
 
-        Equipment equipment = equipmentRepository.findById(equipmentId)
-                .orElseThrow(() -> new AppException(ErrorCode.EQUIPMENT_NOT_FOUND));
+        if (!equipmentRepository.existsById(equipmentId)) {
+            throw new AppException(ErrorCode.EQUIPMENT_NOT_FOUND);
+        }
 
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File tải lên trống!");

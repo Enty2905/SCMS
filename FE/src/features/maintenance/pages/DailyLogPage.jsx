@@ -13,30 +13,31 @@ export function DailyLogPage() {
   )
 
   const [keyword, setKeyword] = useState('')
+  const [status, setStatus] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState(null)
   const [selectedOrderNumber, setSelectedOrderNumber] = useState('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState('')
   const [viewDetailOrder, setViewDetailOrder] = useState(null)
 
   const loadData = useCallback(
-    (page = 0, searchKw = '') => {
-      dispatch(searchWorkOrders({ keyword: searchKw, page, size: 10 }))
+    (page = 0, searchKw = '', searchStatus = '') => {
+      dispatch(searchWorkOrders({ keyword: searchKw, status: searchStatus, page, size: 10 }))
     },
     [dispatch]
   )
 
   useEffect(() => {
-    loadData(0, '')
+    loadData(0, '', '')
   }, [loadData])
 
   const handleSearch = (e) => {
     e.preventDefault()
-    loadData(0, keyword)
+    loadData(0, keyword, status)
   }
 
   const handlePageChange = (newPage) => {
     if (newPage >= 0 && newPage < workOrdersTotalPages) {
-      loadData(newPage, keyword)
+      loadData(newPage, keyword, status)
     }
   }
 
@@ -79,6 +80,23 @@ export function DailyLogPage() {
               />
             </div>
           </div>
+          
+          <div className="w-full sm:w-48">
+            <select
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value)
+                loadData(0, keyword, e.target.value)
+              }}
+              className="h-[38px] w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-violet-500 cursor-pointer text-slate-700"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="open">Đang mở</option>
+              <option value="paused">Tạm dừng / Đang đóng</option>
+              <option value="locked">Hoàn thành</option>
+            </select>
+          </div>
+          
           <button
             type="submit"
             disabled={workOrderLoading}
@@ -237,7 +255,7 @@ export function DailyLogPage() {
           }}
           onSuccess={() => {
             // Khi Modal thực hiện đóng/mở thành công, load lại bảng ở background
-            loadData(workOrdersPage, keyword)
+            loadData(workOrdersPage, keyword, status)
             
             // Cập nhật lại status nội bộ để modal tự cập nhật quyền Mở/Đóng nếu cần
             // Lấy status mới nhất từ server thông qua mảng vừa fetch (hoặc đóng mở thì ta có thể đoán)

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { ROLES, hasAnyRole } from '@/features/auth/utils/roles.js'
@@ -464,6 +465,8 @@ export function RepairRequestPage() {
   const [currentPage, setCurrentPage] = useState(0)
   const [priority, setPriority] = useState('all')
   const [selectedRequestId, setSelectedRequestId] = useState(null)
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('highlight')
 
   const canCreateWorkOrder = useMemo(() => {
     return hasAnyRole(currentUser, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])
@@ -484,10 +487,34 @@ export function RepairRequestPage() {
   const totalElements = filteredRequests.length
   const totalPages = Math.ceil(totalElements / pageSize)
 
+  // Jump to the page of the highlighted row
+  useEffect(() => {
+    if (highlightId && filteredRequests.length > 0) {
+      const index = filteredRequests.findIndex(r => r.requestId === highlightId)
+      if (index !== -1) {
+        const targetPage = Math.floor(index / pageSize)
+        setCurrentPage(targetPage)
+      }
+    }
+  }, [highlightId, filteredRequests])
+
   const paginatedRequests = useMemo(() => {
     const start = currentPage * pageSize
     return filteredRequests.slice(start, start + pageSize)
   }, [filteredRequests, currentPage])
+
+  // Scroll to highlighted row
+  useEffect(() => {
+    if (highlightId && paginatedRequests.some(r => r.requestId === highlightId)) {
+      // Use setTimeout to ensure DOM is updated after pagination changes
+      setTimeout(() => {
+        const el = document.getElementById(`row-${highlightId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 150)
+    }
+  }, [highlightId, paginatedRequests])
 
   function handlePageChange(newPage) {
     if (newPage >= 0 && newPage < totalPages) {
@@ -621,6 +648,14 @@ export function RepairRequestPage() {
                     <td className="px-5 py-4 text-center font-medium text-slate-500">
                       {currentPage * pageSize + index + 1}
                     </td>
+                ? paginatedRequests.map((r) => (
+                  <tr 
+                    id={`row-${r.requestId}`}
+                    className={`transition-colors duration-500 ${
+                      highlightId === r.requestId ? 'bg-amber-100/60 animate-pulse ring-2 ring-inset ring-amber-400' : 'hover:bg-slate-50/80'
+                    }`} 
+                    key={r.requestId}
+                  >
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800">{r.equipmentKksCode}</p>
                       <p className="mt-0.5 text-xs text-slate-500">

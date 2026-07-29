@@ -31,6 +31,8 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/uploads/**",
+            "/ws/**",
+            "/ws-sockjs/**",
             "/error"
     };
 
