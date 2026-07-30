@@ -1,13 +1,15 @@
 import { Provider } from 'react-redux'
 
-import { store } from './store.js'
+import { ChatProvider } from '@/features/chat/components/ChatProvider.jsx'
 import { WebSocketProvider } from '@/shared/contexts/WebSocketContext.jsx'
+
+import { store } from './store.js'
 
 export function AppProviders({ children }) {
   return (
     <Provider store={store}>
       <WebSocketProvider>
-        {children}
+        <ChatProvider>{children}</ChatProvider>
       </WebSocketProvider>
     </Provider>
   )

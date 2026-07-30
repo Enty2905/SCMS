@@ -4,6 +4,7 @@ import { env } from '@/shared/config/env.js'
 
 const WebSocketContext = createContext(null)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWebSocket = () => useContext(WebSocketContext)
 
 export function WebSocketProvider({ children }) {
@@ -30,31 +31,26 @@ export function WebSocketProvider({ children }) {
 
   useEffect(() => {
     if (!token) {
-      if (stompClient?.active) stompClient.deactivate()
-      setStompClient(null)
-      setIsConnected(false)
-      return
+      return undefined
     }
 
     // Use standard WebSockets
-    const wsUrl = env.apiUrl.replace(/^http/, 'ws') + '/ws'
+    const wsUrl = env.apiUrl.replace(/^http/, 'ws') + '/ws-chat'
     
     const client = new Client({
       brokerURL: wsUrl,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      debug: function (str) {
-        // console.log('STOMP: ' + str);
-      },
+      debug: () => {},
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     })
 
-    client.onConnect = (frame) => {
+    client.onConnect = () => {
+      setStompClient(client)
       setIsConnected(true)
-      console.log('Connected to WebSocket')
     }
 
     client.onStompError = (frame) => {
@@ -67,11 +63,13 @@ export function WebSocketProvider({ children }) {
     }
 
     client.activate()
-    setStompClient(client)
 
     return () => {
       if (client.active) {
-        client.deactivate()
+        client.deactivate().finally(() => {
+          setStompClient((current) => (current === client ? null : current))
+          setIsConnected(false)
+        })
       }
     }
   }, [token])

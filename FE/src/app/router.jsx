@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { LoginPage } from '@/features/auth/pages/LoginPage.jsx'
+import { chatRoutes } from '@/features/chat/chat.routes.jsx'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage.jsx'
 import { hrRoutes } from '@/features/hr/hr.routes.jsx'
 import { inventoryRoutes } from '@/features/inventory/inventory.routes.jsx'
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       ...equipmentRoutes,
       ...maintenanceRoutes,
       ...repairRequestRoutes,
+      ...chatRoutes,
       {
         path: 'access-denied',
         element: <AccessDeniedPage />,
