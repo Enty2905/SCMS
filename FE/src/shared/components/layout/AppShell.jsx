@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
   Bell,
-  LayoutDashboard,
   LogOut,
   Zap,
 } from 'lucide-react'
@@ -27,19 +26,12 @@ import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
 import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
 import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
 import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
-import { fetchEquipments } from '@/features/equipment/services/equipment.service.js'
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
 import { fetchTools } from '@/features/inventory/services/tool.service.js'
 import { fetchAllRepairRequests } from '@/features/repairrequest/services/repairRequest.service.js'
 
 
 const navItems = [
-  {
-    label: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    roles: [],
-  },
   ...chatNavItems,
   ...hrNavItems,
   ...inventoryNavItems,
@@ -84,43 +76,6 @@ export function AppShell() {
     async function loadNotifications() {
       try {
         let allNotifications = []
-
-        // Load equipment warnings for equipment-related roles
-        if (hasAnyRole(user, [ROLES.OPS_MANAGER, ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])) {
-          try {
-            const equipments = await fetchEquipments()
-            const warnings = equipments
-              .filter((eq) => {
-                const statusLower = eq.status?.toLowerCase() || ''
-                return (
-                  statusLower === 'sự cố' ||
-                  statusLower === 'bảo dưỡng' ||
-                  statusLower === 'broken' ||
-                  statusLower === 'maintenance'
-                )
-              })
-              .map((eq) => {
-                const statusLower = eq.status?.toLowerCase() || ''
-                const isBroken = statusLower === 'sự cố' || statusLower === 'broken'
-                return {
-                  id: eq.id,
-                  kksCode: eq.kksCode,
-                  name: eq.equipmentName,
-                  status: eq.status,
-                  systemId: eq.systemId,
-                  title: isBroken ? 'Cảnh báo Sự cố' : 'Thông tin Bảo dưỡng',
-                  message: isBroken
-                    ? `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang gặp sự cố!`
-                    : `Thiết bị ${eq.equipmentName} (${eq.kksCode}) đang bảo dưỡng.`,
-                  type: isBroken ? 'error' : 'warning',
-                  category: 'equipment',
-                }
-              })
-            allNotifications = [...allNotifications, ...warnings]
-          } catch (err) {
-            console.error('Failed to load equipment notifications', err)
-          }
-        }
 
         // Load consumable stock warnings STRICTLY for TKVT role (VT)
         // TODO: Load Spare Part (VTTT) warnings here in the future when VTTT stock is implemented
