@@ -113,6 +113,7 @@ export function DailyLogPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
               <tr>
+                <th className="px-6 py-4 font-bold w-20">STT</th>
                 <th className="px-6 py-4 font-bold w-56">Số phiếu (PCT)</th>
                 <th className="px-6 py-4 font-bold w-40">Thiết bị (KKS)</th>
                 <th className="px-6 py-4 font-bold w-64">Nội dung</th>
@@ -125,20 +126,21 @@ export function DailyLogPage() {
             <tbody className="divide-y divide-slate-100">
               {workOrderLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <Loader2 className="animate-spin mx-auto mb-2" size={24} />
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : workOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     Không tìm thấy phiếu công tác nào.
                   </td>
                 </tr>
               ) : (
-                workOrders.map((wo) => (
+                workOrders.map((wo, index) => (
                   <tr key={wo.orderId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 text-slate-500 text-sm">{workOrdersPage * 10 + index + 1}</td>
                     <td className="px-6 py-4 font-medium text-violet-700">{wo.orderNumber}</td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-700">{wo.equipmentKksCode || '—'}</div>

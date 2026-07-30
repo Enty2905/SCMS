@@ -160,6 +160,7 @@ export function MyRepairRequestsPage() {
           <table className="w-full min-w-[800px] border-collapse text-left text-sm">
             <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-600">
               <tr>
+                <th className="px-5 py-3 w-20">STT</th>
                 <th className="px-5 py-3">Thiết bị</th>
                 <th className="px-5 py-3">Mô tả sự cố</th>
                 <th className="px-5 py-3">Mức độ</th>
@@ -171,7 +172,7 @@ export function MyRepairRequestsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-500" colSpan={6}>
+                  <td className="px-5 py-10 text-center text-slate-500" colSpan={7}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -179,7 +180,7 @@ export function MyRepairRequestsPage() {
 
               {!loading && !pageItems.length ? (
                 <tr>
-                  <td className="px-5 py-10 text-center" colSpan={6}>
+                  <td className="px-5 py-10 text-center" colSpan={7}>
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <ClipboardList size={32} />
                       <span>Chưa có yêu cầu nào. Bấm &quot;Tạo yêu cầu&quot; để bắt đầu.</span>
@@ -189,8 +190,11 @@ export function MyRepairRequestsPage() {
               ) : null}
 
               {!loading
-                ? pageItems.map((item) => (
+                ? pageItems.map((item, index) => (
                     <tr className="hover:bg-slate-50/80" key={item.requestId}>
+                      <td className="px-5 py-4 text-slate-500 text-sm">
+                        {safePage * PAGE_SIZE + index + 1}
+                      </td>
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{item.equipmentName}</p>
                         <p className="text-xs text-slate-400">{item.equipmentKksCode}</p>
