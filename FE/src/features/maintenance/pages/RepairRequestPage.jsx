@@ -644,11 +644,6 @@ export function RepairRequestPage() {
 
               {!loading
                 ? paginatedRequests.map((r, index) => (
-                  <tr className="hover:bg-slate-50/80" key={r.requestId}>
-                    <td className="px-5 py-4 text-center font-medium text-slate-500">
-                      {currentPage * pageSize + index + 1}
-                    </td>
-                ? paginatedRequests.map((r) => (
                   <tr 
                     id={`row-${r.requestId}`}
                     className={`transition-colors duration-500 ${
@@ -656,6 +651,9 @@ export function RepairRequestPage() {
                     }`} 
                     key={r.requestId}
                   >
+                    <td className="px-5 py-4 text-center font-medium text-slate-500">
+                      {currentPage * pageSize + index + 1}
+                    </td>
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800">{r.equipmentKksCode}</p>
                       <p className="mt-0.5 text-xs text-slate-500">

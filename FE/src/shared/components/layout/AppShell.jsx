@@ -11,6 +11,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { clearStoredAuth } from '@/features/auth/services/token.service.js'
 import { logout } from '@/features/auth/store/auth.reducer.js'
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
+import { chatNavItems } from '@/features/chat/chat.nav.js'
+import { selectChatUnreadTotal } from '@/features/chat/store/chat.selectors.js'
 import {
   getPrimaryRoleLabel,
   hasAnyRole,
@@ -38,6 +40,7 @@ const navItems = [
     icon: LayoutDashboard,
     roles: [],
   },
+  ...chatNavItems,
   ...hrNavItems,
   ...inventoryNavItems,
   ...equipmentNavItems,
@@ -51,6 +54,7 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
+  const chatUnreadTotal = useSelector(selectChatUnreadTotal)
 
   // State for dynamic notifications
   const [isNotifOpen, setIsNotifOpen] = useState(false)
@@ -73,8 +77,8 @@ export function AppShell() {
 
   useEffect(() => {
     if (!canSeeNotifications) {
-      setNotifications([])
-      return
+      const clearTimer = globalThis.setTimeout(() => setNotifications([]), 0)
+      return () => globalThis.clearTimeout(clearTimer)
     }
 
     async function loadNotifications() {
@@ -277,7 +281,7 @@ export function AppShell() {
         subscription.unsubscribe()
       }
     }
-  }, [isConnected, stompClient, canSeeNotifications])
+  }, [isConnected, stompClient, canSeeNotifications, user])
 
   // Lắng nghe sự kiện realtime qua WebSocket cho yêu cầu cấp phát vật tư
   useEffect(() => {
@@ -311,7 +315,7 @@ export function AppShell() {
         subscription.unsubscribe()
       }
     }
-  }, [isConnected, stompClient])
+  }, [isConnected, stompClient, user])
 
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
@@ -384,7 +388,12 @@ export function AppShell() {
               to={item.href}
             >
               <item.icon size={18} />
-              {item.label}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {item.href === '/dashboard/chat' && chatUnreadTotal > 0 ? (
+                <span className="grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {chatUnreadTotal > 99 ? '99+' : chatUnreadTotal}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

@@ -40,4 +40,6 @@ public interface DepartmentRepository extends JpaRepository<Department, UUID> {
     List<Object[]> searchDepartmentsWithEmployeeCount(@Param("search") String search);
 
     Optional<Department> findByDepartmentCode(String departmentCode);
+
+    List<Department> findAllByOrderByDepartmentNameAsc();
 }
