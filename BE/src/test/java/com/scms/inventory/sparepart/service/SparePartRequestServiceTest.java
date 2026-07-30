@@ -92,7 +92,7 @@ class SparePartRequestServiceTest {
 
         SparePartRequest request = SparePartRequest.builder()
                 .reqId(reqId)
-                .reqNumber("YCVTT-26-08-05-0001")
+                .reqNumber("YCVTTT-26-08-05-0001")
                 .workOrder(wo)
                 .status("approved")
                 .createdBy(user)
@@ -123,7 +123,7 @@ class SparePartRequestServiceTest {
 
             assertTrue(extractedText.contains("CÔNG TY SCSM"));
             assertFalse(extractedText.contains("CHI NHÁNH HÀ TĨNH"));
-            assertTrue(extractedText.contains("Số: YCVTT-26-08-05-0001/PX"));
+            assertTrue(extractedText.contains("Số: YCVTTT-26-08-05-0001/PX"));
             assertTrue(extractedText.contains("Biểu số 03-TT"));
             assertTrue(extractedText.contains("Ban hành theo quyết định số 15/2006/QĐ-BTC"));
             assertTrue(extractedText.contains("GIẤY ĐỀ NGHỊ XUẤT KHO VẬT TƯ"));
