@@ -216,7 +216,52 @@ public class ConsumableRequestService {
         consumableRequestRepository.save(request);
 
         log.info("Đã cấp phát vật tư tiêu hao cho phiếu {} bởi {}", request.getReqNumber(), username);
-        return toResponse(request);
+        ConsumableRequestResponse issuedResponse = toResponse(request);
+
+        // Gửi thông báo phản hồi real-time về cho người tạo phiếu
+        java.util.Map<String, Object> responseNotif = new java.util.HashMap<>();
+        responseNotif.put("reqId", issuedResponse.getReqId());
+        responseNotif.put("reqNumber", issuedResponse.getReqNumber());
+        responseNotif.put("status", "issued");
+        responseNotif.put("type", "consumable");
+        responseNotif.put("createdByUsername", issuedResponse.getCreatedByUsername());
+        responseNotif.put("issuedByName", issuedResponse.getIssuedByName());
+        notificationService.sendMaterialRequestResponseNotification(responseNotif);
+
+        return issuedResponse;
+    }
+
+    /**
+     * Thủ kho từ chối cấp phát vật tư tiêu hao.
+     * Chỉ cho phép khi phiếu đang ở trạng thái pending.
+     */
+    @Transactional
+    public ConsumableRequestResponse rejectRequest(UUID reqId, String reason, String username) {
+        ConsumableRequest request = consumableRequestRepository.findByIdWithDetails(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        if (!"pending".equals(request.getStatus())) {
+            throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+        }
+
+        request.setStatus("rejected");
+        request.setNote(reason);
+        consumableRequestRepository.save(request);
+
+        log.info("Phiếu vật tư tiêu hao {} đã bị từ chối bởi {} với lý do: {}", request.getReqNumber(), username, reason);
+        ConsumableRequestResponse rejectedResponse = toResponse(request);
+
+        // Gửi thông báo phản hồi real-time về cho người tạo phiếu
+        java.util.Map<String, Object> responseNotif = new java.util.HashMap<>();
+        responseNotif.put("reqId", rejectedResponse.getReqId());
+        responseNotif.put("reqNumber", rejectedResponse.getReqNumber());
+        responseNotif.put("status", "rejected");
+        responseNotif.put("type", "consumable");
+        responseNotif.put("reason", reason);
+        responseNotif.put("createdByUsername", rejectedResponse.getCreatedByUsername());
+        notificationService.sendMaterialRequestResponseNotification(responseNotif);
+
+        return rejectedResponse;
     }
 
     /**
@@ -517,5 +562,40 @@ public class ConsumableRequestService {
             case "cancelled" -> "Đã hủy";
             default -> status;
         };
+    }
+
+    /**
+     * Lấy danh sách thông báo chưa đọc.
+     */
+    public java.util.List<java.util.Map<String, Object>> getUnreadNotifications(String username) {
+        return consumableRequestRepository.findUnreadNotifications(username).stream()
+                .map(r -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("reqId", r.getReqId());
+                    map.put("reqNumber", r.getReqNumber());
+                    map.put("status", r.getStatus());
+                    map.put("type", "consumable");
+                    map.put("reason", r.getNote());
+                    map.put("createdByUsername", r.getCreatedBy() != null ? r.getCreatedBy().getUsername() : null);
+                    map.put("issuedByName", r.getIssuedBy() != null && r.getIssuedBy().getEmployee() != null 
+                        ? r.getIssuedBy().getEmployee().getName() : (r.getIssuedBy() != null ? r.getIssuedBy().getUsername() : null));
+                    map.put("timestamp", r.getIssuedAt() != null ? r.getIssuedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 
+                        (r.getCreatedAt() != null ? r.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : System.currentTimeMillis()));
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Đánh dấu đã đọc.
+     */
+    @Transactional
+    public void markAsRead(UUID reqId, String username) {
+        ConsumableRequest request = consumableRequestRepository.findById(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        if (request.getCreatedBy() != null && request.getCreatedBy().getUsername().equals(username)) {
+            request.setIsRead(true);
+            consumableRequestRepository.save(request);
+        }
     }
 }

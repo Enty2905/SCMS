@@ -33,6 +33,18 @@ export async function issueConsumableRequest(id, data) {
 }
 
 /**
+ * Thủ kho từ chối phiếu cấp vật tư tiêu hao
+ * @param {string} id - reqId của phiếu
+ * @param {string} reason - Lý do từ chối
+ */
+export async function rejectConsumableRequest(id, reason = '') {
+  const params = new URLSearchParams()
+  if (reason) params.set('reason', reason)
+  const response = await apiClient.post(`/maintenance/consumable-requests/${id}/reject?${params}`)
+  return response.data
+}
+
+/**
  * Upload PDF phiếu cấp vật tư tiêu hao đã ký lên Cloudinary
  */
 export async function uploadConsumableRequestPdf(id, file) {

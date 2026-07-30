@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, ExternalLink, FileText, Search, Send, Eye } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, ExternalLink, FileText, Search, Send, Eye, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { fetchConsumableStocks } from '../services/consumableStock.service.js'
@@ -6,12 +6,14 @@ import {
   fetchConsumableRequests,
   getConsumableRequestById,
   issueConsumableRequest,
+  rejectConsumableRequest,
   uploadConsumableRequestPdf,
 } from '../services/consumableRequest.service.js'
 import {
   fetchSparePartRequests,
   getSparePartRequestById,
   issueSparePartRequest,
+  rejectSparePartRequest,
   uploadSparePartRequestPdf,
 } from '../services/sparePartRequest.service.js'
 import { sparePartStockService } from '../services/sparePartStock.service.js'
@@ -26,6 +28,7 @@ const STATUS_FILTERS = [
   { value: '', label: 'Tất cả' },
   { value: 'pending', label: 'Chờ cấp phát' },
   { value: 'issued', label: 'Đã cấp phát' },
+  { value: 'rejected', label: 'Từ chối' },
 ]
 
 const STATUS_BADGE = {
@@ -40,6 +43,7 @@ function StatusBadge({ status }) {
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${badge.cls}`}>
       {status === 'pending' && <Clock size={11} />}
       {status === 'issued' && <CheckCircle2 size={11} />}
+      {status === 'rejected' && <XCircle size={11} />}
       {badge.label}
     </span>
   )
@@ -157,6 +161,18 @@ export function MaterialDispatchPage() {
     const detailFn = isConsumable ? getConsumableRequestById : getSparePartRequestById
     const updated = await detailFn(targetId)
     setSelectedRequest(updated.result ?? updated)
+    loadData()
+  }
+
+  async function handleReject(id, reason) {
+    if (!selectedRequest) return
+    const targetId = id || selectedRequest.reqId
+    const rejectFn = isConsumable ? rejectConsumableRequest : rejectSparePartRequest
+    await rejectFn(targetId, reason)
+    // Đóng modal và refresh danh sách
+    setSelectedRequest(null)
+    setStocks({})
+    loadData()
   }
 
   async function handleUploadPdf(id, file) {
@@ -415,6 +431,7 @@ export function MaterialDispatchPage() {
           type={activeTab}
           onClose={handleCloseModal}
           onIssue={handleIssue}
+          onReject={handleReject}
           onUploadPdf={handleUploadPdf}
         />
       )}

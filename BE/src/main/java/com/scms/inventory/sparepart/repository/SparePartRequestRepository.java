@@ -43,4 +43,12 @@ public interface SparePartRequestRepository extends JpaRepository<SparePartReque
         WHERE r.reqId = :reqId
     """)
     Optional<SparePartRequest> findByIdWithDetails(UUID reqId);
+
+    @Query("""
+        SELECT r FROM SparePartRequest r
+        WHERE r.createdBy.username = :username
+          AND r.status IN ('issued', 'rejected')
+          AND r.isRead = false
+    """)
+    java.util.List<SparePartRequest> findUnreadNotifications(@Param("username") String username);
 }

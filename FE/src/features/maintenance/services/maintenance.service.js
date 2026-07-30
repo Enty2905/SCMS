@@ -212,6 +212,16 @@ export async function exportConsumableRequestPdfService(reqId) {
   return response.blob()
 }
 
+export async function fetchUnreadConsumableNotificationsService() {
+  const response = await apiClient.get('/maintenance/consumable-requests/unread-notifications')
+  return response.data || []
+}
+
+export async function markConsumableNotificationReadService(reqId) {
+  const response = await apiClient.put(`/maintenance/consumable-requests/${reqId}/mark-read`)
+  return response.data
+}
+
 // ── Spare Part Request ────────────────────────────────────────────────────────
 
 export async function fetchSparePartRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
@@ -247,6 +257,16 @@ export async function exportSparePartRequestPdfService(reqId) {
   }
 
   return response.blob()
+}
+
+export async function fetchUnreadSparePartNotificationsService() {
+  const response = await apiClient.get('/maintenance/spare-part-requests/unread-notifications')
+  return response.data || []
+}
+
+export async function markSparePartNotificationReadService(reqId) {
+  const response = await apiClient.put(`/maintenance/spare-part-requests/${reqId}/mark-read`)
+  return response.data
 }
 
 // ── Repair History ────────────────────────────────────────────────────────────

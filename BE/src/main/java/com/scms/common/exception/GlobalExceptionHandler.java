@@ -131,8 +131,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleGenericException(Exception exception) {
         log.error("Unhandled exception occurred", exception);
 
+        // Debugging: return the exception message in the response
+        String errorMessage = exception.getMessage();
+        if (exception.getCause() != null) {
+            errorMessage += " | Cause: " + exception.getCause().getMessage();
+        }
+
         return ResponseEntity.internalServerError().body(
                 ApiResponse.error(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
-                        ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()));
+                        "Uncategorized error: " + errorMessage));
     }
 }
