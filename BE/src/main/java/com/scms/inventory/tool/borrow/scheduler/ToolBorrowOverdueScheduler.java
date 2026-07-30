@@ -28,10 +28,10 @@ public class ToolBorrowOverdueScheduler {
     ToolBorrowOverdueEmailScheduler emailScheduler;
 
     /**
-     * Chạy mỗi 15 phút để đánh dấu phiếu mượn quá hạn.
+     * Chạy mỗi 1 phút để đánh dấu phiếu mượn quá hạn và gửi mail ngay.
      * Cron: giây phút giờ ngày tháng thứ
      */
-    @Scheduled(cron = "0 */15 * * * *")
+    @Scheduled(cron = "0 * * * * *")
     @Transactional
     public void markOverdueBorrows() {
         LocalDateTime now = LocalDateTime.now();

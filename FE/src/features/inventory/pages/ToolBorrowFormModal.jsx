@@ -119,8 +119,8 @@ export function ToolBorrowFormModal({ tool, onClose, onSuccess }) {
     setApiError(null)
     if (!validate() || submitting) return
 
-    // Format dueDate theo ISO-8601 (bỏ timezone suffix 'Z')
-    const dueDateIso = new Date(dueDate).toISOString().slice(0, 19)
+    // Giữ nguyên múi giờ Local của máy tính (VN), chỉ thêm giây ':00' để Backend parse được
+    const dueDateIso = dueDate + ':00'
 
     const payload = {
       toolId: tool.toolId,
