@@ -81,6 +81,7 @@ export function ConsumableImportPage({ hideHeader }) {
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Mã phiếu</th>
                 <th className="px-5 py-3">Người nhập</th>
                 <th className="px-5 py-3">Ngày nhập</th>
@@ -92,7 +93,7 @@ export function ConsumableImportPage({ hideHeader }) {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -100,15 +101,18 @@ export function ConsumableImportPage({ hideHeader }) {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
                     Chưa có phiếu nhập nào.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? items.map((item) => (
+                ? items.map((item, index) => (
                     <tr className="hover:bg-slate-50/80" key={item.importId}>
+                      <td className="px-5 py-4 text-center text-slate-600 font-medium">
+                        {page * 10 + index + 1}
+                      </td>
                       <td className="px-5 py-4 font-semibold text-violet-600">
                         {item.importNumber}
                       </td>

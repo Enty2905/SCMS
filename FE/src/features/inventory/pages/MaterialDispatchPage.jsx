@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, ExternalLink, FileText, Search } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, ExternalLink, FileText, Search, Send, Eye } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { fetchConsumableStocks } from '../services/consumableStock.service.js'
@@ -262,27 +262,28 @@ export function MaterialDispatchPage() {
           <table className="w-full min-w-[850px] border-collapse text-left text-sm">
             <thead className="bg-slate-50/80 text-xs uppercase tracking-wide font-bold text-slate-600">
               <tr>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Số phiếu</th>
                 <th className="px-5 py-3">Phiếu công tác</th>
                 <th className="px-5 py-3">Người yêu cầu</th>
                 <th className="px-5 py-3">Ngày tạo</th>
                 <th className="px-5 py-3">Số VT</th>
                 <th className="px-5 py-3">Trạng thái</th>
-                <th className="px-5 py-3">PDF</th>
+                <th className="px-5 py-3 text-center">PDF</th>
                 <th className="px-5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading && (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-400 text-sm" colSpan={8}>
+                  <td className="px-5 py-10 text-center text-slate-400 text-sm" colSpan={9}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               )}
               {!loading && items.length === 0 && (
                 <tr>
-                  <td className="px-5 py-10 text-center" colSpan={8}>
+                  <td className="px-5 py-10 text-center" colSpan={9}>
                     <div className="flex flex-col items-center gap-2">
                       <FileText className="text-slate-300" size={32} />
                       <p className="text-slate-400 text-sm">Không có phiếu nào phù hợp</p>
@@ -290,8 +291,11 @@ export function MaterialDispatchPage() {
                   </td>
                 </tr>
               )}
-              {!loading && items.map((req) => (
+              {!loading && items.map((req, index) => (
                 <tr className="hover:bg-slate-50/70 transition-colors" key={req.reqId}>
+                  <td className="px-5 py-4 text-center text-slate-600 font-medium">
+                    {page * 10 + index + 1}
+                  </td>
                   <td className="px-5 py-4 font-mono text-sm font-semibold text-violet-700">
                     {req.reqNumber}
                   </td>
@@ -317,34 +321,43 @@ export function MaterialDispatchPage() {
                   <td className="px-5 py-4">
                     <StatusBadge status={req.status} />
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 text-center">
                     {req.pdfUrl ? (
                       <a
-                        className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-800 hover:underline transition-colors"
+                        className="inline-flex p-2 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
                         href={req.pdfUrl}
                         rel="noreferrer"
                         target="_blank"
+                        title="Xem file PDF"
                       >
-                        <ExternalLink size={12} />
-                        Xem PDF
+                        <FileText size={16} />
                       </a>
                     ) : (
-                      <span className="text-xs text-slate-300">Chưa có</span>
+                      <span className="text-slate-300 font-bold">—</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right">
-                    <button
-                      className={[
-                        'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all',
-                        req.status === 'pending'
-                          ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                      ].join(' ')}
-                      disabled={modalLoading}
-                      onClick={() => handleOpenModal(req)}
-                    >
-                      {req.status === 'pending' ? 'Cấp phát' : 'Xem chi tiết'}
-                    </button>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end text-slate-400">
+                      {req.status === 'pending' ? (
+                        <button
+                          className="rounded-md p-2 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                          disabled={modalLoading}
+                          onClick={() => handleOpenModal(req)}
+                          title="Cấp phát"
+                        >
+                          <Send size={16} />
+                        </button>
+                      ) : (
+                        <button
+                          className="rounded-md p-2 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                          disabled={modalLoading}
+                          onClick={() => handleOpenModal(req)}
+                          title="Xem chi tiết"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

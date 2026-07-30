@@ -114,6 +114,7 @@ export function ConsumableStockPage({ hideHeader }) {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Mã vật tư</th>
                 <th className="px-5 py-3">Tên vật tư</th>
                 <th className="px-5 py-3">Đơn vị</th>
@@ -127,7 +128,7 @@ export function ConsumableStockPage({ hideHeader }) {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -135,18 +136,21 @@ export function ConsumableStockPage({ hideHeader }) {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={9}>
                     Không có vật tư nào phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? items.map((item) => {
+                ? items.map((item, index) => {
                     const statusLabel = STATUS_LABELS[item.status] || item.status
                     const badgeClass = STATUS_BADGES[item.status] || 'bg-slate-100 text-slate-600'
                     return (
                       <tr className="hover:bg-slate-50/80" key={item.consumableId}>
+                        <td className="px-5 py-4 text-center text-slate-600 font-medium">
+                          {page * 10 + index + 1}
+                        </td>
                         <td className="px-5 py-4 font-semibold text-slate-950">
                           {item.code}
                         </td>
