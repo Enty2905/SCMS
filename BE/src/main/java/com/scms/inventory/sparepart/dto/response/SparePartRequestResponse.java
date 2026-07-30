@@ -22,5 +22,8 @@ public class SparePartRequestResponse {
     String createdByUsername;
     String createdByName;
     LocalDateTime createdAt;
+    String issuedByName;
+    LocalDateTime issuedAt;
+    String note;
     List<SparePartRequestItemResponse> items;
 }

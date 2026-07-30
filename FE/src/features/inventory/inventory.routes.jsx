@@ -4,6 +4,7 @@ import { MaterialDashboardPage } from './pages/MaterialDashboardPage.jsx'
 import { MaterialListPage } from './pages/MaterialListPage.jsx'
 import { MaterialImportWrapperPage } from './pages/MaterialImportWrapperPage.jsx'
 import { MaterialStockWrapperPage } from './pages/MaterialStockWrapperPage.jsx'
+import { MaterialDispatchPage } from './pages/MaterialDispatchPage.jsx'
 import { ToolDashboardPage } from './pages/ToolDashboardPage.jsx'
 import { ToolListPage } from './pages/ToolListPage.jsx'
 import { DamagedToolPage } from './pages/DamagedToolPage.jsx'
@@ -40,6 +41,14 @@ export const inventoryRoutes = [
     element: (
       <RequireRole roles={[ROLES.WAREHOUSE_MAT]}>
         <MaterialStockWrapperPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'inventory/material-dispatch',
+    element: (
+      <RequireRole roles={[ROLES.WAREHOUSE_MAT]}>
+        <MaterialDispatchPage />
       </RequireRole>
     ),
   },

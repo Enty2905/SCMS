@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import { AuditLogPage } from './pages/AuditLogPage.jsx'
 import { DepartmentListPage } from './pages/DepartmentListPage.jsx'
 import { EmployeeListPage } from './pages/EmployeeListPage.jsx'
 import { HrReportsPage } from './pages/HrReportsPage.jsx'
@@ -28,6 +29,14 @@ export const hrRoutes = [
     element: (
       <RequireRole roles={HR_ACCESS_ROLES}>
         <UserAccountsPage />
+      </RequireRole>
+    ),
+  },
+  {
+    path: 'hr/audit-logs',
+    element: (
+      <RequireRole roles={HR_ACCESS_ROLES}>
+        <AuditLogPage />
       </RequireRole>
     ),
   },

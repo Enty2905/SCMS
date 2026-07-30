@@ -1,19 +1,32 @@
 import {
   AlertTriangle,
+  CheckCircle2,
   Loader2,
+  Plus,
   RefreshCw,
   Search,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 
-import { fetchHrDirectoryData } from '@/features/hr/store/hr-directory.thunks.js'
+import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
+import { ROLES, hasAnyRole } from '@/features/auth/utils/roles.js'
 import { selectHrEmployees } from '@/features/hr/store/hr-directory.selectors.js'
+import { fetchHrDirectoryData } from '@/features/hr/store/hr-directory.thunks.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 
-import { selectRequests, selectRequestsError, selectRequestsLoading } from '../store/maintenance.selectors.js'
-import { fetchPendingRequests } from '../store/maintenance.thunks.js'
+import { clearWorkOrderError } from '../store/maintenance.reducer.js'
+import {
+  selectRequests,
+  selectRequestsError,
+  selectRequestsLoading,
+  selectWorkOrder,
+  selectWorkOrderError,
+  selectWorkOrderLoading,
+} from '../store/maintenance.selectors.js'
+import { createWorkOrder, fetchPendingRequests } from '../store/maintenance.thunks.js'
 
 // ── Priority config ──────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -178,6 +191,20 @@ function CreateWorkOrderModal({ onClose, requests, employees, defaultRequestId }
   useEffect(() => {
     dispatch(clearWorkOrderError())
   }, [dispatch])
+
+  // Tự động xoá nhân viên ra khỏi danh sách thành viên nếu được chọn làm lãnh đạo
+  useEffect(() => {
+    const leaderIds = new Set([form.workLeaderId, form.directCommanderId, form.safetySupervisorId].filter(Boolean))
+    if (leaderIds.size > 0) {
+      setForm((prev) => {
+        const cleanMembers = prev.memberIds.filter((id) => !leaderIds.has(id))
+        if (cleanMembers.length !== prev.memberIds.length) {
+          return { ...prev, memberIds: cleanMembers }
+        }
+        return prev
+      })
+    }
+  }, [form.workLeaderId, form.directCommanderId, form.safetySupervisorId])
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -430,12 +457,20 @@ export function RepairRequestPage() {
   const loading = useSelector(selectRequestsLoading)
   const error = useSelector(selectRequestsError)
   const employees = useSelector(selectHrEmployees)
+  const currentUser = useSelector(selectCurrentUser)
 
-  // Search and pagination state
+  // Search, modal and pagination state
   const [searchKks, setSearchKks] = useState('')
   const [searchName, setSearchName] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
   const [priority, setPriority] = useState('all')
+  const [selectedRequestId, setSelectedRequestId] = useState(null)
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('highlight')
+
+  const canCreateWorkOrder = useMemo(() => {
+    return hasAnyRole(currentUser, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])
+  }, [currentUser])
 
   const filteredRequests = useMemo(() => {
     const kksKw = searchKks.trim().toLowerCase()
@@ -452,18 +487,40 @@ export function RepairRequestPage() {
   const totalElements = filteredRequests.length
   const totalPages = Math.ceil(totalElements / pageSize)
 
+  // Jump to the page of the highlighted row
+  useEffect(() => {
+    if (highlightId && filteredRequests.length > 0) {
+      const index = filteredRequests.findIndex(r => r.requestId === highlightId)
+      if (index !== -1) {
+        const targetPage = Math.floor(index / pageSize)
+        setCurrentPage(targetPage)
+      }
+    }
+  }, [highlightId, filteredRequests])
+
   const paginatedRequests = useMemo(() => {
     const start = currentPage * pageSize
     return filteredRequests.slice(start, start + pageSize)
   }, [filteredRequests, currentPage])
+
+  // Scroll to highlighted row
+  useEffect(() => {
+    if (highlightId && paginatedRequests.some(r => r.requestId === highlightId)) {
+      // Use setTimeout to ensure DOM is updated after pagination changes
+      setTimeout(() => {
+        const el = document.getElementById(`row-${highlightId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 150)
+    }
+  }, [highlightId, paginatedRequests])
 
   function handlePageChange(newPage) {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage)
     }
   }
-
-
 
   function handlePriorityChange(val) {
     setPriority(val)
@@ -556,6 +613,7 @@ export function RepairRequestPage() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="w-16 px-5 py-3 text-center">STT</th>
                 <th className="px-5 py-3">Thiết bị</th>
                 <th className="px-5 py-3">Mô tả sự cố</th>
                 <th className="px-5 py-3">Mức độ</th>
@@ -567,7 +625,7 @@ export function RepairRequestPage() {
             <tbody className="divide-y divide-slate-100">
               {loading && requests.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                  <td className="px-5 py-10 text-center text-slate-400" colSpan={7}>
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="animate-spin text-violet-500" size={18} />
                       Đang tải dữ liệu...
@@ -578,15 +636,24 @@ export function RepairRequestPage() {
 
               {!loading && !filteredRequests.length ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                  <td className="px-5 py-10 text-center text-slate-400" colSpan={7}>
                     Không có yêu cầu nào phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? paginatedRequests.map((r) => (
-                  <tr className="hover:bg-slate-50/80" key={r.requestId}>
+                ? paginatedRequests.map((r, index) => (
+                  <tr 
+                    id={`row-${r.requestId}`}
+                    className={`transition-colors duration-500 ${
+                      highlightId === r.requestId ? 'bg-amber-100/60 animate-pulse ring-2 ring-inset ring-amber-400' : 'hover:bg-slate-50/80'
+                    }`} 
+                    key={r.requestId}
+                  >
+                    <td className="px-5 py-4 text-center font-medium text-slate-500">
+                      {currentPage * pageSize + index + 1}
+                    </td>
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800">{r.equipmentKksCode}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
@@ -610,9 +677,20 @@ export function RepairRequestPage() {
                       {formatDateTime(r.createdAt)}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">
-                        Xem PCT
-                      </span>
+                      {canCreateWorkOrder ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-violet-600 hover:bg-violet-700 active:scale-95 shadow-sm transition-all border border-violet-700/20"
+                          onClick={() => setSelectedRequestId(r.requestId)}
+                        >
+                          <Plus size={14} className="stroke-[2.5]" />
+                          <span>Tạo PCT</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 bg-slate-100 border border-slate-200">
+                          Xem PCT
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -681,6 +759,17 @@ export function RepairRequestPage() {
         })() : null}
       </section>
 
+      {selectedRequestId && (
+        <CreateWorkOrderModal
+          defaultRequestId={selectedRequestId}
+          employees={employees}
+          onClose={() => {
+            setSelectedRequestId(null)
+            dispatch(fetchPendingRequests())
+          }}
+          requests={requests}
+        />
+      )}
     </div>
   )
 }

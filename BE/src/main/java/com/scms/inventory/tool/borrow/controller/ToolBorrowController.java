@@ -61,8 +61,10 @@ public class ToolBorrowController {
     // Xác nhận trả CCDC
     @Operation(summary = "Xác nhận trả CCDC (cập nhật status = returned, trả lại availableQuantity)")
     @PatchMapping("/{id}/return")
-    public ApiResponse<ToolBorrowResponse> returnBorrow(@PathVariable("id") UUID id) {
+    public ApiResponse<ToolBorrowResponse> returnBorrow(
+            @PathVariable("id") UUID id,
+            @RequestBody @Valid com.scms.inventory.tool.borrow.dto.request.ToolReturnRequest returnRequest) {
         return ApiResponse.success("Trả CCDC thành công",
-                toolBorrowService.returnBorrow(id));
+                toolBorrowService.returnBorrow(id, returnRequest));
     }
 }

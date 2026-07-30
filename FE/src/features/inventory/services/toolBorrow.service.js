@@ -35,8 +35,9 @@ export async function getToolBorrowById(id) {
 /**
  * Xác nhận trả CCDC
  * @param {string} id
+ * @param {{ quantity: number }} data
  */
-export async function returnToolBorrow(id) {
-  const response = await apiClient.patch(`/tool-borrows/${id}/return`)
+export async function returnToolBorrow(id, data) {
+  const response = await apiClient.patch(`/tool-borrows/${id}/return`, data)
   return response.data
 }

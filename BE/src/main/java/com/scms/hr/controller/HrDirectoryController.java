@@ -1,9 +1,13 @@
 package com.scms.hr.controller;
 
 import com.scms.common.response.ApiResponse;
+import com.scms.common.response.PagedResponse;
+import com.scms.employee.entity.EmployeeStatus;
+import com.scms.employee.entity.Gender;
 import com.scms.hr.dto.request.DepartmentCreateRequest;
 import com.scms.hr.dto.request.EmployeeUpsertRequest;
 import com.scms.hr.dto.response.DepartmentResponse;
+import com.scms.hr.dto.response.EmployeeOptionsResponse;
 import com.scms.hr.dto.response.EmployeePositionResponse;
 import com.scms.hr.dto.response.EmployeeResponse;
 import com.scms.hr.service.HrDirectoryService;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +44,40 @@ public class HrDirectoryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_TOOL')")
     public ApiResponse<List<EmployeeResponse>> getEmployees() {
         return ApiResponse.success("Employees loaded successfully", hrDirectoryService.getEmployees());
+    }
+
+    /**
+     * Tìm kiếm nhân viên có phân trang: theo từ khóa, phòng ban và tình trạng tài khoản.
+     */
+    @GetMapping("/employees/search")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_TOOL')")
+    public ApiResponse<PagedResponse<EmployeeResponse>> searchEmployees(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID departmentId,
+            @RequestParam(required = false, defaultValue = "all") String status,
+            @RequestParam(required = false, defaultValue = "all") String accountState,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(
+                "Employees loaded successfully",
+                hrDirectoryService.searchEmployees(search, departmentId, status, accountState, page, size)
+        );
+    }
+
+    /**
+     * Các giá trị hợp lệ của giới tính và tình trạng làm việc, để giao diện không phải
+     * khai báo cứng danh sách này ở phía client.
+     */
+    @GetMapping("/employee-options")
+    public ApiResponse<EmployeeOptionsResponse> getEmployeeOptions() {
+        return ApiResponse.success(
+                "Employee options loaded successfully",
+                EmployeeOptionsResponse.builder()
+                        .genders(Gender.labels())
+                        .statuses(EmployeeStatus.labels())
+                        .build()
+        );
     }
 
     @GetMapping("/employee-positions")
@@ -68,6 +107,20 @@ public class HrDirectoryController {
         return ApiResponse.success("Employee deleted successfully", null);
     }
 
+    /**
+     * Danh sách nhân viên của một phòng ban, kèm tìm kiếm trong nội bộ phòng ban.
+     */
+    @GetMapping("/departments/{departmentId}/employees")
+    public ApiResponse<List<EmployeeResponse>> getDepartmentEmployees(
+            @PathVariable UUID departmentId,
+            @RequestParam(required = false) String search
+    ) {
+        return ApiResponse.success(
+                "Department employees loaded successfully",
+                hrDirectoryService.getDepartmentEmployees(departmentId, search)
+        );
+    }
+
     @DeleteMapping("/departments/{departmentId}/employees/{employeeId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'NHAN_SU')")
     public ApiResponse<EmployeeResponse> removeEmployeeFromDepartment(
@@ -81,8 +134,10 @@ public class HrDirectoryController {
     }
 
     @GetMapping("/departments")
-    public ApiResponse<List<DepartmentResponse>> getDepartments() {
-        return ApiResponse.success("Departments loaded successfully", hrDirectoryService.getDepartments());
+    public ApiResponse<List<DepartmentResponse>> getDepartments(
+            @RequestParam(required = false) String search
+    ) {
+        return ApiResponse.success("Departments loaded successfully", hrDirectoryService.getDepartments(search));
     }
 
     @PostMapping("/departments")

@@ -46,10 +46,7 @@ import {
 import { fetchConsumables } from '@/features/inventory/services/consumable.service.js'
 import { fetchSpareParts } from '@/features/inventory/services/sparepart.service.js'
 
-const TABS = [
-  { key: 'consumable', label: 'Vật tư tiêu hao' },
-  { key: 'sparepart', label: 'Vật tư thay thế' },
-]
+
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -633,6 +630,7 @@ export function MaterialRequestPage() {
   const [activeTab, setActiveTab] = useState('consumable')
   const [searchNumber, setSearchNumber] = useState('')
   const [searchOrder, setSearchOrder] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(0)
 
   // Detail & Form modaling states
@@ -643,6 +641,26 @@ export function MaterialRequestPage() {
   const [previewPdfUrl, setPreviewPdfUrl] = useState('')
   const [previewReqId, setPreviewReqId] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
+
+  // Determine allowed tabs based on roles
+  const allowedTabs = useMemo(() => {
+    if (hasAnyRole(currentUser, [ROLES.ADMIN, ROLES.TEAM_LEADER])) {
+      return [
+        { key: 'consumable', label: 'Vật tư tiêu hao' },
+        { key: 'sparepart', label: 'Vật tư thay thế' },
+      ]
+    }
+    return [
+      { key: 'consumable', label: 'Vật tư tiêu hao' },
+    ]
+  }, [currentUser])
+
+  // Security guard for active tab
+  useEffect(() => {
+    if (!allowedTabs.some((t) => t.key === activeTab)) {
+      setActiveTab('consumable')
+    }
+  }, [allowedTabs, activeTab])
 
   // Determine pagination dynamic metrics
   const activePage = activeTab === 'consumable' ? consumablePage : sparePartPage
@@ -666,12 +684,15 @@ export function MaterialRequestPage() {
     if (searchOrder.trim()) {
       params.orderNumber = searchOrder.trim()
     }
+    if (statusFilter !== 'all') {
+      params.status = statusFilter
+    }
     if (activeTab === 'consumable') {
       dispatch(fetchConsumableRequests(params))
     } else {
       dispatch(fetchSparePartRequests(params))
     }
-  }, [dispatch, activeTab, searchNumber, searchOrder, currentPage])
+  }, [dispatch, activeTab, searchNumber, searchOrder, statusFilter, currentPage])
 
   useEffect(() => {
     loadData()
@@ -687,6 +708,7 @@ export function MaterialRequestPage() {
     setActiveTab(tab)
     setSearchNumber('')
     setSearchOrder('')
+    setStatusFilter('all')
     setCurrentPage(0)
     dispatch(clearMaterialsError())
   }
@@ -745,27 +767,31 @@ export function MaterialRequestPage() {
       <header className="flex flex-col gap-1.5">
         <h1 className="text-2xl font-bold text-slate-900">Yêu cầu cấp phát vật tư</h1>
         <p className="text-sm text-slate-500">
-          Quản lý phiếu cấp vật tư tiêu hao và vật tư thay thế hỗ trợ xuất file PDF
+          {hasAnyRole(currentUser, [ROLES.ADMIN, ROLES.TEAM_LEADER])
+            ? 'Quản lý phiếu cấp vật tư tiêu hao và vật tư thay thế hỗ trợ xuất file PDF'
+            : 'Quản lý phiếu cấp vật tư tiêu hao hỗ trợ xuất file PDF'}
         </p>
       </header>
 
       {/* Tabs */}
-      <div className="mt-6 flex border-b border-slate-200 gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={[
-              'px-4 py-2 text-sm font-semibold border-b-2 transition-all',
-              activeTab === tab.key
-                ? 'border-violet-600 text-violet-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
-            ].join(' ')}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {allowedTabs.length > 1 && (
+        <div className="mt-6 flex border-b border-slate-200 gap-2">
+          {allowedTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={[
+                'px-4 py-2 text-sm font-semibold border-b-2 transition-all',
+                activeTab === tab.key
+                  ? 'border-violet-600 text-violet-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search Header */}
       <section className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -796,6 +822,19 @@ export function MaterialRequestPage() {
               }}
             />
           </label>
+
+          <select
+            className="h-11 min-w-[180px] rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(0)
+            }}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="pending">Chờ duyệt</option>
+            <option value="issued">Đã cấp</option>
+          </select>
         </div>
 
         {canCreate && (
@@ -823,6 +862,7 @@ export function MaterialRequestPage() {
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase font-bold text-slate-700">
               <tr>
+                <th className="w-16 px-5 py-3 text-center">STT</th>
                 <th className="px-5 py-3">Số phiếu</th>
                 <th className="px-5 py-3">Ngày tạo</th>
                 <th className="px-5 py-3 w-32">PCT</th>
@@ -834,20 +874,23 @@ export function MaterialRequestPage() {
             <tbody className="divide-y divide-slate-200">
               {loading && !activeItems.length ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
                     <Loader2 className="animate-spin inline-block mr-2" size={18} />
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : !activeItems.length ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
                     Không có phiếu yêu cầu cấp phát vật tư nào.
                   </td>
                 </tr>
               ) : (
-                activeItems.map((req) => (
+                activeItems.map((req, index) => (
                   <tr key={req.reqId} className="hover:bg-slate-50/50 transition">
+                    <td className="px-5 py-4 text-center font-medium text-slate-500">
+                      {currentPage * 10 + index + 1}
+                    </td>
                     <td className="px-5 py-4 font-mono font-semibold text-violet-700">{req.reqNumber}</td>
                     <td className="px-5 py-4 text-slate-600">{formatDateTime(req.createdAt)}</td>
                     <td className="px-5 py-4 text-slate-700 font-semibold">{req.orderNumber || 'Không có liên kết'}</td>

@@ -16,6 +16,7 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class EmployeeAccountOptionResponse {
     UUID employeeId;
+    String employeeCode;
     String employeeName;
     String phone;
     String departmentName;

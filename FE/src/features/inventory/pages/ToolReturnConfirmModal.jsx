@@ -28,14 +28,28 @@ function formatDateTime(dt) {
 export function ToolReturnConfirmModal({ borrow, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
+  const [quantity, setQuantity] = useState(borrow.remainingQuantity ?? borrow.quantity)
 
   async function handleConfirm() {
     if (submitting) return
     setApiError(null)
+
+    const numQty = parseInt(quantity, 10)
+    const maxQty = borrow.remainingQuantity ?? borrow.quantity
+    
+    if (isNaN(numQty) || numQty <= 0) {
+      setApiError('Số lượng trả phải lớn hơn 0')
+      return
+    }
+    if (numQty > maxQty) {
+      setApiError('Số lượng trả không được vượt quá số lượng cần trả')
+      return
+    }
+
     try {
       setSubmitting(true)
-      await returnToolBorrow(borrow.borrowId)
-      onSuccess()
+      const res = await returnToolBorrow(borrow.borrowId, { quantity: numQty })
+      onSuccess(res)
     } catch (err) {
       setApiError(err.message || 'Lỗi khi xác nhận trả CCDC')
     } finally {
@@ -83,7 +97,9 @@ export function ToolReturnConfirmModal({ borrow, onClose, onSuccess }) {
             {borrow.employeePhone && (
               <InfoRow label="Số điện thoại" value={borrow.employeePhone} />
             )}
-            <InfoRow label="Số lượng mượn" value={`${borrow.quantity} cái`} />
+            <InfoRow label="Tổng số lượng mượn" value={`${borrow.quantity} cái`} />
+            <InfoRow label="Số lượng đã trả" value={`${borrow.returnedQuantity ?? 0} cái`} />
+            <InfoRow label="Số lượng còn lại" value={`${borrow.remainingQuantity ?? borrow.quantity} cái`} />
             <InfoRow label="Ngày mượn" value={formatDateTime(borrow.borrowedAt)} />
             <InfoRow label="Hạn trả" value={formatDateTime(borrow.dueDate)} />
             <InfoRow
@@ -97,8 +113,23 @@ export function ToolReturnConfirmModal({ borrow, onClose, onSuccess }) {
             {borrow.note && <InfoRow label="Ghi chú" value={borrow.note} />}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Số lượng trả lần này <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={borrow.remainingQuantity ?? borrow.quantity}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
+              disabled={submitting}
+            />
+          </div>
+
           <p className="text-sm text-slate-500">
-            Hành động này sẽ đánh dấu phiếu mượn là <strong>Đã trả</strong> và hoàn lại số lượng CCDC vào kho.
+            Thao tác này sẽ cập nhật số lượng trả và hoàn lại số lượng CCDC vào kho. Nếu trả đủ, phiếu sẽ chuyển sang <strong>Đã trả</strong>.
           </p>
         </div>
 

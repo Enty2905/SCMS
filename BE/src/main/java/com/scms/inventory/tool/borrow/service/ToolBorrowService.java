@@ -64,6 +64,7 @@ public class ToolBorrowService {
                 .toolId(tool.getToolId())
                 .borrowedBy(employee.getEmployeeId())
                 .quantity(request.getQuantity())
+                .remainingQuantity(request.getQuantity())
                 .borrowedAt(LocalDateTime.now())
                 .dueDate(request.getDueDate())
                 .returnedAt(null)
@@ -118,7 +119,7 @@ public class ToolBorrowService {
 
     // ── Xác nhận trả CCDC ─────────────────────────────────────
     @Transactional
-    public ToolBorrowResponse returnBorrow(UUID borrowId) {
+    public ToolBorrowResponse returnBorrow(UUID borrowId, com.scms.inventory.tool.borrow.dto.request.ToolReturnRequest returnRequest) {
         ToolBorrow borrow = toolBorrowRepository.findById(borrowId)
                 .orElseThrow(() -> new NotFoundException("ToolBorrow", "id", borrowId));
 
@@ -129,21 +130,38 @@ public class ToolBorrowService {
             throw new BadRequestException("Chỉ có thể trả phiếu có trạng thái 'borrowing' hoặc 'overdue'.");
         }
 
+        int returnQuantity = returnRequest.getQuantity();
+        if (returnQuantity > borrow.getRemainingQuantity()) {
+            throw new BadRequestException("Số lượng trả vượt quá số lượng CCDC còn phải trả");
+        }
+
         Tool tool = toolRepository.findById(borrow.getToolId())
                 .orElseThrow(() -> new NotFoundException("Tool", "id", borrow.getToolId()));
 
         // Cộng lại availableQuantity, không vượt totalQuantity - damagedQuantity
         int maxAvailable = tool.getTotalQuantity() - tool.getDamagedQuantity();
-        int newAvailable = Math.min(tool.getAvailableQuantity() + borrow.getQuantity(), maxAvailable);
+        int newAvailable = Math.min(tool.getAvailableQuantity() + returnQuantity, maxAvailable);
         tool.setAvailableQuantity(newAvailable);
         toolRepository.save(tool);
 
-        borrow.setReturnedAt(LocalDateTime.now());
-        borrow.setStatus("returned");
+        int newRemaining = borrow.getRemainingQuantity() - returnQuantity;
+        borrow.setRemainingQuantity(newRemaining);
+
+        if (newRemaining == 0) {
+            borrow.setReturnedAt(LocalDateTime.now());
+            borrow.setStatus("returned");
+        } else {
+            if (borrow.getDueDate() != null && borrow.getDueDate().isBefore(LocalDateTime.now())) {
+                borrow.setStatus("overdue");
+            } else {
+                borrow.setStatus("borrowing");
+            }
+        }
+        
         final ToolBorrow saved = toolBorrowRepository.save(borrow);
 
         Employee employee = employeeRepository.findById(saved.getBorrowedBy()).orElse(null);
-        log.info("Returned borrow: borrowId={}, tool={}, qty={}", borrowId, tool.getName(), saved.getQuantity());
+        log.info("Returned partial borrow: borrowId={}, tool={}, returnedQty={}, remainingQty={}", borrowId, tool.getName(), returnQuantity, newRemaining);
         return toResponse(saved, tool, employee);
     }
 
@@ -175,6 +193,8 @@ public class ToolBorrowService {
                 .employeeName(employee != null ? employee.getName() : null)
                 .employeePhone(employee != null ? employee.getPhone() : null)
                 .quantity(borrow.getQuantity())
+                .remainingQuantity(borrow.getRemainingQuantity())
+                .returnedQuantity(borrow.getQuantity() - borrow.getRemainingQuantity())
                 .borrowedAt(borrow.getBorrowedAt())
                 .dueDate(borrow.getDueDate())
                 .returnedAt(borrow.getReturnedAt())

@@ -4,6 +4,8 @@ import com.scms.employee.entity.Employee;
 import com.scms.auth.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +18,15 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
+
+    /**
+     * Nạp kèm nhân viên, phòng ban và chức vụ để màn hình danh sách tài khoản
+     * không phải truy vấn thêm cho từng dòng.
+     */
+    @Override
+    @EntityGraph(attributePaths = {"employee", "employee.department", "employee.position"})
+    Page<User> findAll(Specification<User> specification, Pageable pageable);
+
     Optional<User> findByUsername(String username);
 
     boolean existsByUsername(String username);
@@ -57,4 +68,11 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
         ORDER BY u.createdAt DESC
     """)
     List<User> findAllWithEmployeeDetails();
+
+    /**
+     * Cặp (employeeId, isActive) của mọi tài khoản còn hiệu lực.
+     * Dùng để dựng danh sách nhân viên mà không phải truy vấn từng người.
+     */
+    @Query("SELECT u.employee.employeeId, u.isActive FROM User u WHERE u.deleted = false")
+    List<Object[]> findAccountStatusByEmployee();
 }

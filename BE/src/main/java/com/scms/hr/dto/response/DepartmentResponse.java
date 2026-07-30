@@ -18,5 +18,6 @@ public class DepartmentResponse {
     UUID departmentId;
     String departmentCode;
     String departmentName;
+    String description;
     Long employeeCount;
 }

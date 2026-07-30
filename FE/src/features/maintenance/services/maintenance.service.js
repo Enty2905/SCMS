@@ -19,6 +19,11 @@ export async function getWorkOrderService(orderId) {
   return response.data
 }
 
+export async function updateWorkOrderMembersService(orderId, memberIds) {
+  const response = await apiClient.put(`/maintenance/work-orders/${orderId}/members`, { memberIds })
+  return response.data
+}
+
 // ── Technical Assessment (Biên bản đánh giá kỹ thuật) ───────────────────────
 
 export async function createAssessmentService(body) {
@@ -117,9 +122,10 @@ export async function fetchWorkOrdersService({ orderNumber, kksCode } = {}) {
   return response.data || []
 }
 
-export async function searchWorkOrdersService({ keyword = '', page = 0, size = 10 } = {}) {
+export async function searchWorkOrdersService({ keyword = '', status = '', page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (keyword) params.set('keyword', keyword)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/work-orders/search?${params}`)
@@ -147,6 +153,11 @@ export async function fetchDailyLogsService(orderId, { page = 0, size = 10 } = {
   return response.data || { content: [], totalPages: 0, totalElements: 0 }
 }
 
+export async function completeWorkOrderService(orderId) {
+  const response = await apiClient.post(`/maintenance/work-orders/${orderId}/complete`)
+  return response.data
+}
+
 export async function exportWorkOrderPdfService(orderId) {
   const token = window.localStorage.getItem('scms.auth.token')
   const response = await fetch(
@@ -166,10 +177,11 @@ export async function exportWorkOrderPdfService(orderId) {
 
 // ── Consumable Request ────────────────────────────────────────────────────────
 
-export async function fetchConsumableRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchConsumableRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/consumable-requests?${params}`)
@@ -202,10 +214,11 @@ export async function exportConsumableRequestPdfService(reqId) {
 
 // ── Spare Part Request ────────────────────────────────────────────────────────
 
-export async function fetchSparePartRequestsService({ reqNumber, orderNumber, page = 0, size = 10 } = {}) {
+export async function fetchSparePartRequestsService({ reqNumber, orderNumber, status, page = 0, size = 10 } = {}) {
   const params = new URLSearchParams()
   if (reqNumber) params.set('reqNumber', reqNumber)
   if (orderNumber) params.set('orderNumber', orderNumber)
+  if (status) params.set('status', status)
   params.set('page', String(page))
   params.set('size', String(size))
   const response = await apiClient.get(`/maintenance/spare-part-requests?${params}`)
@@ -253,5 +266,30 @@ export async function fetchRepairHistoriesService({ equipmentId, kksCode, equipm
 export async function createRepairHistoryService(body) {
   const response = await apiClient.post('/maintenance/repair-histories', body)
   return response.data
+}
+
+export async function uploadWorkOrderSignedPdfService(orderId, file) {
+  const token = window.localStorage.getItem('scms.auth.token')
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(
+    apiClient.url(`/maintenance/work-orders/${orderId}/upload-signed-pdf`),
+    {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    },
+  )
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new Error(payload?.message || `Upload thất bại: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  return payload.data
 }
 

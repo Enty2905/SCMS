@@ -6,6 +6,7 @@ import {
   Loader2,
   Plus,
   Search,
+  Upload,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -29,8 +30,10 @@ import {
   fetchWorkOrders,
   createWorkOrder,
   fetchPendingRequests,
+  uploadWorkOrderSignedPdf,
 } from '../store/maintenance.thunks.js'
 import { clearWorkOrderError } from '../store/maintenance.reducer.js'
+import { WorkOrderDetailModal } from '../components/WorkOrderDetailModal.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDateTime(iso) {
@@ -198,6 +201,20 @@ function CreateWorkOrderModal({ onClose, requests, employees }) {
 
   useEffect(() => { dispatch(clearWorkOrderError()) }, [dispatch])
 
+  // Tự động xoá nhân viên ra khỏi danh sách thành viên nếu được chọn làm lãnh đạo
+  useEffect(() => {
+    const leaderIds = new Set([form.workLeaderId, form.directCommanderId, form.safetySupervisorId].filter(Boolean))
+    if (leaderIds.size > 0) {
+      setForm((prev) => {
+        const cleanMembers = prev.memberIds.filter((id) => !leaderIds.has(id))
+        if (cleanMembers.length !== prev.memberIds.length) {
+          return { ...prev, memberIds: cleanMembers }
+        }
+        return prev
+      })
+    }
+  }, [form.workLeaderId, form.directCommanderId, form.safetySupervisorId])
+
   function set(field, value) { setForm((prev) => ({ ...prev, [field]: value })) }
 
   function toggleMember(id) {
@@ -347,88 +364,18 @@ function CreateWorkOrderModal({ onClose, requests, employees }) {
   )
 }
 
-// ── Work Order Detail Modal (UI only) ────────────────────────────────────────
-function WorkOrderDetailModal({ wo, onClose }) {
-  if (!wo) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-950">Chi tiết Phiếu Công Tác</h3>
-            <p className="text-xs text-slate-500">Số PCT: {wo.orderNumber}</p>
-          </div>
-          <button className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition" onClick={onClose}><X size={18} /></button>
-        </div>
-
-        <div className="p-6 max-h-[65vh] overflow-y-auto space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><p className="text-slate-400">Số PCT:</p><p className="font-semibold text-violet-700 font-mono">{wo.orderNumber}</p></div>
-            <div><p className="text-slate-400">Ngày tạo:</p><p className="font-semibold text-slate-950">{formatDateTime(wo.createdAt)}</p></div>
-            <div><p className="text-slate-400">Trạng thái:</p><StatusBadge status={wo.status} /></div>
-            <div><p className="text-slate-400">Thiết bị (KKS):</p><p className="font-semibold text-slate-950">{wo.equipmentKksCode || '—'}</p></div>
-            <div className="col-span-2"><p className="text-slate-400">Tên thiết bị:</p><p className="font-semibold text-slate-950">{wo.equipmentName || '—'}</p></div>
-            <div className="col-span-2"><p className="text-slate-400">Nội dung công việc:</p><p className="font-semibold text-slate-950 whitespace-pre-wrap">{wo.content || '—'}</p></div>
-            <div><p className="text-slate-400">Bắt đầu:</p><p className="font-semibold text-slate-950">{formatDateTime(wo.startDate)}</p></div>
-            <div><p className="text-slate-400">Kết thúc:</p><p className="font-semibold text-slate-950">{formatDateTime(wo.endDate)}</p></div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-4">
-            <p className="text-sm font-bold text-slate-950 mb-3">Nhân sự phụ trách</p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {[
-                { label: 'Lãnh đạo thi công', data: wo.workLeader },
-                { label: 'Chỉ huy trực tiếp', data: wo.directCommander },
-                { label: 'Giám sát an toàn', data: wo.safetySupervisor },
-              ].map(({ label, data }) => (
-                <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-400 mb-1">{label}</p>
-                  <p className="text-sm font-semibold text-slate-800">{data?.name || '—'}</p>
-                  {data?.positionName && <p className="text-xs text-slate-500">{data.positionName}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {wo.members && wo.members.length > 0 && (
-            <div className="border-t border-slate-200 pt-4">
-              <p className="text-sm font-bold text-slate-950 mb-2">Thành viên thi công ({wo.members.length} người)</p>
-              <div className="overflow-hidden rounded-lg border border-slate-200">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 font-bold text-slate-700">
-                    <tr><th className="px-4 py-2">#</th><th className="px-4 py-2">Họ tên</th><th className="px-4 py-2">Chức vụ</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {wo.members.map((m, i) => (
-                      <tr key={m.employeeId}>
-                        <td className="px-4 py-2 text-slate-500">{i + 1}</td>
-                        <td className="px-4 py-2 font-medium text-slate-800">{m.name}</td>
-                        <td className="px-4 py-2 text-slate-500">{m.positionName || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 bg-slate-50">
-          <Button onClick={onClose} variant="secondary">Đóng</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ── Work Order Detail Modal ──────────────────────────────────────────────────
+// Removed duplicate inline implementation in favor of shared component
 
 // ── Work Order Row ────────────────────────────────────────────────────────────
-function WorkOrderRow({ wo, exportingId, onExport, onDetail }) {
+function WorkOrderRow({ wo, index, exportingId, onExport, onDetail, onUpload }) {
   const isExporting = exportingId === wo.orderId
   const [expanded, setExpanded] = useState(false)
   const contentLong = wo.content && wo.content.length > 60
 
   return (
     <tr className="hover:bg-slate-50/50 transition">
+      <td className="px-5 py-4 text-center font-medium text-slate-500">{index + 1}</td>
       <td className="px-5 py-4 font-mono font-semibold text-violet-700">{wo.orderNumber}</td>
       <td className="px-5 py-4 text-slate-700">
         <p className="font-semibold">{wo.equipmentKksCode || '—'}</p>
@@ -456,6 +403,49 @@ function WorkOrderRow({ wo, exportingId, onExport, onDetail }) {
       </td>
       <td className="whitespace-nowrap px-5 py-4 text-slate-600">{formatDateTime(wo.createdAt)}</td>
       <td className="px-5 py-4"><StatusBadge status={wo.status} /></td>
+      
+      {/* Bản ký column */}
+      <td className="px-5 py-4 text-center whitespace-nowrap">
+        {wo.pdfUrl ? (
+          <a
+            href={wo.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded transition"
+          >
+            <CheckCircle2 size={13} />
+            Xem bản ký
+          </a>
+        ) : (
+          <div className="flex items-center justify-center">
+            <input
+              accept=".pdf"
+              className="hidden"
+              id={`upload-wo-pdf-${wo.orderId}`}
+              disabled={wo.status !== 'locked'}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) onUpload(wo.orderId, file)
+              }}
+              type="file"
+            />
+            <label
+              className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-semibold transition ${
+                wo.status === 'locked'
+                  ? 'cursor-pointer text-violet-700 bg-violet-50 hover:bg-violet-100'
+                  : 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-100'
+              }`}
+              htmlFor={wo.status === 'locked' ? `upload-wo-pdf-${wo.orderId}` : undefined}
+              title={wo.status !== 'locked' ? 'Chỉ được upload bản ký khi PCT đã hoàn thành (locked)' : ''}
+            >
+              <Upload size={13} />
+              Tải lên bản ký
+            </label>
+          </div>
+        )}
+      </td>
+
+      {/* Thao tác column */}
       <td className="px-5 py-4">
         <div className="flex items-center justify-center gap-2">
           <button
@@ -496,6 +486,7 @@ export function WorkOrderPage() {
   const [exportingId, setExportingId] = useState(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailItem, setDetailItem] = useState(null)
+  const [currentPage, setCurrentPage] = useState(0)
 
   // Preview Modal States
   const [previewPdfUrl, setPreviewPdfUrl] = useState('')
@@ -519,17 +510,32 @@ export function WorkOrderPage() {
     return () => clearTimeout(timer)
   }, [dispatch, searchOrderNumber, searchKksCode])
 
-  // Client-side filtering to exclude 'locked' (Hoàn thành) and filter by statusFilter
+  // Client-side filtering by statusFilter (bao gồm cả trạng thái locked - Hoàn thành)
   const displayedWorkOrders = useMemo(() => {
-    return workOrders
-      .filter((wo) => wo.status !== 'locked')
-      .filter((wo) => {
-        if (statusFilter === 'all') return true
-        if (statusFilter === 'draft') return wo.status === 'draft' || wo.status === 'paused'
-        if (statusFilter === 'open') return wo.status === 'open'
-        return true
-      })
+    return workOrders.filter((wo) => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'draft') return wo.status === 'draft' || wo.status === 'paused'
+      if (statusFilter === 'open') return wo.status === 'open'
+      if (statusFilter === 'locked') return wo.status === 'locked'
+      return true
+    })
   }, [workOrders, statusFilter])
+
+  // Pagination logic
+  const pageSize = 10
+  const totalElements = displayedWorkOrders.length
+  const totalPages = Math.ceil(totalElements / pageSize)
+
+  const paginatedWorkOrders = useMemo(() => {
+    const start = currentPage * pageSize
+    return displayedWorkOrders.slice(start, start + pageSize)
+  }, [displayedWorkOrders, currentPage])
+
+  function handlePageChange(newPage) {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
 
   function handleCreateClose() {
     setCreateModalOpen(false)
@@ -562,6 +568,17 @@ export function WorkOrderPage() {
     document.body.removeChild(a)
   }
 
+  async function handleFileUpload(orderId, file) {
+    if (!file) return
+    const result = await dispatch(uploadWorkOrderSignedPdf({ orderId, file }))
+    if (uploadWorkOrderSignedPdf.fulfilled.match(result)) {
+      dispatch(fetchWorkOrders({
+        orderNumber: searchOrderNumber.trim() || undefined,
+        kksCode: searchKksCode.trim() || undefined,
+      }))
+    }
+  }
+
   return (
     <div className="p-6">
       <header className="flex flex-col gap-1.5">
@@ -578,7 +595,10 @@ export function WorkOrderPage() {
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               placeholder="Tìm theo Số PCT..."
               value={searchOrderNumber}
-              onChange={(e) => setSearchOrderNumber(e.target.value)}
+              onChange={(e) => {
+                setSearchOrderNumber(e.target.value)
+                setCurrentPage(0)
+              }}
             />
           </label>
           <label className="relative flex-1">
@@ -588,18 +608,25 @@ export function WorkOrderPage() {
               className="h-11 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               placeholder="Tìm theo Mã KKS thiết bị..."
               value={searchKksCode}
-              onChange={(e) => setSearchKksCode(e.target.value)}
+              onChange={(e) => {
+                setSearchKksCode(e.target.value)
+                setCurrentPage(0)
+              }}
             />
           </label>
           
           <select
             className="h-11 min-w-44 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(0)
+            }}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="draft">Đang đóng</option>
             <option value="open">Đang mở</option>
+            <option value="locked">Hoàn thành</option>
           </select>
         </div>
 
@@ -617,35 +644,94 @@ export function WorkOrderPage() {
 
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-3 text-sm text-slate-500">
-          Hiển thị {displayedWorkOrders.length} phiếu công tác
+          Hiển thị {paginatedWorkOrders.length} / {totalElements} phiếu công tác
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase font-bold text-slate-700">
               <tr>
+                <th className="w-16 px-5 py-3 text-center">STT</th>
                 <th className="px-5 py-3">Số PCT</th>
                 <th className="px-5 py-3">Thiết bị (KKS)</th>
                 <th className="px-5 py-3">Nội dung</th>
                 <th className="px-5 py-3">Lãnh đạo thi công</th>
                 <th className="px-5 py-3">Ngày tạo</th>
                 <th className="px-5 py-3">Trạng thái</th>
+                <th className="px-5 py-3 text-center">Bản ký</th>
                 <th className="px-5 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading && !displayedWorkOrders.length ? (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-400"><Loader2 className="animate-spin inline-block mr-2" size={18} />Đang tải dữ liệu...</td></tr>
+                <tr><td colSpan={9} className="px-5 py-10 text-center text-slate-400"><Loader2 className="animate-spin inline-block mr-2" size={18} />Đang tải dữ liệu...</td></tr>
               ) : !displayedWorkOrders.length ? (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">Không có phiếu công tác nào.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">Không có phiếu công tác nào.</td></tr>
               ) : (
-                displayedWorkOrders.map((wo) => (
-                  <WorkOrderRow key={wo.orderId} wo={wo} exportingId={exportingId} onExport={handleOpenPdfPreview} onDetail={() => setDetailItem(wo)} />
+                paginatedWorkOrders.map((wo, index) => (
+                  <WorkOrderRow key={wo.orderId} wo={wo} index={currentPage * pageSize + index} exportingId={exportingId} onExport={handleOpenPdfPreview} onDetail={() => setDetailItem(wo)} onUpload={handleFileUpload} />
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang */}
+        {totalPages > 1 ? (() => {
+          let startPage = Math.max(0, currentPage - 2)
+          let endPage = Math.min(totalPages - 1, currentPage + 2)
+
+          if (endPage - startPage < 4) {
+            if (startPage === 0) {
+              endPage = Math.min(totalPages - 1, startPage + 4)
+            } else if (endPage === totalPages - 1) {
+              startPage = Math.max(0, endPage - 4)
+            }
+          }
+
+          const pages = []
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+          }
+
+          return (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 bg-white">
+              <p className="text-sm text-slate-500">
+                Hiển thị trang {currentPage + 1} / {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage === 0}
+                  onClick={() => handlePageChange(0)}
+                >
+                  Trang đầu
+                </button>
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    className={[
+                      'rounded-md px-3 py-1.5 text-sm font-medium transition min-w-[36px]',
+                      currentPage === p
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => handlePageChange(p)}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+                <button
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => handlePageChange(totalPages - 1)}
+                >
+                  Trang cuối
+                </button>
+              </div>
+            </div>
+          )
+        })() : null}
       </section>
 
       {createModalOpen && (
@@ -653,7 +739,16 @@ export function WorkOrderPage() {
       )}
 
       {detailItem && (
-        <WorkOrderDetailModal wo={detailItem} onClose={() => setDetailItem(null)} />
+        <WorkOrderDetailModal
+          workOrder={detailItem}
+          onClose={() => setDetailItem(null)}
+          onSuccess={() => {
+            dispatch(fetchWorkOrders({
+              orderNumber: searchOrderNumber.trim() || undefined,
+              kksCode: searchKksCode.trim() || undefined,
+            }))
+          }}
+        />
       )}
 
       {previewPdfUrl && (

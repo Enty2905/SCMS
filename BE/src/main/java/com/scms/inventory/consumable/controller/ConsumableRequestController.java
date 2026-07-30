@@ -2,6 +2,7 @@ package com.scms.inventory.consumable.controller;
 
 import com.scms.common.response.ApiResponse;
 import com.scms.inventory.consumable.dto.request.CreateConsumableRequestDto;
+import com.scms.inventory.consumable.dto.request.IssueConsumableRequestDto;
 import com.scms.inventory.consumable.dto.response.ConsumableRequestResponse;
 import com.scms.inventory.consumable.service.ConsumableRequestService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -44,27 +46,51 @@ public class ConsumableRequestController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
-    @Operation(summary = "Danh sách phiếu cấp vật tư tiêu hao (Phân trang)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_MAT')")
+    @Operation(summary = "Danh sách phiếu cấp vật tư tiêu hao (Phân trang, lọc theo status)")
     public ApiResponse<Page<ConsumableRequestResponse>> getRequests(
             @RequestParam(required = false) String reqNumber,
             @RequestParam(required = false) String orderNumber,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        return ApiResponse.success(consumableRequestService.getRequests(reqNumber, orderNumber, pageable));
+        return ApiResponse.success(consumableRequestService.getRequests(reqNumber, orderNumber, status, pageable));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_MAT')")
     @Operation(summary = "Chi tiết phiếu cấp vật tư tiêu hao")
     public ApiResponse<ConsumableRequestResponse> getRequestById(@PathVariable UUID id) {
         return ApiResponse.success(consumableRequestService.getRequestById(id));
     }
 
+    @PostMapping("/{id}/issue")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
+    @Operation(summary = "Cấp phát vật tư tiêu hao — Thủ kho xác nhận xuất kho")
+    public ApiResponse<ConsumableRequestResponse> issueRequest(
+            @PathVariable UUID id,
+            @Valid @RequestBody IssueConsumableRequestDto dto,
+            Authentication authentication
+    ) {
+        ConsumableRequestResponse response = consumableRequestService.issueRequest(id, dto, authentication.getName());
+        return ApiResponse.success("Cấp phát vật tư tiêu hao thành công", response);
+    }
+
+    @PostMapping(value = "/{id}/upload-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
+    @Operation(summary = "Upload PDF phiếu cấp phát đã ký lên Cloudinary")
+    public ApiResponse<ConsumableRequestResponse> uploadSignedPdf(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        ConsumableRequestResponse response = consumableRequestService.uploadSignedPdf(id, file);
+        return ApiResponse.success("Upload PDF phiếu cấp vật tư tiêu hao thành công", response);
+    }
+
     @GetMapping("/{id}/export-pdf")
-    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER', 'WAREHOUSE_MAT')")
     @Operation(summary = "Xuất file PDF phiếu cấp vật tư tiêu hao")
     public ResponseEntity<byte[]> exportPdf(@PathVariable UUID id) {
         byte[] pdfBytes = consumableRequestService.exportPdf(id);
