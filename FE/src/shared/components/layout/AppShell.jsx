@@ -28,6 +28,8 @@ import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
 import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
 import { fetchTools } from '@/features/inventory/services/tool.service.js'
+import { fetchConsumableRequests } from '@/features/inventory/services/consumableRequest.service.js'
+import { fetchSparePartRequests } from '@/features/inventory/services/sparePartRequest.service.js'
 import { fetchAllRepairRequests } from '@/features/repairrequest/services/repairRequest.service.js'
 
 
@@ -52,6 +54,7 @@ export function AppShell() {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [showAllNotifs, setShowAllNotifs] = useState(false)
+  const [reloadNotifTrigger, setReloadNotifTrigger] = useState(0)
 
   // State cho websocket toast
   const [realtimeToast, setRealtimeToast] = useState(null)
@@ -78,7 +81,6 @@ export function AppShell() {
         let allNotifications = []
 
         // Load consumable stock warnings STRICTLY for TKVT role (VT)
-        // TODO: Load Spare Part (VTTT) warnings here in the future when VTTT stock is implemented
         if (user?.roles?.includes(ROLES.WAREHOUSE_MAT)) {
           try {
             const stockData = await fetchConsumableStocks({ size: 1000 })
@@ -98,6 +100,29 @@ export function AppShell() {
             allNotifications = [...allNotifications, ...stockWarnings]
           } catch (err) {
             console.error('Failed to load material notifications', err)
+          }
+
+          // Load pending material requests
+          try {
+            const [consRes, spareRes] = await Promise.all([
+              fetchConsumableRequests({ status: 'pending', size: 100 }),
+              fetchSparePartRequests({ status: 'pending', size: 100 })
+            ])
+            const consRequests = consRes.content || []
+            const spareRequests = spareRes.content || []
+
+            const matReqWarnings = [...consRequests, ...spareRequests].map((req) => ({
+              id: `mat-req-${req.reqId}`,
+              title: 'Yêu cầu cấp phát vật tư mới',
+              message: `Mã phiếu: ${req.reqNumber} đang chờ cấp phát.`,
+              type: 'info',
+              category: 'material_request',
+              timestamp: req.createdAt ? new Date(req.createdAt).getTime() : Date.now(),
+              reqId: req.reqId,
+            }))
+            allNotifications = [...matReqWarnings, ...allNotifications]
+          } catch (err) {
+            console.error('Failed to load pending material requests', err)
           }
         }
 
@@ -167,6 +192,35 @@ export function AppShell() {
           } catch (err) {
             console.error('Failed to load pending repair requests', err)
           }
+        } // Closing brace for if (hasAnyRole(..., [ROLES.ADMIN, ...]))
+
+        // Fetch unread material request response notifications
+        if (hasAnyRole(user, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])) {
+          try {
+            const { fetchUnreadConsumableNotificationsService, fetchUnreadSparePartNotificationsService } = await import('@/features/maintenance/services/maintenance.service.js')
+            const unreadConsumable = await fetchUnreadConsumableNotificationsService()
+            const unreadSparePart = await fetchUnreadSparePartNotificationsService()
+            const allUnread = [...unreadConsumable, ...unreadSparePart]
+            
+            const responseNotifs = allUnread.map((data) => {
+              const isIssued = data.status === 'issued'
+              return {
+                id: `ws-mat-res-${data.reqId}`,
+                title: isIssued ? 'Phiếu đã được cấp phát' : 'Phiếu bị từ chối cấp phát',
+                message: isIssued 
+                  ? `Mã phiếu: ${data.reqNumber} đã được cấp phát bởi ${data.issuedByName}.` 
+                  : `Mã phiếu: ${data.reqNumber} bị từ chối. Lý do: ${data.reason}`,
+                type: isIssued ? 'success' : 'error',
+                category: 'material_request_response',
+                timestamp: data.timestamp,
+                reqId: data.reqId,
+                reqType: data.type,
+              }
+            })
+            allNotifications = [...responseNotifs, ...allNotifications]
+          } catch (err) {
+            console.error('Failed to load unread material request responses', err)
+          }
         }
 
         setNotifications(allNotifications)
@@ -178,7 +232,7 @@ export function AppShell() {
     loadNotifications()
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
-  }, [user, canSeeNotifications])
+  }, [user, canSeeNotifications, reloadNotifTrigger])
 
   // Lắng nghe sự kiện realtime qua WebSocket
   useEffect(() => {
@@ -262,8 +316,8 @@ export function AppShell() {
             setRealtimeToast(null)
           }, 5000)
 
-          // Cập nhật mảng thông báo chung
-          setNotifications(prev => [newNotif, ...prev])
+          // Cập nhật mảng thông báo chung (fetch lại pending từ DB)
+          setReloadNotifTrigger(prev => prev + 1)
         }
       })
       return () => {
@@ -272,9 +326,61 @@ export function AppShell() {
     }
   }, [isConnected, stompClient, user])
 
+  // Lắng nghe sự kiện realtime phản hồi cấp phát/từ chối vật tư
+  useEffect(() => {
+    const canSeeResponses = hasAnyRole(user, [ROLES.ADMIN, ROLES.REPAIR_MANAGER, ROLES.TEAM_LEADER])
+    if (isConnected && stompClient && canSeeResponses) {
+      const subscription = stompClient.subscribe('/topic/material-request-response', (message) => {
+        if (message.body) {
+          const data = JSON.parse(message.body)
+          
+          // Chỉ hiện thông báo nếu mình là người tạo phiếu, hoặc mình là admin/repair_manager
+          const currentUsername = user?.username || user?.name
+          if (data.createdByUsername !== currentUsername && !hasAnyRole(user, [ROLES.ADMIN, ROLES.REPAIR_MANAGER])) {
+             return
+          }
+
+          const isIssued = data.status === 'issued'
+          const newNotif = {
+            id: 'ws-mat-res-' + Date.now(),
+            title: isIssued ? 'Phiếu đã được cấp phát' : 'Phiếu bị từ chối cấp phát',
+            message: isIssued 
+              ? `Mã phiếu: ${data.reqNumber} đã được cấp phát bởi ${data.issuedByName}.` 
+              : `Mã phiếu: ${data.reqNumber} bị từ chối. Lý do: ${data.reason}`,
+            type: isIssued ? 'success' : 'error',
+            category: 'material_request_response',
+            timestamp: Date.now(),
+            reqId: data.reqId,
+          }
+
+          // Hiện thông báo popup 5s
+          setRealtimeToast(newNotif)
+          setTimeout(() => {
+            setRealtimeToast(null)
+          }, 5000)
+
+          // Thêm vào danh sách thông báo để lưu trữ đến khi đọc
+          setNotifications(prev => [newNotif, ...prev])
+        }
+      })
+      return () => subscription.unsubscribe()
+    }
+  }, [isConnected, stompClient, user])
+
   const handleNotifClick = (notif) => {
     setIsNotifOpen(false)
-    if (notif.category === 'material') {
+    if (notif.category === 'material_request_response') {
+      // Tự động xóa thông báo khi click vào và gọi API mark as read
+      setNotifications(prev => prev.filter(n => n.id !== notif.id))
+      import('@/features/maintenance/services/maintenance.service.js').then(module => {
+        if (notif.reqType === 'consumable') {
+          module.markConsumableNotificationReadService(notif.reqId).catch(console.error)
+        } else if (notif.reqType === 'sparepart') {
+          module.markSparePartNotificationReadService(notif.reqId).catch(console.error)
+        }
+      })
+      navigate('/dashboard/maintenance/material-requests')
+    } else if (notif.category === 'material') {
       navigate('/dashboard/inventory/consumable-stocks')
     } else if (notif.category === 'tool') {
       navigate('/dashboard/inventory/tools')
@@ -449,6 +555,12 @@ export function AppShell() {
                                 textColor = 'text-red-700'
                                 messageColor = 'text-slate-700'
                                 timeColor = 'text-slate-400'
+                              } else if (notif.type === 'success') {
+                                bgColor = 'bg-emerald-50 hover:bg-emerald-100 mb-1'
+                                dotColor = 'bg-emerald-500 animate-pulse'
+                                textColor = 'text-emerald-800'
+                                messageColor = 'text-slate-700'
+                                timeColor = 'text-slate-500'
                               }
                               
                               return (
@@ -522,6 +634,7 @@ export function AppShell() {
         <div className={`fixed bottom-4 right-4 z-[999] animate-in slide-in-from-right fade-in duration-300 w-80 rounded-lg border-l-4 p-4 shadow-xl ${
           realtimeToast.type === 'error' ? 'bg-red-600 border-red-800 text-white' : 
           realtimeToast.type === 'alert' ? 'bg-orange-500 border-orange-700 text-white' : 
+          realtimeToast.type === 'success' ? 'bg-emerald-600 border-emerald-800 text-white' :
           realtimeToast.type === 'info' ? 'bg-white border-blue-500 text-slate-900' :
           'bg-white border-amber-500 text-slate-900'
         }`}>
@@ -529,25 +642,26 @@ export function AppShell() {
             <div className={`mt-0.5 rounded-full p-1 ${
               realtimeToast.type === 'error' ? 'bg-red-700' : 
               realtimeToast.type === 'alert' ? 'bg-orange-600' : 
+              realtimeToast.type === 'success' ? 'bg-emerald-700' :
               realtimeToast.type === 'info' ? 'bg-blue-100' : 'bg-amber-100'
             }`}>
               <Bell className={
-                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' || realtimeToast.type === 'success' ? 'text-white' : 
                 realtimeToast.type === 'info' ? 'text-blue-600' : 'text-amber-600'
               } size={16} />
             </div>
             <div>
               <h4 className={`text-sm font-bold ${
-                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white' : 'text-slate-900'
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' || realtimeToast.type === 'success' ? 'text-white' : 'text-slate-900'
               }`}>{realtimeToast.title}</h4>
               <p className={`mt-1 text-xs ${
-                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white/90' : 'text-slate-600'
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' || realtimeToast.type === 'success' ? 'text-white/90' : 'text-slate-600'
               }`}>{realtimeToast.message}</p>
             </div>
             <button
               onClick={() => setRealtimeToast(null)}
               className={`ml-auto ${
-                realtimeToast.type === 'error' || realtimeToast.type === 'alert' ? 'text-white/70 hover:text-white' : 'text-slate-400 hover:text-slate-600'
+                realtimeToast.type === 'error' || realtimeToast.type === 'alert' || realtimeToast.type === 'success' ? 'text-white/70 hover:text-white' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <span className="sr-only">Close</span>

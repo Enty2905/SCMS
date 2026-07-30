@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, FileText, Loader2, Package, Printer, Upload, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, FileText, Loader2, Package, Printer, Upload, X, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { exportConsumableRequestPdf } from '../services/consumableRequest.service.js'
 import { exportSparePartRequestPdf } from '../services/sparePartRequest.service.js'
@@ -34,6 +34,7 @@ export function IssueRequestModal({
   request,
   type = 'consumable',
   onIssue,
+  onReject,
   onUploadPdf,
   stockMap = {},
   stocks = {},
@@ -44,7 +45,7 @@ export function IssueRequestModal({
     }
     return 1
   })
-  const [detailTab, setDetailTab] = useState('overview') // 'overview' | 'pdf' (dành cho phiếu đã cấp phát)
+  const [detailTab, setDetailTab] = useState('overview')
   const [issuedQtys, setIssuedQtys] = useState({})
   const [note, setNote] = useState('')
   const [pdfFile, setPdfFile] = useState(null)
@@ -52,6 +53,8 @@ export function IssueRequestModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
   const fileInputRef = useRef(null)
 
   const isConsumable = type === 'consumable'
@@ -71,6 +74,8 @@ export function IssueRequestModal({
       setPdfFile(null)
       setError(null)
       setSuccess(false)
+      setShowRejectConfirm(false)
+      setRejectReason('')
     }
   }, [isOpen, request?.reqId, request?.status])
 
@@ -150,6 +155,19 @@ export function IssueRequestModal({
     } catch (err) {
       setError(err?.response?.data?.message || 'Có lỗi xảy ra khi cấp phát')
     } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleReject() {
+    if (!onReject || !request) return
+    setError(null)
+    setLoading(true)
+    try {
+      await onReject(request.reqId, rejectReason)
+      // onReject sẽ tự đóng modal và refresh list
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Có lỗi xảy ra khi từ chối')
       setLoading(false)
     }
   }
@@ -669,95 +687,148 @@ export function IssueRequestModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 shrink-0 bg-slate-50/40 rounded-b-2xl">
-          <div>
-            {!isIssued && step > 1 && !success && !request.pdfUrl && (
-              <button
-                type="button"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                disabled={loading}
-                onClick={() => setStep((s) => s - 1)}
-              >
-                <ChevronLeft size={16} />
-                Quay lại
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {isIssued ? (
-              <div className="flex items-center gap-2">
-                {detailTab === 'overview' && (
-                  <button
-                    type="button"
-                    onClick={() => setDetailTab('pdf')}
-                    className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <FileText size={15} />
-                    Sang phần chứng từ PDF
-                  </button>
-                )}
-                {detailTab === 'pdf' && pdfFile && !success && (
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
-                    disabled={loading}
-                    onClick={handleUploadPdf}
-                  >
-                    {loading && <Loader2 className="animate-spin" size={15} />}
-                    <Upload size={15} />
-                    {loading ? 'Đang upload...' : 'Xác nhận Upload PDF'}
-                  </button>
-                )}
+        <div className="shrink-0 bg-slate-50/40 rounded-b-2xl border-t border-slate-200">
+          {/* Reject confirmation panel - hiện khi showRejectConfirm = true */}
+          {showRejectConfirm && !isIssued && (
+            <div className="px-6 pt-4 pb-2 border-b border-rose-200 bg-rose-50/60">
+              <p className="text-sm font-semibold text-rose-800 mb-2">Xác nhận từ chối phiếu cấp phát</p>
+              <textarea
+                autoFocus
+                className="w-full rounded-lg border border-rose-300 bg-white p-2.5 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-100 resize-none"
+                placeholder="Nhập lý do từ chối (bắt buộc)..."
+                rows={2}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              {error && (
+                <div className="mt-2 rounded-lg bg-rose-100 p-2.5 text-xs font-medium text-rose-700 border border-rose-200">
+                  {error}
+                </div>
+              )}
+              <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
-                  className="rounded-lg bg-slate-800 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-900 transition-colors cursor-pointer"
-                  onClick={onClose}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                  disabled={loading}
+                  onClick={() => { setShowRejectConfirm(false); setRejectReason(''); setError(null) }}
                 >
-                  Đóng
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  disabled={loading || !rejectReason.trim()}
+                  onClick={handleReject}
+                >
+                  {loading && <Loader2 className="animate-spin" size={12} />}
+                  Xác nhận từ chối
                 </button>
               </div>
-            ) : success || request.pdfUrl ? (
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-                onClick={onClose}
-              >
-                Hoàn tất & Đóng
-              </button>
-            ) : step === 1 ? (
-              <button
-                type="button"
-                className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
-                disabled={hasStockIssue()}
-                onClick={() => setStep(2)}
-              >
-                Tiếp theo
-                <ChevronRight size={16} />
-              </button>
-            ) : step === 2 ? (
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
-                disabled={loading}
-                onClick={handleIssue}
-              >
-                {loading && <Loader2 className="animate-spin" size={15} />}
-                {loading ? 'Đang cấp phát...' : 'Xác nhận cấp phát'}
-              </button>
-            ) : (
-              /* Step 3 */
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
-                disabled={loading || !pdfFile}
-                onClick={handleUploadPdf}
-              >
-                {loading && <Loader2 className="animate-spin" size={15} />}
-                <Upload size={15} />
-                {loading ? 'Đang upload...' : 'Upload PDF'}
-              </button>
-            )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-2">
+              {!isIssued && step > 1 && !success && !request.pdfUrl && !showRejectConfirm && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                  disabled={loading}
+                  onClick={() => setStep((s) => s - 1)}
+                >
+                  <ChevronLeft size={16} />
+                  Quay lại
+                </button>
+              )}
+              {/* Nút từ chối - chỉ hiện khi phiếu đang pending và chưa ở confirm panel */}
+              {!isIssued && onReject && !showRejectConfirm && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                  disabled={loading}
+                  onClick={() => setShowRejectConfirm(true)}
+                >
+                  <XCircle size={15} />
+                  Từ chối
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isIssued ? (
+                <div className="flex items-center gap-2">
+                  {detailTab === 'overview' && (
+                    <button
+                      type="button"
+                      onClick={() => setDetailTab('pdf')}
+                      className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <FileText size={15} />
+                      Sang phần chứng từ PDF
+                    </button>
+                  )}
+                  {detailTab === 'pdf' && pdfFile && !success && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
+                      disabled={loading}
+                      onClick={handleUploadPdf}
+                    >
+                      {loading && <Loader2 className="animate-spin" size={15} />}
+                      <Upload size={15} />
+                      {loading ? 'Đang upload...' : 'Xác nhận Upload PDF'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="rounded-lg bg-slate-800 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-900 transition-colors cursor-pointer"
+                    onClick={onClose}
+                  >
+                    Đóng
+                  </button>
+                </div>
+              ) : success || request.pdfUrl ? (
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+                  onClick={onClose}
+                >
+                  Hoàn tất & Đóng
+                </button>
+              ) : step === 1 ? (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  disabled={hasStockIssue()}
+                  onClick={() => setStep(2)}
+                >
+                  Tiếp theo
+                  <ChevronRight size={16} />
+                </button>
+              ) : step === 2 ? (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  disabled={loading}
+                  onClick={handleIssue}
+                >
+                  {loading && <Loader2 className="animate-spin" size={15} />}
+                  {loading ? 'Đang cấp phát...' : 'Xác nhận cấp phát'}
+                </button>
+              ) : (
+                /* Step 3 */
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  disabled={loading || !pdfFile}
+                  onClick={handleUploadPdf}
+                >
+                  {loading && <Loader2 className="animate-spin" size={15} />}
+                  <Upload size={15} />
+                  {loading ? 'Đang upload...' : 'Upload PDF'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
