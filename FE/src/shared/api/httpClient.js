@@ -111,6 +111,10 @@ async function request(path, options = {}) {
 }
 
 function url(path) {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
   return `${env.apiUrl}${path}`
 }
 

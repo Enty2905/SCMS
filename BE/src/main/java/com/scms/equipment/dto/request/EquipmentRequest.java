@@ -34,4 +34,6 @@ public class EquipmentRequest {
     String location;
 
     UUID systemId;
+
+    java.util.List<TechnicalSpecRequest> specs;
 }

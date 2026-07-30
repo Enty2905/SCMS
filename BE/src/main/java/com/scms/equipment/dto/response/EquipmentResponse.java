@@ -20,4 +20,5 @@ public class EquipmentResponse {
     String location;
     UUID systemId;
     List<EquipmentImageResponse> images;
+    List<TechnicalSpecResponse> specs;
 }
