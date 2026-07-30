@@ -608,6 +608,7 @@ export function EquipmentListPage() {
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
               <tr>
+                <th className="px-5 py-3.5 font-semibold w-16">STT</th>
                 <th className="px-5 py-3.5 font-semibold">Mã KKS</th>
                 <th className="px-5 py-3.5 font-semibold">Tên thiết bị</th>
                 <th className="px-5 py-3.5 font-semibold">Loại thiết bị</th>
@@ -620,7 +621,7 @@ export function EquipmentListPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
                     Đang tải dữ liệu thiết bị...
                   </td>
                 </tr>
@@ -628,14 +629,17 @@ export function EquipmentListPage() {
 
               {!loading && !filteredEquipments.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={8}>
                     Không tìm thấy thiết bị nào phù hợp.
                   </td>
                 </tr>
               ) : null}
 
-              {!loading && paginatedEquipments.map((eq) => (
+              {!loading && paginatedEquipments.map((eq, index) => (
                 <tr className="hover:bg-slate-50/80 transition-colors" key={eq.id}>
+                  <td className="px-5 py-4 font-semibold text-slate-500">
+                    {(currentPage - 1) * pageSize + index + 1}
+                  </td>
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {eq.kksCode}
                   </td>

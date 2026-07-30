@@ -303,6 +303,7 @@ export function EquipmentSystemPage() {
           <table className="w-full min-w-[800px] border-collapse text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
               <tr>
+                <th className="px-5 py-3.5 font-semibold w-16">STT</th>
                 <th className="px-5 py-3.5 font-semibold w-32">Mã hệ thống</th>
                 <th className="px-5 py-3.5 font-semibold">Tên hệ thống</th>
                 <th className="px-5 py-3.5 font-semibold">Mô tả</th>
@@ -313,7 +314,7 @@ export function EquipmentSystemPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={5}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -321,18 +322,21 @@ export function EquipmentSystemPage() {
 
               {!loading && !displaySystems.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={5}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
                     Không tìm thấy hệ thống nào phù hợp.
                   </td>
                 </tr>
               ) : null}
 
-              {!loading && displaySystems.map((sys) => (
+              {!loading && displaySystems.map((sys, index) => (
                 <tr 
                   className="hover:bg-slate-50/85 transition-colors cursor-pointer group" 
                   key={sys.systemId}
                   onClick={() => navigate(`/dashboard/equipment?systemId=${sys.systemId}`)}
                 >
+                  <td className="px-5 py-4 font-semibold text-slate-500">
+                    {index + 1}
+                  </td>
                   <td className="px-5 py-4 font-mono font-bold text-violet-700 text-xs">
                     {sys.systemCode || <span className="text-slate-400 font-normal italic">N/A</span>}
                   </td>
