@@ -72,16 +72,16 @@ public class ToolBorrowOverdueEmailScheduler {
                 // Kiểm tra xem đã gửi email hôm nay cho nhân viên này chưa
                 // Lần này chúng ta dùng TABLE_NAME="employee" và record_id=employeeId để theo
                 // dõi
-                boolean alreadySentToday = auditLogRepository.existsByActionAndTableNameAndRecordIdAndCreatedAtBetween(
-                        ACTION_EMAIL_SENT,
-                        "employee",
-                        employeeId.toString(),
-                        startOfDay,
-                        endOfDay);
+                // boolean alreadySentToday = auditLogRepository.existsByActionAndTableNameAndRecordIdAndCreatedAtBetween(
+                //         ACTION_EMAIL_SENT,
+                //         "employee",
+                //         employeeId.toString(),
+                //         startOfDay,
+                //         endOfDay);
 
-                if (alreadySentToday) {
-                    continue; // Bỏ qua nếu đã gửi cho nhân viên này trong ngày
-                }
+                // if (alreadySentToday) {
+                //     continue; // Bỏ qua nếu đã gửi cho nhân viên này trong ngày
+                // }
 
                 // Lấy thông tin người mượn
                 Employee employee = employeeRepository.findById(employeeId).orElse(null);
