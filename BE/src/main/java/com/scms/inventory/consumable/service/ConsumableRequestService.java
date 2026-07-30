@@ -455,7 +455,7 @@ public class ConsumableRequestService {
         long next = 1;
         String candidate;
         do {
-            candidate = String.format("YCVT-%s-%04d", datePrefix, next);
+            candidate = String.format("YCVTTH-%s-%04d", datePrefix, next);
             next++;
         } while (consumableRequestRepository.existsByReqNumber(candidate));
         return candidate;

@@ -451,7 +451,7 @@ public class SparePartRequestService {
         long next = 1;
         String candidate;
         do {
-            candidate = String.format("YCVTT-%s-%04d", datePrefix, next);
+            candidate = String.format("YCVTTT-%s-%04d", datePrefix, next);
             next++;
         } while (sparePartRequestRepository.existsByReqNumber(candidate));
         return candidate;

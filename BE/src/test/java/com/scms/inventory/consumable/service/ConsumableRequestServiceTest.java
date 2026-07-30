@@ -78,7 +78,7 @@ class ConsumableRequestServiceTest {
 
         ConsumableRequest request = ConsumableRequest.builder()
                 .reqId(reqId)
-                .reqNumber("YCVT-26-08-05-0001")
+                .reqNumber("YCVTTH-26-08-05-0001")
                 .workOrder(wo)
                 .status("approved")
                 .createdBy(user)
@@ -109,7 +109,7 @@ class ConsumableRequestServiceTest {
 
             assertTrue(extractedText.contains("CÔNG TY SCSM"));
             assertFalse(extractedText.contains("CHI NHÁNH HÀ TĨNH"));
-            assertTrue(extractedText.contains("Số: YCVT-26-08-05-0001/PX"));
+            assertTrue(extractedText.contains("Số: YCVTTH-26-08-05-0001/PX"));
             assertTrue(extractedText.contains("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"));
             assertTrue(extractedText.contains("Độc lập - Tự do - Hạnh phúc"));
             assertTrue(extractedText.contains("Ngày ..... tháng ..... năm ....."));
