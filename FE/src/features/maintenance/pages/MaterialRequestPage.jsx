@@ -136,8 +136,24 @@ function RequestDetailModal({ activeTab, request, onClose }) {
             </div>
             <div>
               <p className="text-slate-400">Trạng thái:</p>
-              <p className="capitalize font-semibold text-slate-950">{request.status}</p>
+              <p className={`capitalize font-semibold ${
+                request.status === 'pending' ? 'text-amber-600' :
+                request.status === 'issued' ? 'text-emerald-600' :
+                request.status === 'rejected' ? 'text-rose-600' : 'text-slate-950'
+              }`}>
+                {request.status === 'pending' ? 'Chờ duyệt' :
+                 request.status === 'issued' ? 'Đã cấp' :
+                 request.status === 'rejected' ? 'Từ chối' : request.status}
+              </p>
             </div>
+            {request.note && (
+              <div className="col-span-2 mt-2 p-3 bg-slate-50 border border-slate-100 rounded-md">
+                <p className="text-slate-400 mb-1">
+                  {request.status === 'rejected' ? 'Lý do từ chối:' : 'Ghi chú:'}
+                </p>
+                <p className="font-medium text-slate-800">{request.note}</p>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-slate-200 pt-4">
@@ -186,6 +202,11 @@ function CreateRequestModal({ activeTab, onClose, onSuccess, workOrders }) {
   const [orderId, setOrderId] = useState('')
   const [selectedItems, setSelectedItems] = useState([])
   const [validationError, setValidationError] = useState('')
+
+  // Clear lỗi Redux cũ khi modal vừa mount
+  useEffect(() => {
+    dispatch(clearMaterialsError())
+  }, [dispatch])
 
   // Search PCT (Work Order) logic
   const [pctSearchOrder, setPctSearchOrder] = useState('')
@@ -701,6 +722,7 @@ export function MaterialRequestPage() {
   useEffect(() => {
     if (createModalOpen) {
       dispatch(fetchWorkOrders())
+      dispatch(clearMaterialsError())
     }
   }, [dispatch, createModalOpen])
 
@@ -834,6 +856,7 @@ export function MaterialRequestPage() {
             <option value="all">Tất cả trạng thái</option>
             <option value="pending">Chờ duyệt</option>
             <option value="issued">Đã cấp</option>
+            <option value="rejected">Từ chối</option>
           </select>
         </div>
 

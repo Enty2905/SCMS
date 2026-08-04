@@ -56,6 +56,9 @@ public class SparePartRequest {
     @Column(name = "note", columnDefinition = "TEXT")
     String note;
 
+    @Column(name = "is_read", nullable = false)
+    Boolean isRead;
+
     @OneToMany(mappedBy = "sparePartRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     List<SparePartRequestItem> items = new ArrayList<>();
@@ -65,6 +68,9 @@ public class SparePartRequest {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = "pending";
+        }
+        if (this.isRead == null) {
+            this.isRead = false;
         }
     }
 }

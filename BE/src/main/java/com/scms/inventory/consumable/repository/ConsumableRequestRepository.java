@@ -43,4 +43,12 @@ public interface ConsumableRequestRepository extends JpaRepository<ConsumableReq
         WHERE r.reqId = :reqId
     """)
     Optional<ConsumableRequest> findByIdWithDetails(UUID reqId);
+
+    @Query("""
+        SELECT r FROM ConsumableRequest r
+        WHERE r.createdBy.username = :username
+          AND r.status IN ('issued', 'rejected')
+          AND r.isRead = false
+    """)
+    java.util.List<ConsumableRequest> findUnreadNotifications(@Param("username") String username);
 }

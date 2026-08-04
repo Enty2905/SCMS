@@ -88,8 +88,9 @@ public class ToolBorrowService {
 
         String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
         String st = (status != null && !status.isBlank()) ? status.trim() : null;
+        LocalDateTime now = LocalDateTime.now();
 
-        Page<ToolBorrow> borrows = toolBorrowRepository.searchBorrows(kw, st, pageable);
+        Page<ToolBorrow> borrows = toolBorrowRepository.searchBorrows(kw, st, now, pageable);
 
         return PagedResponse.<ToolBorrowResponse>builder()
                 .content(borrows.getContent().stream()

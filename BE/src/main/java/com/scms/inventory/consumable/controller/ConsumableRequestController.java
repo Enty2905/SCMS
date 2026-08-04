@@ -78,6 +78,18 @@ public class ConsumableRequestController {
         return ApiResponse.success("Cấp phát vật tư tiêu hao thành công", response);
     }
 
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
+    @Operation(summary = "Từ chối cấp phát vật tư tiêu hao")
+    public ApiResponse<ConsumableRequestResponse> rejectRequest(
+            @PathVariable UUID id,
+            @RequestParam(required = false, defaultValue = "") String reason,
+            Authentication authentication
+    ) {
+        ConsumableRequestResponse response = consumableRequestService.rejectRequest(id, reason, authentication.getName());
+        return ApiResponse.success("Từ chối phiếu cấp vật tư tiêu hao thành công", response);
+    }
+
     @PostMapping(value = "/{id}/upload-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MAT')")
     @Operation(summary = "Upload PDF phiếu cấp phát đã ký lên Cloudinary")
@@ -106,5 +118,20 @@ public class ConsumableRequestController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(pdfBytes);
+    }
+
+    @GetMapping("/unread-notifications")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Lấy danh sách thông báo chưa đọc của người dùng")
+    public ApiResponse<java.util.List<java.util.Map<String, Object>>> getUnreadNotifications(Authentication authentication) {
+        return ApiResponse.success(consumableRequestService.getUnreadNotifications(authentication.getName()));
+    }
+
+    @PutMapping("/{id}/mark-read")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REPAIR_MANAGER', 'TEAM_LEADER')")
+    @Operation(summary = "Đánh dấu thông báo đã đọc")
+    public ApiResponse<Void> markAsRead(@PathVariable UUID id, Authentication authentication) {
+        consumableRequestService.markAsRead(id, authentication.getName());
+        return ApiResponse.success("Đã đánh dấu đọc", null);
     }
 }

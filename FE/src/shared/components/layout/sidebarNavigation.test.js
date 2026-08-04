@@ -12,7 +12,7 @@ describe('sidebarNavigation', () => {
     const hrefs = groups.flatMap((group) => group.items.map((item) => item.href))
 
     expect(groups.map((group) => group.label)).toEqual([
-      'Dùng chung',
+      'Chat',
       'Nhân sự',
       'Thủ kho vật tư',
       'Thủ kho CCDC',
@@ -25,7 +25,7 @@ describe('sidebarNavigation', () => {
   it('only returns shared and HR groups for an HR account', () => {
     const groups = getVisibleSidebarGroups({ roles: [ROLES.HR] })
 
-    expect(groups.map((group) => group.label)).toEqual(['Dùng chung', 'Nhân sự'])
+    expect(groups.map((group) => group.label)).toEqual(['Chat', 'Nhân sự'])
   })
 
   it('recognizes nested pages as active', () => {

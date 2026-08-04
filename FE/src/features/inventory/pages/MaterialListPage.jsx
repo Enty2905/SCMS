@@ -202,6 +202,7 @@ export function MaterialListPage() {
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead className="bg-slate-100/50 text-sm uppercase tracking-wide font-bold text-slate-700">
               <tr>
+                <th className="px-5 py-3 w-16 text-center">STT</th>
                 <th className="px-5 py-3">Mã vật tư</th>
                 <th className="px-5 py-3">Tên vật tư</th>
                 <th className="px-5 py-3">Đơn vị</th>
@@ -213,7 +214,7 @@ export function MaterialListPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
                     Đang tải dữ liệu...
                   </td>
                 </tr>
@@ -221,17 +222,20 @@ export function MaterialListPage() {
 
               {!loading && !items.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-500" colSpan={6}>
+                  <td className="px-5 py-8 text-center text-slate-500" colSpan={7}>
                     Không có vật tư phù hợp.
                   </td>
                 </tr>
               ) : null}
 
               {!loading
-                ? items.map((item) => {
+                ? items.map((item, index) => {
                     const id = activeTab === 'sparepart' ? item.sparePartId : item.consumableId
                     return (
                       <tr className="hover:bg-slate-50/80" key={id}>
+                        <td className="px-5 py-4 text-center text-slate-600 font-medium">
+                          {page * 10 + index + 1}
+                        </td>
                         <td className="px-5 py-4 font-semibold text-violet-600">
                           {item.code}
                         </td>

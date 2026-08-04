@@ -216,7 +216,52 @@ public class SparePartRequestService {
         sparePartRequestRepository.save(request);
 
         log.info("Đã cấp phát phụ tùng thay thế cho phiếu {} bởi {}", request.getReqNumber(), username);
-        return toResponse(request);
+        SparePartRequestResponse issuedResponse = toResponse(request);
+
+        // Gửi thông báo phản hồi real-time về cho người tạo phiếu
+        java.util.Map<String, Object> responseNotif = new java.util.HashMap<>();
+        responseNotif.put("reqId", issuedResponse.getReqId());
+        responseNotif.put("reqNumber", issuedResponse.getReqNumber());
+        responseNotif.put("status", "issued");
+        responseNotif.put("type", "sparepart");
+        responseNotif.put("createdByUsername", issuedResponse.getCreatedByUsername());
+        responseNotif.put("issuedByName", issuedResponse.getIssuedByName());
+        notificationService.sendMaterialRequestResponseNotification(responseNotif);
+
+        return issuedResponse;
+    }
+
+    /**
+     * Thủ kho từ chối cấp phát vật tư thay thế.
+     * Chỉ cho phép khi phiếu đang ở trạng thái pending.
+     */
+    @Transactional
+    public SparePartRequestResponse rejectRequest(UUID reqId, String reason, String username) {
+        SparePartRequest request = sparePartRequestRepository.findByIdWithDetails(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        if (!"pending".equals(request.getStatus())) {
+            throw new AppException(ErrorCode.WORK_ORDER_INVALID_STATUS);
+        }
+
+        request.setStatus("rejected");
+        request.setNote(reason);
+        sparePartRequestRepository.save(request);
+
+        log.info("Phiếu vật tư thay thế {} đã bị từ chối bởi {} với lý do: {}", request.getReqNumber(), username, reason);
+        SparePartRequestResponse rejectedResponse = toResponse(request);
+
+        // Gửi thông báo phản hồi real-time về cho người tạo phiếu
+        java.util.Map<String, Object> responseNotif = new java.util.HashMap<>();
+        responseNotif.put("reqId", rejectedResponse.getReqId());
+        responseNotif.put("reqNumber", rejectedResponse.getReqNumber());
+        responseNotif.put("status", "rejected");
+        responseNotif.put("type", "sparepart");
+        responseNotif.put("reason", reason);
+        responseNotif.put("createdByUsername", rejectedResponse.getCreatedByUsername());
+        notificationService.sendMaterialRequestResponseNotification(responseNotif);
+
+        return rejectedResponse;
     }
 
     /**
@@ -503,5 +548,38 @@ public class SparePartRequestService {
         return candidate;
     }
 
+    /**
+     * Lấy danh sách thông báo chưa đọc.
+     */
+    public java.util.List<java.util.Map<String, Object>> getUnreadNotifications(String username) {
+        return sparePartRequestRepository.findUnreadNotifications(username).stream()
+                .map(r -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("reqId", r.getReqId());
+                    map.put("reqNumber", r.getReqNumber());
+                    map.put("status", r.getStatus());
+                    map.put("type", "sparepart");
+                    map.put("reason", r.getNote());
+                    map.put("createdByUsername", r.getCreatedBy() != null ? r.getCreatedBy().getUsername() : null);
+                    map.put("issuedByName", r.getIssuedBy() != null && r.getIssuedBy().getEmployee() != null 
+                        ? r.getIssuedBy().getEmployee().getName() : (r.getIssuedBy() != null ? r.getIssuedBy().getUsername() : null));
+                    map.put("timestamp", r.getIssuedAt() != null ? r.getIssuedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 
+                        (r.getCreatedAt() != null ? r.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : System.currentTimeMillis()));
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
 
+    /**
+     * Đánh dấu đã đọc.
+     */
+    @Transactional
+    public void markAsRead(UUID reqId, String username) {
+        SparePartRequest request = sparePartRequestRepository.findById(reqId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+        if (request.getCreatedBy() != null && request.getCreatedBy().getUsername().equals(username)) {
+            request.setIsRead(true);
+            sparePartRequestRepository.save(request);
+        }
+    }
 }

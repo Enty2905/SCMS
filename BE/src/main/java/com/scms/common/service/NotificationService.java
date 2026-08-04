@@ -21,4 +21,13 @@ public class NotificationService {
         log.info("Sending material request notification...");
         messagingTemplate.convertAndSend("/topic/material-requests", message);
     }
+
+    /**
+     * Gửi thông báo phản hồi về cho người tạo phiếu (issued/rejected).
+     * FE lắng nghe /topic/material-request-response.
+     */
+    public void sendMaterialRequestResponseNotification(Object message) {
+        log.info("Sending material request response notification...");
+        messagingTemplate.convertAndSend("/topic/material-request-response", message);
+    }
 }

@@ -25,8 +25,8 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
         JOIN tool t ON t.tool_id = tb.tool_id
         JOIN employee e ON e.employee_id = tb.borrowed_by
         WHERE (:status IS NULL 
-               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date > CURRENT_TIMESTAMP)
-               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date <= CURRENT_TIMESTAMP)))
+               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date >= :now)
+               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date < :now)))
                OR (:status NOT IN ('borrowing', 'overdue') AND tb.status = :status))
           AND (
             :keyword IS NULL
@@ -40,8 +40,8 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
         JOIN tool t ON t.tool_id = tb.tool_id
         JOIN employee e ON e.employee_id = tb.borrowed_by
         WHERE (:status IS NULL 
-               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date > CURRENT_TIMESTAMP)
-               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date <= CURRENT_TIMESTAMP)))
+               OR (:status = 'borrowing' AND tb.status = 'borrowing' AND tb.due_date >= :now)
+               OR (:status = 'overdue' AND (tb.status = 'overdue' OR (tb.status = 'borrowing' AND tb.due_date < :now)))
                OR (:status NOT IN ('borrowing', 'overdue') AND tb.status = :status))
           AND (
             :keyword IS NULL
@@ -53,6 +53,7 @@ public interface ToolBorrowRepository extends JpaRepository<ToolBorrow, UUID> {
     Page<ToolBorrow> searchBorrows(
             @Param("keyword") String keyword,
             @Param("status") String status,
+            @Param("now") LocalDateTime now,
             Pageable pageable);
 
     /**
