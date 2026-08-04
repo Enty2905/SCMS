@@ -10,6 +10,9 @@ import { selectChatUnreadTotal } from './chat.selectors.js'
 import { fetchChatHistory, fetchChatRooms } from './chat.thunks.js'
 
 const room = {
+  roomId: 'room-1',
+  roomType: 'department',
+  roomName: 'Nhân sự',
   departmentId: 'room-1',
   departmentName: 'Nhân sự',
   unreadCount: 0,
@@ -20,7 +23,8 @@ describe('chat reducer', () => {
   it('replaces an optimistic message with the server response', () => {
     const queued = {
       clientMessageId: 'client-1',
-      departmentId: 'room-1',
+      roomId: 'room-1',
+      roomType: 'group',
       senderUserId: 'user-1',
       content: 'Xin chào',
       sentAt: '2026-07-29T10:00:00',
@@ -57,7 +61,7 @@ describe('chat reducer', () => {
       receiveChatMessage({
         message: {
           messageId: 'message-2',
-          departmentId: 'room-1',
+          roomId: 'room-1',
           senderUserId: 'user-2',
           content: 'Thông báo mới',
           sentAt: '2026-07-29T10:00:00',
@@ -73,7 +77,7 @@ describe('chat reducer', () => {
   it('merges paged history without duplicating realtime messages', () => {
     const realtimeMessage = {
       messageId: 'message-3',
-      departmentId: 'room-1',
+      roomId: 'room-1',
       content: 'Đã nhận realtime',
       sentAt: '2026-07-29T10:00:00',
     }
@@ -89,7 +93,8 @@ describe('chat reducer', () => {
       state,
       fetchChatHistory.fulfilled(
         {
-          departmentId: 'room-1',
+          roomId: 'room-1',
+          roomType: 'department',
           cursor: '',
           history: {
             content: [realtimeMessage],
@@ -98,7 +103,7 @@ describe('chat reducer', () => {
           },
         },
         'request-id',
-        { departmentId: 'room-1' },
+        { roomId: 'room-1', roomType: 'department' },
       ),
     )
 

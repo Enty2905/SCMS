@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Bell,
+  ChevronDown,
   LogOut,
   Zap,
 } from 'lucide-react'
@@ -10,7 +11,6 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { clearStoredAuth } from '@/features/auth/services/token.service.js'
 import { logout } from '@/features/auth/store/auth.reducer.js'
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
-import { chatNavItems } from '@/features/chat/chat.nav.js'
 import { selectChatUnreadTotal } from '@/features/chat/store/chat.selectors.js'
 import {
   getPrimaryRoleLabel,
@@ -19,26 +19,16 @@ import {
 } from '@/features/auth/utils/roles.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { apiClient } from '@/shared/api/httpClient.js'
+import {
+  getVisibleSidebarGroups,
+  getVisibleSidebarItems,
+  isSidebarItemActive,
+} from '@/shared/components/layout/sidebarNavigation.js'
 import { useWebSocket } from '@/shared/contexts/WebSocketContext.jsx'
 
-import { hrNavItems } from '@/features/hr/hr.nav.js'
-import { inventoryNavItems } from '@/features/inventory/inventory.nav.js'
-import { equipmentNavItems } from '@/features/equipment/equipment.nav.js'
-import { maintenanceNavItems } from '@/features/maintenance/maintenance.nav.js'
-import { repairRequestNavItems } from '@/features/repairrequest/repairrequest.nav.js'
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
 import { fetchTools } from '@/features/inventory/services/tool.service.js'
 import { fetchAllRepairRequests } from '@/features/repairrequest/services/repairRequest.service.js'
-
-
-const navItems = [
-  ...chatNavItems,
-  ...hrNavItems,
-  ...inventoryNavItems,
-  ...equipmentNavItems,
-  ...maintenanceNavItems,
-  ...repairRequestNavItems,
-]
 
 
 export function AppShell() {
@@ -52,6 +42,7 @@ export function AppShell() {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [showAllNotifs, setShowAllNotifs] = useState(false)
+  const [navGroupOpenState, setNavGroupOpenState] = useState({})
 
   // State cho websocket toast
   const [realtimeToast, setRealtimeToast] = useState(null)
@@ -287,15 +278,55 @@ export function AppShell() {
       navigate(`/dashboard/equipment?systemId=${notif.systemId || 'all'}`)
     }
   }
-  const visibleNavItems = navItems.filter((item) => hasAnyRole(user, item.roles))
-  const currentItem =
-    visibleNavItems.find((item) => location.pathname === item.href) ||
-    visibleNavItems.find(
-      (item) => item.href !== '/dashboard' && location.pathname.startsWith(item.href),
-    ) ||
-    visibleNavItems[0]
+  const visibleNavItems = getVisibleSidebarItems(user)
+  const visibleNavGroups = getVisibleSidebarGroups(user)
+  const useGroupedNavigation = user?.roles?.includes(ROLES.ADMIN)
+  const currentItem = visibleNavItems.find((item) =>
+    isSidebarItemActive(location.pathname, item),
+  )
+  const activeNavGroupId = visibleNavGroups.find((group) =>
+    group.items.some((item) => isSidebarItemActive(location.pathname, item)),
+  )?.id
   const roleLabel = getPrimaryRoleLabel(user)
   const initials = getInitials(user?.name)
+
+  function isNavGroupOpen(groupId) {
+    return navGroupOpenState[groupId] ?? activeNavGroupId === groupId
+  }
+
+  function toggleNavGroup(groupId) {
+    setNavGroupOpenState((current) => ({
+      ...current,
+      [groupId]: !(current[groupId] ?? activeNavGroupId === groupId),
+    }))
+  }
+
+  function renderNavItem(item, nested = false) {
+    return (
+      <NavLink
+        className={({ isActive }) =>
+          [
+            'flex items-center gap-3 rounded-md px-3 text-sm font-semibold transition',
+            nested ? 'h-9' : 'h-10',
+            isActive
+              ? 'bg-violet-600 text-white shadow-sm shadow-violet-950/20'
+              : 'text-slate-300 hover:bg-white/10 hover:text-white',
+          ].join(' ')
+        }
+        end={item.href === '/dashboard'}
+        key={item.label + item.href}
+        to={item.href}
+      >
+        <item.icon size={nested ? 16 : 18} />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.href === '/dashboard/chat' && chatUnreadTotal > 0 ? (
+          <span className="grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {chatUnreadTotal > 99 ? '99+' : chatUnreadTotal}
+          </span>
+        ) : null}
+      </NavLink>
+    )
+  }
 
   async function handleLogout() {
     try {
@@ -328,29 +359,58 @@ export function AppShell() {
         </div>
 
         <nav className="mt-6 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pb-2 pr-1 [scrollbar-color:rgb(71_85_105)_transparent] [scrollbar-width:thin]">
-          {visibleNavItems.map((item) => (
-            <NavLink
-              className={({ isActive }) =>
-                [
-                  'flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition',
-                  isActive
-                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-950/20'
-                    : 'text-slate-300 hover:bg-white/10 hover:text-white',
-                ].join(' ')
-              }
-              end={item.href === '/dashboard'}
-              key={item.label + item.href}
-              to={item.href}
-            >
-              <item.icon size={18} />
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
-              {item.href === '/dashboard/chat' && chatUnreadTotal > 0 ? (
-                <span className="grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {chatUnreadTotal > 99 ? '99+' : chatUnreadTotal}
-                </span>
-              ) : null}
-            </NavLink>
-          ))}
+          {useGroupedNavigation
+            ? visibleNavGroups.map((group) => {
+                const isOpen = isNavGroupOpen(group.id)
+                const isActive = activeNavGroupId === group.id
+                const containsChat = group.items.some(
+                  (item) => item.href === '/dashboard/chat',
+                )
+
+                return (
+                  <div key={group.id}>
+                    <button
+                      aria-controls={`sidebar-group-${group.id}`}
+                      aria-expanded={isOpen}
+                      className={[
+                        'flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold transition',
+                        isActive
+                          ? 'bg-white/10 text-white'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white',
+                      ].join(' ')}
+                      onClick={() => toggleNavGroup(group.id)}
+                      type="button"
+                    >
+                      <group.icon size={18} />
+                      <span className="min-w-0 flex-1 truncate text-left">
+                        {group.label}
+                      </span>
+                      {containsChat && chatUnreadTotal > 0 && !isOpen ? (
+                        <span className="grid min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {chatUnreadTotal > 99 ? '99+' : chatUnreadTotal}
+                        </span>
+                      ) : null}
+                      <ChevronDown
+                        className={[
+                          'shrink-0 transition-transform duration-200',
+                          isOpen ? 'rotate-180' : '',
+                        ].join(' ')}
+                        size={16}
+                      />
+                    </button>
+
+                    {isOpen ? (
+                      <div
+                        className="ml-4 mt-1 space-y-1 border-l border-slate-800 pl-2"
+                        id={`sidebar-group-${group.id}`}
+                      >
+                        {group.items.map((item) => renderNavItem(item, true))}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })
+            : visibleNavItems.map((item) => renderNavItem(item))}
         </nav>
 
         <div className="mt-4 shrink-0 border-t border-slate-800 pt-4">

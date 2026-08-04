@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -16,10 +17,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChatReadResponse {
+public class GroupChatRoomResponse {
     UUID roomId;
     String roomType;
-    UUID departmentId;
-    UUID lastMessageId;
+    String roomName;
+    UUID ownerUserId;
+    String ownerName;
+    long memberCount;
+    ChatMessageResponse lastMessage;
     long unreadCount;
+    LocalDateTime createdAt;
 }

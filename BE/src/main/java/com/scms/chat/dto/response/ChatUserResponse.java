@@ -16,10 +16,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChatReadResponse {
-    UUID roomId;
-    String roomType;
-    UUID departmentId;
-    UUID lastMessageId;
-    long unreadCount;
+public class ChatUserResponse {
+    UUID userId;
+    String username;
+    String employeeName;
+    String avatarUrl;
+    String departmentName;
+    String positionName;
 }

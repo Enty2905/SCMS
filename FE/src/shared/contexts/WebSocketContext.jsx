@@ -10,6 +10,7 @@ export const useWebSocket = () => useContext(WebSocketContext)
 export function WebSocketProvider({ children }) {
   const [stompClient, setStompClient] = useState(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [connectionError, setConnectionError] = useState('')
 
   // Listen to token changes in localStorage (e.g., when logging in/out)
   const [token, setToken] = useState(() => window.localStorage.getItem('scms.auth.token'))
@@ -34,8 +35,10 @@ export function WebSocketProvider({ children }) {
       return undefined
     }
 
-    // Use standard WebSockets
-    const wsUrl = env.apiUrl.replace(/^http/, 'ws') + '/ws-chat'
+    const apiUrl = new URL(env.apiUrl, globalThis.location.origin)
+    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    apiUrl.pathname = `${apiUrl.pathname.replace(/\/$/, '')}/ws-chat`
+    const wsUrl = apiUrl.toString()
     
     const client = new Client({
       brokerURL: wsUrl,
@@ -51,15 +54,33 @@ export function WebSocketProvider({ children }) {
     client.onConnect = () => {
       setStompClient(client)
       setIsConnected(true)
+      setConnectionError('')
     }
 
     client.onStompError = (frame) => {
       console.error('Broker reported error: ' + frame.headers['message'])
       console.error('Additional details: ' + frame.body)
+      setConnectionError(
+        frame.headers.message ||
+          frame.body ||
+          'Backend từ chối kết nối chat. Vui lòng đăng nhập lại.',
+      )
     }
 
-    client.onWebSocketClose = () => {
+    client.onWebSocketError = () => {
+      setConnectionError(
+        'Không thể kết nối máy chủ chat. Hãy kiểm tra BE và kết nối mạng.',
+      )
+    }
+
+    client.onWebSocketClose = (event) => {
+      setStompClient((current) => (current === client ? null : current))
       setIsConnected(false)
+      if (event.code !== 1000) {
+        setConnectionError(
+          `Kết nối chat đã đóng (${event.code || 'không rõ mã lỗi'}). Hệ thống đang thử kết nối lại.`,
+        )
+      }
     }
 
     client.activate()
@@ -75,7 +96,9 @@ export function WebSocketProvider({ children }) {
   }, [token])
 
   return (
-    <WebSocketContext.Provider value={{ stompClient, isConnected }}>
+    <WebSocketContext.Provider
+      value={{ connectionError, stompClient, isConnected }}
+    >
       {children}
     </WebSocketContext.Provider>
   )

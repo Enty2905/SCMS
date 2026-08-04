@@ -20,6 +20,8 @@ import java.util.UUID;
 public class ChatMessageResponse {
     UUID messageId;
     UUID clientMessageId;
+    UUID roomId;
+    String roomType;
     UUID departmentId;
     UUID senderUserId;
     String senderName;

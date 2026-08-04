@@ -13,6 +13,10 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
+      connection-init-sql: SET time_zone = '+07:00'
+
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
 
   jpa:
     hibernate:
@@ -22,6 +26,8 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh
 
   mail:
     host: smtp.gmail.com
@@ -57,6 +63,8 @@ logging:
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
 app:
+  cors:
+    allowed-origin-patterns: "${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*}"
   upload:
     pdf-dir: uploads/pdf
     employee-avatar-dir: uploads/employees

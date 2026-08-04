@@ -6,9 +6,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-scms_db}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
       - "3307:3306"
-    command: --default-authentication-plugin=mysql_native_password
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --default-time-zone=+07:00
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 10s
@@ -29,10 +32,12 @@ services:
       PMA_HOST: ${PMA_HOST:-mysql_db}
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
     depends_on:
       - mysql_db
     networks:
       - backend
+
 
   scms:
     build:
@@ -55,6 +60,9 @@ services:
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_PATH: ${LOG_PATH:-/var/log/scms}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Duser.timezone=Asia/Ho_Chi_Minh}
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*}
     volumes:
       - scms_logs:/var/log/scms
       - ./uploads:/app/uploads

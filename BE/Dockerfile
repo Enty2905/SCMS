@@ -13,6 +13,8 @@ RUN --mount=type=cache,target=/root/.m2 \
 # Stage 2: Run
 FROM amazoncorretto:21.0.4
 WORKDIR /app
+ENV TZ=Asia/Ho_Chi_Minh
+ENV JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Ho_Chi_Minh"
 COPY --from=build /app/target/*.jar app.jar
 
 # Tạo thư mục log và cấp quyền

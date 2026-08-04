@@ -75,4 +75,34 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
      */
     @Query("SELECT u.employee.employeeId, u.isActive FROM User u WHERE u.deleted = false")
     List<Object[]> findAccountStatusByEmployee();
+
+    @EntityGraph(attributePaths = {"employee", "employee.department", "employee.position"})
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN u.employee employee
+        WHERE u.deleted = false
+          AND u.isActive = true
+          AND (
+              :search = ''
+              OR LOWER(u.username) LIKE CONCAT('%', :search, '%')
+              OR LOWER(employee.name) LIKE CONCAT('%', :search, '%')
+          )
+        ORDER BY employee.name ASC
+    """)
+    List<User> findActiveChatUsers(
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"employee", "employee.department", "employee.position"})
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN u.employee
+        WHERE u.deleted = false
+          AND u.isActive = true
+          AND u.userId IN :userIds
+    """)
+    List<User> findAllActiveChatUsersByIds(@Param("userIds") List<UUID> userIds);
 }

@@ -16,10 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChatReadResponse {
+public class GroupChatEventResponse {
+    String type;
     UUID roomId;
-    String roomType;
-    UUID departmentId;
-    UUID lastMessageId;
-    long unreadCount;
 }

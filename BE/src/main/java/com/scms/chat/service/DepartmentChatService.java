@@ -157,6 +157,8 @@ public class DepartmentChatService {
         }
 
         return ChatReadResponse.builder()
+                .roomId(departmentId)
+                .roomType("department")
                 .departmentId(departmentId)
                 .lastMessageId(message.getMessageId())
                 .unreadCount(countUnread(departmentId, user))
@@ -197,6 +199,8 @@ public class DepartmentChatService {
         return ChatMessageResponse.builder()
                 .messageId(message.getMessageId())
                 .clientMessageId(message.getClientMessageId())
+                .roomId(message.getDepartment().getDepartmentId())
+                .roomType("department")
                 .departmentId(message.getDepartment().getDepartmentId())
                 .senderUserId(message.getSender().getUserId())
                 .senderName(employee == null ? message.getSender().getUsername() : employee.getName())

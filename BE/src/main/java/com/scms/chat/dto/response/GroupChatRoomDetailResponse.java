@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -16,10 +17,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChatReadResponse {
+public class GroupChatRoomDetailResponse {
     UUID roomId;
-    String roomType;
-    UUID departmentId;
-    UUID lastMessageId;
-    long unreadCount;
+    String roomName;
+    UUID ownerUserId;
+    boolean owner;
+    List<ChatUserResponse> members;
 }

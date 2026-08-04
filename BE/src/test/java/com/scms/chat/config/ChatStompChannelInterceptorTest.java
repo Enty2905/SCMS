@@ -2,6 +2,7 @@ package com.scms.chat.config;
 
 import com.scms.auth.service.AuthenticationService;
 import com.scms.chat.service.ChatAccessService;
+import com.scms.chat.service.GroupChatAccessService;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,9 @@ class ChatStompChannelInterceptorTest {
 
     @Mock
     ChatAccessService chatAccessService;
+
+    @Mock
+    GroupChatAccessService groupChatAccessService;
 
     @InjectMocks
     ChatStompChannelInterceptor interceptor;
@@ -81,6 +85,18 @@ class ChatStompChannelInterceptorTest {
         interceptor.preSend(message(accessor), null);
 
         verify(chatAccessService).requireRoomAccess("hr", departmentId);
+    }
+
+    @Test
+    void groupMessageSendChecksMembership() {
+        UUID roomId = UUID.randomUUID();
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setDestination("/app/chat/groups/" + roomId + "/messages");
+        accessor.setUser(new UsernamePasswordAuthenticationToken("member", null));
+
+        interceptor.preSend(message(accessor), null);
+
+        verify(groupChatAccessService).requireMember("member", roomId);
     }
 
     private static Message<byte[]> message(StompHeaderAccessor accessor) {

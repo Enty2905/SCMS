@@ -3,8 +3,10 @@ import {
   CircleAlert,
   Loader2,
   MessageSquareText,
+  Plus,
   Search,
   Send,
+  Settings2,
   UsersRound,
   Wifi,
   WifiOff,
@@ -16,6 +18,10 @@ import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { useWebSocket } from '@/shared/contexts/WebSocketContext.jsx'
 
+import {
+  CreateGroupRoomModal,
+  ManageGroupRoomModal,
+} from '../components/GroupRoomModals.jsx'
 import {
   clearChatSocketError,
   queueChatMessage,
@@ -49,6 +55,8 @@ export function DepartmentChatPage() {
   const [roomSearch, setRoomSearch] = useState('')
   const [draft, setDraft] = useState('')
   const [mobileConversationOpen, setMobileConversationOpen] = useState(false)
+  const [createRoomOpen, setCreateRoomOpen] = useState(false)
+  const [manageRoomOpen, setManageRoomOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const lastReadRef = useRef('')
 
@@ -56,7 +64,7 @@ export function DepartmentChatPage() {
     const keyword = roomSearch.trim().toLocaleLowerCase('vi')
     if (!keyword) return rooms
     return rooms.filter((room) =>
-      `${room.departmentName} ${room.departmentCode || ''}`
+      `${room.roomName} ${room.roomCode || ''}`
         .toLocaleLowerCase('vi')
         .includes(keyword),
     )
@@ -64,18 +72,23 @@ export function DepartmentChatPage() {
 
   useEffect(() => {
     if (!activeRoom && rooms.length) {
-      dispatch(setActiveChatRoom(rooms[0].departmentId))
+      dispatch(setActiveChatRoom(rooms[0].roomId))
     }
   }, [activeRoom, dispatch, rooms])
 
   useEffect(() => {
     if (!activeRoom || history.initialized || history.loading) return
-    dispatch(fetchChatHistory({ departmentId: activeRoom.departmentId }))
+    dispatch(
+      fetchChatHistory({
+        roomId: activeRoom.roomId,
+        roomType: activeRoom.roomType,
+      }),
+    )
   }, [activeRoom, dispatch, history.initialized, history.loading])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [activeRoom?.departmentId, messages.length])
+  }, [activeRoom?.roomId, messages.length])
 
   useEffect(() => {
     if (!activeRoom || !messages.length) return undefined
@@ -89,7 +102,8 @@ export function DepartmentChatPage() {
       lastReadRef.current = latestMessage.messageId
       dispatch(
         markChatRoomRead({
-          departmentId: activeRoom.departmentId,
+          roomId: activeRoom.roomId,
+          roomType: activeRoom.roomType,
           lastMessageId: latestMessage.messageId,
         }),
       )
@@ -101,9 +115,9 @@ export function DepartmentChatPage() {
       globalThis.document.removeEventListener('visibilitychange', markLatestAsRead)
   }, [activeRoom, dispatch, messages])
 
-  function selectRoom(departmentId) {
+  function selectRoom(roomId) {
     lastReadRef.current = ''
-    dispatch(setActiveChatRoom(departmentId))
+    dispatch(setActiveChatRoom(roomId))
     setMobileConversationOpen(true)
   }
 
@@ -111,7 +125,8 @@ export function DepartmentChatPage() {
     if (!activeRoom || !history.nextCursor || history.loading) return
     dispatch(
       fetchChatHistory({
-        departmentId: activeRoom.departmentId,
+        roomId: activeRoom.roomId,
+        roomType: activeRoom.roomType,
         cursor: history.nextCursor,
       }),
     )
@@ -129,7 +144,10 @@ export function DepartmentChatPage() {
     dispatch(
       queueChatMessage({
         clientMessageId,
-        departmentId: activeRoom.departmentId,
+        roomId: activeRoom.roomId,
+        roomType: activeRoom.roomType,
+        departmentId:
+          activeRoom.roomType === 'department' ? activeRoom.roomId : null,
         senderUserId: user?.id,
         senderName: user?.name || 'Bạn',
         senderAvatarUrl: null,
@@ -140,7 +158,10 @@ export function DepartmentChatPage() {
     )
 
     stompClient.publish({
-      destination: `/app/chat/rooms/${activeRoom.departmentId}/messages`,
+      destination:
+        activeRoom.roomType === 'group'
+          ? `/app/chat/groups/${activeRoom.roomId}/messages`
+          : `/app/chat/rooms/${activeRoom.roomId}/messages`,
       body: JSON.stringify({ clientMessageId, content }),
     })
     setDraft('')
@@ -157,12 +178,21 @@ export function DepartmentChatPage() {
     <div className="mx-auto max-w-[1500px]">
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-950">Chat phòng ban</h1>
+          <h1 className="text-xl font-bold text-slate-950">Chat nội bộ</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Trao đổi nội bộ theo phòng ban và lưu lại toàn bộ lịch sử công việc.
+            Trao đổi theo phòng ban hoặc tạo nhóm làm việc với các tài khoản khác.
           </p>
         </div>
-        <ConnectionBadge status={connectionStatus} />
+        <div className="flex items-center gap-2">
+          <ConnectionBadge status={connectionStatus} />
+          <Button
+            className="bg-violet-600 hover:bg-violet-700"
+            onClick={() => setCreateRoomOpen(true)}
+          >
+            <Plus size={17} />
+            Tạo phòng
+          </Button>
+        </div>
       </header>
 
       {error || socketError ? (
@@ -206,7 +236,7 @@ export function DepartmentChatPage() {
                 <input
                   className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
                   onChange={(event) => setRoomSearch(event.target.value)}
-                  placeholder="Tìm phòng ban..."
+                  placeholder="Tìm phòng chat..."
                   value={roomSearch}
                 />
               </label>
@@ -219,9 +249,9 @@ export function DepartmentChatPage() {
             ) : filteredRooms.length ? (
               filteredRooms.map((room) => (
                 <RoomButton
-                  active={activeRoom?.departmentId === room.departmentId}
-                  key={room.departmentId}
-                  onClick={() => selectRoom(room.departmentId)}
+                  active={activeRoom?.roomId === room.roomId}
+                  key={room.roomId}
+                  onClick={() => selectRoom(room.roomId)}
                   room={room}
                 />
               ))
@@ -229,7 +259,7 @@ export function DepartmentChatPage() {
               <EmptyState
                 description={
                   roomSearch
-                    ? 'Không tìm thấy phòng ban phù hợp.'
+                    ? 'Không tìm thấy phòng chat phù hợp.'
                     : 'Tài khoản chưa có phòng chat.'
                 }
                 title="Chưa có phòng"
@@ -259,12 +289,26 @@ export function DepartmentChatPage() {
                 <RoomAvatar room={activeRoom} />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-slate-950">
-                    {activeRoom.departmentName}
+                    {activeRoom.roomName}
                   </p>
                   <p className="truncate text-xs text-slate-500">
-                    {activeRoom.departmentCode || 'Phòng ban nội bộ'}
+                    {activeRoom.roomType === 'group'
+                      ? activeRoom.roomCode || 'Nhóm chat'
+                      : activeRoom.roomCode || 'Phòng ban nội bộ'}
                   </p>
                 </div>
+                {activeRoom.roomType === 'group' ? (
+                  <Button
+                    aria-label="Quản lý thành viên"
+                    className="ml-auto"
+                    onClick={() => setManageRoomOpen(true)}
+                    size="icon"
+                    title="Thành viên phòng"
+                    variant="ghost"
+                  >
+                    <Settings2 size={18} />
+                  </Button>
+                ) : null}
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-5 sm:px-6">
@@ -335,12 +379,29 @@ export function DepartmentChatPage() {
             </>
           ) : (
             <EmptyState
-              description="Chọn một phòng ban để xem lịch sử và bắt đầu trao đổi."
+              description="Chọn một phòng chat để xem lịch sử và bắt đầu trao đổi."
               title="Chọn phòng chat"
             />
           )}
         </div>
       </section>
+
+      {createRoomOpen ? (
+        <CreateGroupRoomModal
+          onClose={() => setCreateRoomOpen(false)}
+          onCreated={(roomId) => {
+            setCreateRoomOpen(false)
+            selectRoom(roomId)
+          }}
+        />
+      ) : null}
+
+      {manageRoomOpen && activeRoom?.roomType === 'group' ? (
+        <ManageGroupRoomModal
+          onClose={() => setManageRoomOpen(false)}
+          roomId={activeRoom.roomId}
+        />
+      ) : null}
     </div>
   )
 }
@@ -359,7 +420,7 @@ function RoomButton({ active, onClick, room }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="truncate text-sm font-semibold text-slate-950">
-            {room.departmentName}
+            {room.roomName}
           </p>
           {room.unreadCount ? (
             <span className="grid min-w-5 shrink-0 place-items-center rounded-full bg-violet-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
@@ -367,6 +428,9 @@ function RoomButton({ active, onClick, room }) {
             </span>
           ) : null}
         </div>
+        <p className="mt-0.5 text-[11px] font-medium uppercase text-slate-400">
+          {room.roomType === 'group' ? 'Nhóm chat' : 'Phòng ban'}
+        </p>
         <p className="mt-1 truncate text-xs text-slate-500">
           {room.lastMessage
             ? `${room.lastMessage.senderName}: ${room.lastMessage.content}`
@@ -416,9 +480,17 @@ function MessageBubble({ currentUserId, message }) {
 }
 
 function RoomAvatar({ room }) {
-  const initials = getInitials(room.departmentName)
+  const initials = getInitials(room.roomName)
+  const group = room.roomType === 'group'
   return (
-    <div className="grid size-10 shrink-0 place-items-center rounded-md bg-emerald-100 text-sm font-bold text-emerald-700">
+    <div
+      className={[
+        'grid size-10 shrink-0 place-items-center rounded-md text-sm font-bold',
+        group
+          ? 'bg-violet-100 text-violet-700'
+          : 'bg-emerald-100 text-emerald-700',
+      ].join(' ')}
+    >
       {initials}
     </div>
   )

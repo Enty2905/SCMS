@@ -1,17 +1,29 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 import {
+  addGroupChatMembers,
+  createGroupChatRoom,
   fetchChatHistory,
   fetchChatRooms,
+  fetchGroupChatRoomDetail,
   markChatRoomRead,
+  removeGroupChatMember,
+  searchChatUsers,
 } from './chat.thunks.js'
 
 const initialState = {
   rooms: [],
   messagesByRoom: {},
   historyByRoom: {},
+  roomDetails: {},
   activeRoomId: null,
   roomsLoading: false,
+  roomMutationLoading: false,
+  userSearch: {
+    items: [],
+    loading: false,
+    error: null,
+  },
   connectionStatus: 'disconnected',
   error: null,
   socketError: null,
@@ -29,7 +41,7 @@ const chatSlice = createSlice({
     },
     queueChatMessage(state, action) {
       const message = { ...action.payload, pending: true }
-      const roomId = message.departmentId
+      const roomId = message.roomId || message.departmentId
       state.messagesByRoom[roomId] = mergeMessages(
         state.messagesByRoom[roomId] || [],
         [message],
@@ -37,18 +49,28 @@ const chatSlice = createSlice({
     },
     receiveChatMessage(state, action) {
       const { message, shouldIncrementUnread } = action.payload
-      const roomId = message.departmentId
+      const roomId = message.roomId || message.departmentId
       state.messagesByRoom[roomId] = mergeMessages(
         state.messagesByRoom[roomId] || [],
-        [{ ...message, pending: false }],
+        [{ ...message, roomId, pending: false }],
       )
 
-      const room = state.rooms.find((item) => item.departmentId === roomId)
+      const room = state.rooms.find((item) => item.roomId === roomId)
       if (room) {
         room.lastMessage = message
         if (shouldIncrementUnread) {
           room.unreadCount = (room.unreadCount || 0) + 1
         }
+      }
+    },
+    removeChatRoom(state, action) {
+      const roomId = action.payload
+      state.rooms = state.rooms.filter((room) => room.roomId !== roomId)
+      delete state.messagesByRoom[roomId]
+      delete state.historyByRoom[roomId]
+      delete state.roomDetails[roomId]
+      if (state.activeRoomId === roomId) {
+        state.activeRoomId = null
       }
     },
     setChatSocketError(state, action) {
@@ -72,7 +94,7 @@ const chatSlice = createSlice({
         state.rooms = action.payload
         if (
           state.activeRoomId &&
-          !state.rooms.some((room) => room.departmentId === state.activeRoomId)
+          !state.rooms.some((room) => room.roomId === state.activeRoomId)
         ) {
           state.activeRoomId = null
         }
@@ -82,7 +104,7 @@ const chatSlice = createSlice({
         state.error = action.error.message || 'Không tải được danh sách phòng chat.'
       })
       .addCase(fetchChatHistory.pending, (state, action) => {
-        const roomId = action.meta.arg.departmentId
+        const roomId = action.meta.arg.roomId
         state.historyByRoom[roomId] = {
           ...emptyHistoryState(),
           ...state.historyByRoom[roomId],
@@ -91,12 +113,12 @@ const chatSlice = createSlice({
         }
       })
       .addCase(fetchChatHistory.fulfilled, (state, action) => {
-        const { departmentId, cursor, history } = action.payload
-        state.messagesByRoom[departmentId] = mergeMessages(
-          state.messagesByRoom[departmentId] || [],
+        const { roomId, cursor, history } = action.payload
+        state.messagesByRoom[roomId] = mergeMessages(
+          state.messagesByRoom[roomId] || [],
           history.content || [],
         )
-        state.historyByRoom[departmentId] = {
+        state.historyByRoom[roomId] = {
           loading: false,
           initialized: true,
           hasMore: Boolean(history.hasMore),
@@ -106,7 +128,7 @@ const chatSlice = createSlice({
         }
       })
       .addCase(fetchChatHistory.rejected, (state, action) => {
-        const roomId = action.meta.arg.departmentId
+        const roomId = action.meta.arg.roomId
         state.historyByRoom[roomId] = {
           ...emptyHistoryState(),
           ...state.historyByRoom[roomId],
@@ -115,15 +137,58 @@ const chatSlice = createSlice({
         }
       })
       .addCase(markChatRoomRead.fulfilled, (state, action) => {
-        const room = state.rooms.find(
-          (item) => item.departmentId === action.payload?.departmentId,
-        )
+        const roomId = action.payload?.roomId || action.payload?.departmentId
+        const room = state.rooms.find((item) => item.roomId === roomId)
         if (room) {
           room.unreadCount = action.payload?.unreadCount || 0
         }
       })
+      .addCase(searchChatUsers.pending, (state) => {
+        state.userSearch.loading = true
+        state.userSearch.error = null
+      })
+      .addCase(searchChatUsers.fulfilled, (state, action) => {
+        state.userSearch.loading = false
+        state.userSearch.items = action.payload
+      })
+      .addCase(searchChatUsers.rejected, (state, action) => {
+        state.userSearch.loading = false
+        state.userSearch.error =
+          action.error.message || 'Không tải được danh sách tài khoản.'
+      })
+      .addCase(fetchGroupChatRoomDetail.fulfilled, storeRoomDetail)
+      .addCase(createGroupChatRoom.pending, setMutationLoading)
+      .addCase(createGroupChatRoom.fulfilled, finishMutationWithDetail)
+      .addCase(createGroupChatRoom.rejected, finishMutation)
+      .addCase(addGroupChatMembers.pending, setMutationLoading)
+      .addCase(addGroupChatMembers.fulfilled, finishMutationWithDetail)
+      .addCase(addGroupChatMembers.rejected, finishMutation)
+      .addCase(removeGroupChatMember.pending, setMutationLoading)
+      .addCase(removeGroupChatMember.fulfilled, finishMutationWithDetail)
+      .addCase(removeGroupChatMember.rejected, finishMutation)
   },
 })
+
+function setMutationLoading(state) {
+  state.roomMutationLoading = true
+}
+
+function finishMutation(state) {
+  state.roomMutationLoading = false
+}
+
+function finishMutationWithDetail(state, action) {
+  state.roomMutationLoading = false
+  if (action.payload?.roomId) {
+    state.roomDetails[action.payload.roomId] = action.payload
+  }
+}
+
+function storeRoomDetail(state, action) {
+  if (action.payload?.roomId) {
+    state.roomDetails[action.payload.roomId] = action.payload
+  }
+}
 
 function emptyHistoryState() {
   return {
@@ -166,6 +231,7 @@ export const {
   clearChatState,
   queueChatMessage,
   receiveChatMessage,
+  removeChatRoom,
   setActiveChatRoom,
   setChatConnectionStatus,
   setChatSocketError,

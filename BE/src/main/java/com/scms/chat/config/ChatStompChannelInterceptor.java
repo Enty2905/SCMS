@@ -3,6 +3,7 @@ package com.scms.chat.config;
 import com.nimbusds.jwt.SignedJWT;
 import com.scms.auth.service.AuthenticationService;
 import com.scms.chat.service.ChatAccessService;
+import com.scms.chat.service.GroupChatAccessService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,10 +27,12 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
 
     static final String CHAT_TOPIC_PREFIX = "/topic/chat/rooms/";
     static final String CHAT_SEND_PREFIX = "/app/chat/rooms/";
+    static final String GROUP_CHAT_SEND_PREFIX = "/app/chat/groups/";
     static final String CHAT_SEND_SUFFIX = "/messages";
 
     AuthenticationService authenticationService;
     ChatAccessService chatAccessService;
+    GroupChatAccessService groupChatAccessService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -85,26 +88,35 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
         if (destination == null || !destination.startsWith(CHAT_TOPIC_PREFIX)) {
             return;
         }
-        UUID departmentId = parseDepartmentId(destination.substring(CHAT_TOPIC_PREFIX.length()));
+        UUID departmentId = parseRoomId(destination.substring(CHAT_TOPIC_PREFIX.length()));
         chatAccessService.requireRoomAccess(requireUsername(accessor), departmentId);
     }
 
     private void authorizeSend(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
-        if (destination == null
-                || !destination.startsWith(CHAT_SEND_PREFIX)
-                || !destination.endsWith(CHAT_SEND_SUFFIX)) {
+        if (destination == null || !destination.endsWith(CHAT_SEND_SUFFIX)) {
             return;
         }
 
-        String rawDepartmentId = destination.substring(
-                CHAT_SEND_PREFIX.length(),
-                destination.length() - CHAT_SEND_SUFFIX.length()
-        );
-        chatAccessService.requireRoomAccess(
-                requireUsername(accessor),
-                parseDepartmentId(rawDepartmentId)
-        );
+        if (destination.startsWith(CHAT_SEND_PREFIX)) {
+            String rawDepartmentId = destination.substring(
+                    CHAT_SEND_PREFIX.length(),
+                    destination.length() - CHAT_SEND_SUFFIX.length()
+            );
+            chatAccessService.requireRoomAccess(
+                    requireUsername(accessor),
+                    parseRoomId(rawDepartmentId)
+            );
+        } else if (destination.startsWith(GROUP_CHAT_SEND_PREFIX)) {
+            String rawRoomId = destination.substring(
+                    GROUP_CHAT_SEND_PREFIX.length(),
+                    destination.length() - CHAT_SEND_SUFFIX.length()
+            );
+            groupChatAccessService.requireMember(
+                    requireUsername(accessor),
+                    parseRoomId(rawRoomId)
+            );
+        }
     }
 
     private String requireUsername(StompHeaderAccessor accessor) {
@@ -114,7 +126,7 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
         return accessor.getUser().getName();
     }
 
-    private UUID parseDepartmentId(String value) {
+    private UUID parseRoomId(String value) {
         try {
             return UUID.fromString(value);
         } catch (IllegalArgumentException exception) {
