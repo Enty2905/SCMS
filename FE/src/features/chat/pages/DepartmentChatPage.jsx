@@ -1,8 +1,12 @@
 import {
   ArrowLeft,
   CircleAlert,
+  Download,
+  FileText,
+  Image as ImageIcon,
   Loader2,
   MessageSquareText,
+  Paperclip,
   Plus,
   Search,
   Send,
@@ -10,6 +14,7 @@ import {
   UsersRound,
   Wifi,
   WifiOff,
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -17,6 +22,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { selectCurrentUser } from '@/features/auth/store/auth.selectors.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { useWebSocket } from '@/shared/contexts/WebSocketContext.jsx'
+import { createUuid } from '@/shared/utils/uuid.js'
 
 import {
   CreateGroupRoomModal,
@@ -39,6 +45,9 @@ import {
   selectChatSocketError,
 } from '../store/chat.selectors.js'
 import { fetchChatHistory, markChatRoomRead } from '../store/chat.thunks.js'
+import { uploadChatAttachmentService } from '../services/chat.service.js'
+
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
 
 export function DepartmentChatPage() {
   const dispatch = useDispatch()
@@ -57,8 +66,13 @@ export function DepartmentChatPage() {
   const [mobileConversationOpen, setMobileConversationOpen] = useState(false)
   const [createRoomOpen, setCreateRoomOpen] = useState(false)
   const [manageRoomOpen, setManageRoomOpen] = useState(false)
+  const [attachment, setAttachment] = useState(null)
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
   const messagesEndRef = useRef(null)
   const lastReadRef = useRef('')
+  const fileInputRef = useRef(null)
+  const imageInputRef = useRef(null)
 
   const filteredRooms = useMemo(() => {
     const keyword = roomSearch.trim().toLocaleLowerCase('vi')
@@ -119,6 +133,48 @@ export function DepartmentChatPage() {
     lastReadRef.current = ''
     dispatch(setActiveChatRoom(roomId))
     setMobileConversationOpen(true)
+    setAttachment(null)
+  }
+
+  async function handleFileSelected(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !activeRoom) return
+
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      dispatch(setChatSocketError('Tệp đính kèm không được vượt quá 20MB.'))
+      return
+    }
+
+    setAttachmentUploading(true)
+    try {
+      const uploaded = await uploadChatAttachmentService({
+        roomId: activeRoom.roomId,
+        roomType: activeRoom.roomType,
+        file,
+      })
+      setAttachment({
+        ...uploaded,
+        // Ảnh cục bộ cho phần xem trước, tránh chờ tải lại từ Cloudinary.
+        localPreviewUrl:
+          uploaded?.messageType === 'IMAGE'
+            ? URL.createObjectURL(file)
+            : null,
+      })
+    } catch (uploadError) {
+      dispatch(
+        setChatSocketError(uploadError.message || 'Không tải được tệp đính kèm.'),
+      )
+    } finally {
+      setAttachmentUploading(false)
+    }
+  }
+
+  function removeAttachment() {
+    if (attachment?.localPreviewUrl) {
+      URL.revokeObjectURL(attachment.localPreviewUrl)
+    }
+    setAttachment(null)
   }
 
   function loadOlderMessages() {
@@ -134,13 +190,23 @@ export function DepartmentChatPage() {
 
   function sendMessage() {
     const content = draft.trim()
-    if (!content || !activeRoom) return
+    if ((!content && !attachment) || !activeRoom) return
     if (!isConnected || !stompClient?.connected) {
       dispatch(setChatSocketError('Mất kết nối chat. Vui lòng chờ kết nối lại.'))
       return
     }
 
-    const clientMessageId = globalThis.crypto.randomUUID()
+    const clientMessageId = createUuid()
+    const attachmentPayload = attachment
+      ? {
+          messageType: attachment.messageType,
+          attachmentUrl: attachment.attachmentUrl,
+          attachmentName: attachment.attachmentName,
+          attachmentContentType: attachment.attachmentContentType,
+          attachmentSize: attachment.attachmentSize,
+        }
+      : { messageType: 'TEXT' }
+
     dispatch(
       queueChatMessage({
         clientMessageId,
@@ -153,6 +219,7 @@ export function DepartmentChatPage() {
         senderAvatarUrl: null,
         senderPosition: null,
         content,
+        ...attachmentPayload,
         sentAt: new Date().toISOString(),
       }),
     )
@@ -162,9 +229,10 @@ export function DepartmentChatPage() {
         activeRoom.roomType === 'group'
           ? `/app/chat/groups/${activeRoom.roomId}/messages`
           : `/app/chat/rooms/${activeRoom.roomId}/messages`,
-      body: JSON.stringify({ clientMessageId, content }),
+      body: JSON.stringify({ clientMessageId, content, ...attachmentPayload }),
     })
     setDraft('')
+    setAttachment(null)
   }
 
   function handleComposerKeyDown(event) {
@@ -334,6 +402,7 @@ export function DepartmentChatPage() {
                         currentUserId={user?.id}
                         key={message.messageId || message.clientMessageId}
                         message={message}
+                        onPreviewImage={setPreviewImage}
                       />
                     ))}
                     <div ref={messagesEndRef} />
@@ -347,7 +416,57 @@ export function DepartmentChatPage() {
               </div>
 
               <div className="shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4">
+                {attachmentUploading ? (
+                  <div className="mb-2 flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="animate-spin" size={14} />
+                    Đang tải tệp lên...
+                  </div>
+                ) : null}
+
+                {attachment ? (
+                  <AttachmentPreview
+                    attachment={attachment}
+                    onRemove={removeAttachment}
+                  />
+                ) : null}
+
+                <input
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                  ref={imageInputRef}
+                  type="file"
+                />
+                <input
+                  className="hidden"
+                  onChange={handleFileSelected}
+                  ref={fileInputRef}
+                  type="file"
+                />
+
                 <div className="flex items-end gap-2">
+                  <Button
+                    aria-label="Gửi ảnh"
+                    className="size-11 shrink-0"
+                    disabled={!isConnected || attachmentUploading}
+                    onClick={() => imageInputRef.current?.click()}
+                    size="icon"
+                    title="Gửi ảnh"
+                    variant="ghost"
+                  >
+                    <ImageIcon size={18} />
+                  </Button>
+                  <Button
+                    aria-label="Gửi tệp"
+                    className="size-11 shrink-0"
+                    disabled={!isConnected || attachmentUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    size="icon"
+                    title="Gửi tệp"
+                    variant="ghost"
+                  >
+                    <Paperclip size={18} />
+                  </Button>
                   <textarea
                     className="max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-md border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
                     disabled={!isConnected}
@@ -356,7 +475,9 @@ export function DepartmentChatPage() {
                     onKeyDown={handleComposerKeyDown}
                     placeholder={
                       isConnected
-                        ? 'Nhập nội dung trao đổi...'
+                        ? attachment
+                          ? 'Thêm chú thích (không bắt buộc)...'
+                          : 'Nhập nội dung trao đổi...'
                         : 'Đang chờ kết nối chat...'
                     }
                     rows={1}
@@ -365,7 +486,11 @@ export function DepartmentChatPage() {
                   <Button
                     aria-label="Gửi tin nhắn"
                     className="size-11 shrink-0 bg-violet-600 hover:bg-violet-700"
-                    disabled={!draft.trim() || !isConnected}
+                    disabled={
+                      (!draft.trim() && !attachment) ||
+                      !isConnected ||
+                      attachmentUploading
+                    }
                     onClick={sendMessage}
                     size="icon"
                   >
@@ -373,7 +498,7 @@ export function DepartmentChatPage() {
                   </Button>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">
-                  Enter để gửi, Shift + Enter để xuống dòng
+                  Enter để gửi, Shift + Enter để xuống dòng · Tệp tối đa 20MB
                 </p>
               </div>
             </>
@@ -400,6 +525,13 @@ export function DepartmentChatPage() {
         <ManageGroupRoomModal
           onClose={() => setManageRoomOpen(false)}
           roomId={activeRoom.roomId}
+        />
+      ) : null}
+
+      {previewImage ? (
+        <ImagePreviewModal
+          message={previewImage}
+          onClose={() => setPreviewImage(null)}
         />
       ) : null}
     </div>
@@ -433,7 +565,7 @@ function RoomButton({ active, onClick, room }) {
         </p>
         <p className="mt-1 truncate text-xs text-slate-500">
           {room.lastMessage
-            ? `${room.lastMessage.senderName}: ${room.lastMessage.content}`
+            ? `${room.lastMessage.senderName}: ${describeLastMessage(room.lastMessage)}`
             : 'Chưa có tin nhắn'}
         </p>
         {room.lastMessage?.sentAt ? (
@@ -446,8 +578,10 @@ function RoomButton({ active, onClick, room }) {
   )
 }
 
-function MessageBubble({ currentUserId, message }) {
+function MessageBubble({ currentUserId, message, onPreviewImage }) {
   const own = message.senderUserId === currentUserId
+  const hasAttachment = Boolean(message.attachmentUrl)
+  const isImage = message.messageType === 'IMAGE'
   return (
     <div className={`flex gap-2 ${own ? 'justify-end' : 'justify-start'}`}>
       {!own ? <UserAvatar message={message} /> : null}
@@ -466,7 +600,56 @@ function MessageBubble({ currentUserId, message }) {
               : 'border border-slate-200 bg-white text-slate-800',
           ].join(' ')}
         >
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          {hasAttachment && isImage ? (
+            <button
+              className="block overflow-hidden rounded-md"
+              onClick={() => onPreviewImage?.(message)}
+              type="button"
+            >
+              <img
+                alt={message.attachmentName || 'Ảnh đính kèm'}
+                className="max-h-72 w-auto max-w-full rounded-md object-cover"
+                loading="lazy"
+                src={message.attachmentUrl}
+              />
+            </button>
+          ) : null}
+
+          {hasAttachment && !isImage ? (
+            <a
+              className={[
+                'flex items-center gap-3 rounded-md border px-3 py-2 transition',
+                own
+                  ? 'border-violet-400 bg-violet-500 hover:bg-violet-400'
+                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100',
+              ].join(' ')}
+              download={message.attachmentName}
+              href={message.attachmentUrl}
+              rel="noreferrer noopener"
+              target="_blank"
+            >
+              <FileText className="shrink-0" size={22} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold">
+                  {message.attachmentName || 'Tệp đính kèm'}
+                </span>
+                <span
+                  className={`block text-xs ${own ? 'text-violet-100' : 'text-slate-500'}`}
+                >
+                  {formatFileSize(message.attachmentSize)}
+                </span>
+              </span>
+              <Download className="shrink-0" size={17} />
+            </a>
+          ) : null}
+
+          {message.content ? (
+            <p
+              className={`whitespace-pre-wrap break-words ${hasAttachment ? 'mt-2' : ''}`}
+            >
+              {message.content}
+            </p>
+          ) : null}
         </div>
         <p
           className={`mt-1 text-[11px] text-slate-400 ${own ? 'text-right' : ''}`}
@@ -475,6 +658,85 @@ function MessageBubble({ currentUserId, message }) {
           {message.pending ? ' · Đang gửi' : ''}
         </p>
       </div>
+    </div>
+  )
+}
+
+function AttachmentPreview({ attachment, onRemove }) {
+  const isImage = attachment.messageType === 'IMAGE'
+  return (
+    <div className="mb-2 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-2">
+      {isImage && attachment.localPreviewUrl ? (
+        <img
+          alt={attachment.attachmentName}
+          className="size-12 shrink-0 rounded object-cover"
+          src={attachment.localPreviewUrl}
+        />
+      ) : (
+        <div className="grid size-12 shrink-0 place-items-center rounded bg-slate-200 text-slate-600">
+          <FileText size={20} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-800">
+          {attachment.attachmentName}
+        </p>
+        <p className="text-xs text-slate-500">
+          {formatFileSize(attachment.attachmentSize)}
+        </p>
+      </div>
+      <Button
+        aria-label="Bỏ tệp đính kèm"
+        onClick={onRemove}
+        size="icon"
+        variant="ghost"
+      >
+        <X size={17} />
+      </Button>
+    </div>
+  )
+}
+
+function ImagePreviewModal({ message, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="max-h-full max-w-4xl overflow-auto"
+        onClick={(event) => event.stopPropagation()}
+        role="presentation"
+      >
+        <img
+          alt={message.attachmentName || 'Ảnh đính kèm'}
+          className="max-h-[80dvh] w-auto rounded-lg object-contain"
+          src={message.attachmentUrl}
+        />
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-white">
+          <span className="truncate">{message.attachmentName}</span>
+          <a
+            className="inline-flex shrink-0 items-center gap-2 rounded-md bg-white/15 px-3 py-2 font-semibold hover:bg-white/25"
+            download={message.attachmentName}
+            href={message.attachmentUrl}
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            <Download size={16} />
+            Tải xuống
+          </a>
+        </div>
+      </div>
+      <Button
+        aria-label="Đóng"
+        className="absolute right-4 top-4 text-white hover:bg-white/20"
+        onClick={onClose}
+        size="icon"
+        variant="ghost"
+      >
+        <X size={22} />
+      </Button>
     </div>
   )
 }
@@ -575,4 +837,27 @@ function formatMessageTime(value) {
     day: '2-digit',
     month: '2-digit',
   })
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes <= 0) return ''
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = bytes
+  let unitIndex = 0
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
+}
+
+/**
+ * Tin nhắn chỉ có đính kèm sẽ không có nội dung văn bản,
+ * nên hiển thị nhãn thay cho dòng trống ở danh sách phòng.
+ */
+function describeLastMessage(message) {
+  if (message.content) return message.content
+  if (message.messageType === 'IMAGE') return '[Hình ảnh]'
+  if (message.attachmentUrl) return `[Tệp] ${message.attachmentName || ''}`.trim()
+  return ''
 }

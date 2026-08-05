@@ -54,6 +54,22 @@ export async function markChatRoomReadService({
   return response?.data
 }
 
+/**
+ * Tải tệp/ảnh đính kèm lên trước khi gửi tin nhắn.
+ * Trả về metadata để đính kèm vào payload STOMP.
+ */
+export async function uploadChatAttachmentService({ roomId, roomType, file }) {
+  const body = new FormData()
+  body.append('file', file)
+
+  const query = new URLSearchParams({ roomType: roomType || 'department' })
+  const response = await apiClient.post(
+    `/chat/rooms/${roomId}/attachments?${query.toString()}`,
+    body,
+  )
+  return response?.data
+}
+
 export async function createGroupChatRoomService(payload) {
   const response = await apiClient.post('/chat/groups', payload)
   return response?.data

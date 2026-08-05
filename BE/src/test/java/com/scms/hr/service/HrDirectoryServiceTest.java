@@ -12,12 +12,14 @@ import com.scms.employee.repository.EmployeePositionRepository;
 import com.scms.employee.repository.EmployeeRepository;
 import com.scms.hr.dto.request.DepartmentCreateRequest;
 import com.scms.hr.dto.response.DepartmentResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.scms.hr.dto.request.EmployeeUpsertRequest;
 import com.scms.hr.dto.response.EmployeeResponse;
@@ -56,6 +58,11 @@ class HrDirectoryServiceTest {
 
     @InjectMocks
     HrDirectoryService service;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(service, "employeeAvatarFolder", "scms/employees");
+    }
 
     @Test
     void createEmployeeRejectsPhoneUsedByAnotherEmployee() {

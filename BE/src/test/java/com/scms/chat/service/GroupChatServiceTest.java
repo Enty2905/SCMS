@@ -40,6 +40,9 @@ class GroupChatServiceTest {
     ChatAccessService chatAccessService;
 
     @Mock
+    ChatAttachmentService chatAttachmentService;
+
+    @Mock
     GroupChatAccessService groupAccessService;
 
     @Mock

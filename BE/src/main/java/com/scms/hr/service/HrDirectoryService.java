@@ -28,6 +28,8 @@ import jakarta.persistence.criteria.Subquery;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -52,7 +54,6 @@ public class HrDirectoryService {
 
     static int MAX_PAGE_SIZE = 200;
     static String EMPLOYEE_CODE_PREFIX = "NV";
-    static String EMPLOYEE_AVATAR_FOLDER = "scms/employees";
 
     EmployeeRepository employeeRepository;
     EmployeePositionRepository employeePositionRepository;
@@ -60,6 +61,10 @@ public class HrDirectoryService {
     UserRepository userRepository;
     CloudinaryService cloudinaryService;
     HrAuditService hrAuditService;
+
+    @Value("${app.cloudinary-folder.employees}")
+    @NonFinal
+    String employeeAvatarFolder;
 
     // ── Nhân viên ────────────────────────────────────────────────────────────
 
@@ -573,7 +578,7 @@ public class HrDirectoryService {
         }
 
         try {
-            return cloudinaryService.uploadFile(avatar, EMPLOYEE_AVATAR_FOLDER);
+            return cloudinaryService.uploadFile(avatar, employeeAvatarFolder);
         } catch (RuntimeException exception) {
             throw new BadRequestException("Không tải được ảnh nhân viên lên kho ảnh chung. Vui lòng thử lại.");
         }

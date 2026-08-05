@@ -3,6 +3,8 @@ package com.scms.chat.entity;
 import com.scms.auth.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -69,8 +71,28 @@ public class GroupChatMessage {
     @Column(name = "client_message_id", nullable = false)
     UUID clientMessageId;
 
+    /**
+     * Nội dung văn bản. Với tin nhắn đính kèm đây là chú thích và có thể là chuỗi rỗng.
+     */
     @Column(name = "content", nullable = false, length = 2000)
     String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_type", nullable = false, length = 20)
+    @Builder.Default
+    ChatMessageType messageType = ChatMessageType.TEXT;
+
+    @Column(name = "attachment_url", length = 500)
+    String attachmentUrl;
+
+    @Column(name = "attachment_name", length = 255)
+    String attachmentName;
+
+    @Column(name = "attachment_content_type", length = 100)
+    String attachmentContentType;
+
+    @Column(name = "attachment_size")
+    Long attachmentSize;
 
     @Column(name = "created_at", nullable = false)
     LocalDateTime createdAt;
@@ -82,6 +104,9 @@ public class GroupChatMessage {
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (messageType == null) {
+            messageType = ChatMessageType.TEXT;
         }
     }
 }

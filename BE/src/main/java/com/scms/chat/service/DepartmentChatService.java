@@ -4,9 +4,11 @@ import com.scms.auth.entity.User;
 import com.scms.chat.dto.request.MarkChatReadRequest;
 import com.scms.chat.dto.request.SendChatMessageRequest;
 import com.scms.chat.dto.response.ChatHistoryResponse;
+import com.scms.chat.dto.response.ChatAttachmentResponse;
 import com.scms.chat.dto.response.ChatMessageResponse;
 import com.scms.chat.dto.response.ChatReadResponse;
 import com.scms.chat.dto.response.ChatRoomResponse;
+import com.scms.chat.entity.ChatMessageType;
 import com.scms.chat.entity.DepartmentChatMessage;
 import com.scms.chat.entity.DepartmentChatReadState;
 import com.scms.chat.repository.DepartmentChatMessageRepository;
@@ -38,6 +40,7 @@ public class DepartmentChatService {
     static final int MAX_HISTORY_SIZE = 100;
 
     ChatAccessService chatAccessService;
+    ChatAttachmentService chatAttachmentService;
     DepartmentChatMessageRepository messageRepository;
     DepartmentChatReadStateRepository readStateRepository;
 
@@ -97,7 +100,8 @@ public class DepartmentChatService {
     ) {
         User sender = chatAccessService.requireRoomAccess(username, departmentId);
         String content = request.getContent() == null ? "" : request.getContent().trim();
-        if (content.isEmpty()) {
+        ChatAttachmentResponse attachment = chatAttachmentService.resolveAttachment(request);
+        if (content.isEmpty() && attachment == null) {
             throw new BadRequestException("Nội dung tin nhắn không được để trống.");
         }
         if (content.length() > 2000) {
@@ -116,6 +120,15 @@ public class DepartmentChatService {
                             .sender(sender)
                             .clientMessageId(request.getClientMessageId())
                             .content(content)
+                            .messageType(attachment == null
+                                    ? ChatMessageType.TEXT
+                                    : attachment.getMessageType())
+                            .attachmentUrl(attachment == null ? null : attachment.getAttachmentUrl())
+                            .attachmentName(attachment == null ? null : attachment.getAttachmentName())
+                            .attachmentContentType(attachment == null
+                                    ? null
+                                    : attachment.getAttachmentContentType())
+                            .attachmentSize(attachment == null ? null : attachment.getAttachmentSize())
                             .build();
 
                     if (chatAccessService.isAdmin(sender)) {
@@ -209,6 +222,11 @@ public class DepartmentChatService {
                         ? null
                         : employee.getPosition().getPositionName())
                 .content(message.getContent())
+                .messageType(message.getMessageType())
+                .attachmentUrl(message.getAttachmentUrl())
+                .attachmentName(message.getAttachmentName())
+                .attachmentContentType(message.getAttachmentContentType())
+                .attachmentSize(message.getAttachmentSize())
                 .sentAt(message.getCreatedAt())
                 .build();
     }

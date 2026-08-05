@@ -22,7 +22,5 @@ RUN mkdir -p /var/log/scms \
     && chown 1000:1000 /var/log/scms
 
 # Copy .env nếu dùng dotenv-java
-COPY .env .env
-
 VOLUME /var/log/scms
 ENTRYPOINT ["java", "-jar", "app.jar"]

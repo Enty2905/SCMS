@@ -74,9 +74,13 @@ public class SparePartRequestService {
     CloudinaryService cloudinaryService;
     NotificationService notificationService;
 
-    @Value("${app.company.request:CÔNG TY SCSM}")
+    @Value("${app.company.request}")
     @NonFinal
     String companyRequest;
+
+    @Value("${app.cloudinary-folder.spare-part-requests}")
+    @NonFinal
+    String sparePartRequestCloudinaryFolder;
 
     @Transactional
     public SparePartRequestResponse createRequest(CreateSparePartRequestDto dto, String username) {
@@ -272,7 +276,7 @@ public class SparePartRequestService {
         SparePartRequest request = sparePartRequestRepository.findByIdWithDetails(reqId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
 
-        String pdfUrl = cloudinaryService.uploadFile(file, "scms/spare-part-requests");
+        String pdfUrl = cloudinaryService.uploadFile(file, sparePartRequestCloudinaryFolder);
         request.setPdfUrl(pdfUrl);
         sparePartRequestRepository.save(request);
 

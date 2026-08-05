@@ -6,12 +6,14 @@ import com.scms.chat.dto.request.AddGroupChatMembersRequest;
 import com.scms.chat.dto.request.CreateGroupChatRoomRequest;
 import com.scms.chat.dto.request.MarkChatReadRequest;
 import com.scms.chat.dto.request.SendChatMessageRequest;
+import com.scms.chat.dto.response.ChatAttachmentResponse;
 import com.scms.chat.dto.response.ChatHistoryResponse;
 import com.scms.chat.dto.response.ChatMessageResponse;
 import com.scms.chat.dto.response.ChatReadResponse;
 import com.scms.chat.dto.response.ChatUserResponse;
 import com.scms.chat.dto.response.GroupChatRoomDetailResponse;
 import com.scms.chat.dto.response.GroupChatRoomResponse;
+import com.scms.chat.entity.ChatMessageType;
 import com.scms.chat.entity.GroupChatMember;
 import com.scms.chat.entity.GroupChatMessage;
 import com.scms.chat.entity.GroupChatReadState;
@@ -50,6 +52,7 @@ public class GroupChatService {
     static final int MAX_USER_SEARCH_SIZE = 100;
 
     ChatAccessService chatAccessService;
+    ChatAttachmentService chatAttachmentService;
     GroupChatAccessService groupAccessService;
     UserRepository userRepository;
     GroupChatRoomRepository roomRepository;
@@ -225,7 +228,8 @@ public class GroupChatService {
     ) {
         User sender = groupAccessService.requireMember(username, roomId);
         String content = request.getContent() == null ? "" : request.getContent().trim();
-        if (content.isEmpty()) {
+        ChatAttachmentResponse attachment = chatAttachmentService.resolveAttachment(request);
+        if (content.isEmpty() && attachment == null) {
             throw new BadRequestException("Nội dung tin nhắn không được để trống.");
         }
         if (content.length() > 2000) {
@@ -252,6 +256,15 @@ public class GroupChatService {
                 .sender(sender)
                 .clientMessageId(request.getClientMessageId())
                 .content(content)
+                .messageType(attachment == null
+                        ? ChatMessageType.TEXT
+                        : attachment.getMessageType())
+                .attachmentUrl(attachment == null ? null : attachment.getAttachmentUrl())
+                .attachmentName(attachment == null ? null : attachment.getAttachmentName())
+                .attachmentContentType(attachment == null
+                        ? null
+                        : attachment.getAttachmentContentType())
+                .attachmentSize(attachment == null ? null : attachment.getAttachmentSize())
                 .build();
         ChatMessageResponse response = toMessageResponse(
                 messageRepository.saveAndFlush(message)
@@ -357,6 +370,11 @@ public class GroupChatService {
                                         .getPositionName()
                 )
                 .content(message.getContent())
+                .messageType(message.getMessageType())
+                .attachmentUrl(message.getAttachmentUrl())
+                .attachmentName(message.getAttachmentName())
+                .attachmentContentType(message.getAttachmentContentType())
+                .attachmentSize(message.getAttachmentSize())
                 .sentAt(message.getCreatedAt())
                 .build();
     }

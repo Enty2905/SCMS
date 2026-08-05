@@ -23,7 +23,9 @@ import com.scms.common.service.CloudinaryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +53,10 @@ public class EquipmentService {
     TechnicalParamRepository technicalParamRepository;
     UnitRepository unitRepository;
     CloudinaryService cloudinaryService;
+
+    @Value("${app.cloudinary-folder.equipment}")
+    @NonFinal
+    String equipmentCloudinaryFolder;
 
     // ── Tạo mới thiết bị ──────────────────────────────────────
     @Transactional
@@ -305,8 +311,7 @@ public class EquipmentService {
         }
 
         try {
-            // Upload to Cloudinary under folder "scms/equipment"
-            String imageUrl = cloudinaryService.uploadFile(file, "scms/equipment");
+            String imageUrl = cloudinaryService.uploadFile(file, equipmentCloudinaryFolder);
 
             // Lấy ID người dùng hiện tại
             UUID currentUserId = null;

@@ -2,6 +2,7 @@ import { ChevronDown, Eye, EyeOff, KeyRound, UserRound, Zap } from 'lucide-react
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import { env } from '@/shared/config/env.js'
 
 import { login } from '../store/auth.thunks.js'
 import { MAX_LOGIN_ATTEMPTS } from '../store/auth.constants.js'
@@ -68,8 +69,8 @@ export function LoginPage() {
       return
     }
 
-    setUsername('admin')
-    setPassword('password')
+    setUsername(env.demoUsername)
+    setPassword(env.demoPassword)
   }
 
   return (
@@ -81,10 +82,10 @@ export function LoginPage() {
           <div className="login-page__logo" aria-hidden="true">
             <Zap size={32} strokeWidth={2.4} />
           </div>
-          <h1>SCMS</h1>
+          <h1>{env.appName}</h1>
           <p>
-            Hệ thống quản lý thiết bị, sửa chữa và bảo dưỡng
-            <span>Nhà máy nhiệt điện</span>
+            {env.appDescription}
+            <span>{env.companyName}</span>
           </p>
         </header>
 
@@ -168,7 +169,8 @@ export function LoginPage() {
         </div>
 
         <p className="login-page__footer">
-          © 2026 SCMS — Nhà máy Nhiệt điện. Code by team 2 TBNNH
+          © {env.copyrightYear} {env.appName} — {env.companyName}. Code by{' '}
+          {env.teamName}
         </p>
       </section>
     </main>

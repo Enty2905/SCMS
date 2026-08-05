@@ -63,14 +63,17 @@ public class TechnicalAssessmentService {
         final CloudinaryService cloudinaryService;
         final EquipmentSystemRepository equipmentSystemRepository;
 
-        @Value("${app.upload.pdf-dir:uploads/pdf}")
+        @Value("${app.upload.pdf-dir}")
         String pdfUploadDir;
 
-        @Value("${app.company.owner:CÔNG TY SCMS}")
+        @Value("${app.company.owner}")
         String companyOwner;
 
-        @Value("${app.company.repair:CTY CP SCMS}")
+        @Value("${app.company.repair}")
         String companyRepair;
+
+        @Value("${app.cloudinary-folder.assessments}")
+        String assessmentCloudinaryFolder;
 
         // ── Chức năng 3A: Tạo biên bản ───────────────────────────────────────────
 
@@ -587,7 +590,7 @@ public class TechnicalAssessmentService {
                 }
 
                 try {
-                        String pdfUrl = cloudinaryService.uploadFile(file, "scms/assessments");
+                        String pdfUrl = cloudinaryService.uploadFile(file, assessmentCloudinaryFolder);
 
                         // Cập nhật pdf_url vào DB
                         ta.setPdfUrl(pdfUrl);

@@ -6,6 +6,7 @@ import { apiClient } from '@/shared/api/httpClient.js'
 import { Button } from '@/shared/components/ui/Button.jsx'
 import { ConfirmModal } from '@/shared/components/ui/ConfirmModal.jsx'
 import { Pagination } from '@/shared/components/ui/Pagination.jsx'
+import { env } from '@/shared/config/env.js'
 
 import {
   selectHrDepartments,
@@ -485,7 +486,7 @@ function EmployeeFormModal({
             <input
               className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
               onChange={(event) => updateField('email', event.target.value)}
-              placeholder="vd: nguyenvana@nhm.vn"
+              placeholder={`vd: nguyenvana@${env.emailDomain}`}
               type="email"
               value={form.email}
             />

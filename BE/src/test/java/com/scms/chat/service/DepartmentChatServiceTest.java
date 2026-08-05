@@ -39,6 +39,9 @@ class DepartmentChatServiceTest {
     ChatAccessService chatAccessService;
 
     @Mock
+    ChatAttachmentService chatAttachmentService;
+
+    @Mock
     DepartmentChatMessageRepository messageRepository;
 
     @Mock

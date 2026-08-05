@@ -9,30 +9,19 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
+/**
+ * Kết quả upload tệp đính kèm chat. FE dùng payload này để gửi kèm tin nhắn qua STOMP.
+ */
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChatMessageResponse {
-    UUID messageId;
-    UUID clientMessageId;
-    UUID roomId;
-    String roomType;
-    UUID departmentId;
-    UUID senderUserId;
-    String senderName;
-    String senderAvatarUrl;
-    String senderPosition;
-    String content;
+public class ChatAttachmentResponse {
     ChatMessageType messageType;
     String attachmentUrl;
     String attachmentName;
     String attachmentContentType;
     Long attachmentSize;
-    LocalDateTime sentAt;
 }

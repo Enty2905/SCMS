@@ -74,9 +74,13 @@ public class ConsumableRequestService {
     CloudinaryService cloudinaryService;
     NotificationService notificationService;
 
-    @Value("${app.company.request:CÔNG TY SCSM}")
+    @Value("${app.company.request}")
     @NonFinal
     String companyRequest;
+
+    @Value("${app.cloudinary-folder.consumable-requests}")
+    @NonFinal
+    String consumableRequestCloudinaryFolder;
 
     @Transactional
     public ConsumableRequestResponse createRequest(CreateConsumableRequestDto dto, String username) {
@@ -272,7 +276,7 @@ public class ConsumableRequestService {
         ConsumableRequest request = consumableRequestRepository.findByIdWithDetails(reqId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
 
-        String pdfUrl = cloudinaryService.uploadFile(file, "scms/consumable-requests");
+        String pdfUrl = cloudinaryService.uploadFile(file, consumableRequestCloudinaryFolder);
         request.setPdfUrl(pdfUrl);
         consumableRequestRepository.save(request);
 

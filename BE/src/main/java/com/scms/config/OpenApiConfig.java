@@ -20,14 +20,19 @@ public class OpenApiConfig {
     private static final String BEARER_AUTH = "bearerAuth";
 
     @Bean
-    public OpenAPI customOpenAPI(@Value("${server.port:8080}") String port,
-                                 @Value("${server.servlet.context-path:/}") String contextPath) {
+    public OpenAPI customOpenAPI(
+            @Value("${app.name}") String appName,
+            @Value("${app.description}") String appDescription,
+            @Value("${app.version}") String appVersion,
+            @Value("${app.team-name}") String teamName,
+            @Value("${app.contact-email}") String contactEmail
+    ) {
         return new OpenAPI()
                 // ── Thông tin chung của API ──────────────────────────
                 .info(new Info()
-                        .title("SCMS – Supply Chain & Maintenance System API")
-                        .description("""
-                                ## Hệ thống Quản lý Vận hành & Bảo trì (SCMS)
+                        .title(appName + " API")
+                        .description(("""
+                                ## %s (%s)
                                 
                                 ### Cách xác thực:
                                 1. Gọi **POST /auth/login** để lấy `token`
@@ -35,22 +40,11 @@ public class OpenApiConfig {
                                 3. Nhập `Bearer <token>` vào ô **Value** rồi bấm **Authorize**
                                 4. Sau đó tất cả API cần xác thực đều hoạt động bình thường
                                 
-                                ### Tài khoản test:
-                                | Username | Password | Role |
-                                |---|---|---|
-                                | admin | password | ADMIN |
-                                | hr | password | HR |
-                                | warehouse_mat | password | WAREHOUSE_MAT |
-                                | warehouse_tool | password | WAREHOUSE_TOOL |
-                                | ops_manager | password | OPS_MANAGER |
-                                | shift_leader | password | SHIFT_LEADER |
-                                | repair_manager | password | REPAIR_MANAGER |
-                                | team_leader | password | TEAM_LEADER |
-                                """)
-                        .version("1.0.0")
+                                """).formatted(appDescription, appName))
+                        .version(appVersion)
                         .contact(new Contact()
-                                .name("SCMS Team")
-                                .email("scms-team@example.com"))
+                                .name(teamName)
+                                .email(contactEmail))
                 )
 
                 // ── Cấu hình Bearer Token ────────────────────────────

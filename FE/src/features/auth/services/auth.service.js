@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/api/httpClient.js'
+import { env } from '@/shared/config/env.js'
 
 import { parseJwt, parseScope, persistAuthTokens } from './token.service.js'
 
@@ -23,7 +24,7 @@ export async function loginService(credentials) {
     user: {
       id: claims.userId,
       name: username,
-      email: `${username}@scms.local`,
+      email: `${username}@${env.emailDomain}`,
       roles: parseScope(claims.scope),
     },
   }

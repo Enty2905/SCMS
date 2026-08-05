@@ -15,10 +15,13 @@ import java.util.TimeZone;
 @EnableScheduling
 public class ScmsApplication {
 
-    private static final ZoneId APPLICATION_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-
     public static void main(String[] args) {
-        TimeZone.setDefault(TimeZone.getTimeZone(APPLICATION_TIME_ZONE));
+        String configuredTimeZone = System.getenv().getOrDefault(
+                "APP_TIME_ZONE",
+                "Asia/Ho_Chi_Minh"
+        );
+        ZoneId applicationTimeZone = ZoneId.of(configuredTimeZone);
+        TimeZone.setDefault(TimeZone.getTimeZone(applicationTimeZone));
         SpringApplication.run(ScmsApplication.class, args);
     }
 }

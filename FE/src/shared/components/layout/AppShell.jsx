@@ -25,6 +25,7 @@ import {
   isSidebarItemActive,
 } from '@/shared/components/layout/sidebarNavigation.js'
 import { useWebSocket } from '@/shared/contexts/WebSocketContext.jsx'
+import { env } from '@/shared/config/env.js'
 
 import { fetchConsumableStocks } from '@/features/inventory/services/consumableStock.service.js'
 import { fetchTools } from '@/features/inventory/services/tool.service.js'
@@ -459,8 +460,10 @@ export function AppShell() {
             <Zap size={20} />
           </div>
           <div>
-            <p className="text-sm font-semibold leading-none">SCMS</p>
-            <p className="mt-1 text-xs text-slate-300">Nhiệt điện</p>
+            <p className="text-sm font-semibold leading-none">{env.appName}</p>
+            <p className="mt-1 text-xs text-slate-300">
+              {env.companyShortName}
+            </p>
           </div>
         </div>
 

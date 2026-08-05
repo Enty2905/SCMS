@@ -23,7 +23,9 @@ import com.scms.repairrequest.entity.RepairRequest;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,10 @@ public class WorkOrderPdfService {
 
     WorkOrderRepository workOrderRepository;
     WorkOrderMemberRepository workOrderMemberRepository;
+
+    @Value("${app.company.work-order-unit}")
+    @NonFinal
+    String workOrderUnit;
 
     @Transactional(readOnly = true)
     public byte[] exportPdf(UUID orderId) {
@@ -87,7 +93,7 @@ public class WorkOrderPdfService {
 
             Cell leftCell = new Cell().setBorder(Border.NO_BORDER);
             leftCell.add(new Paragraph("TÊN ĐƠN VỊ CẤP PHIẾU").setFont(boldFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER));
-            leftCell.add(new Paragraph("ĐƠN VỊ: SCMS MAINTENANCE").setFont(normalFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER));
+            leftCell.add(new Paragraph("ĐƠN VỊ: " + workOrderUnit).setFont(normalFont).setFontSize(10).setTextAlignment(TextAlignment.CENTER));
             headerTable.addCell(leftCell);
 
             Cell rightCell = new Cell().setBorder(Border.NO_BORDER);

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,9 @@ public class EmailService {
 
     private final JavaMailSender javaMailSender;
 
+    @Value("${app.name}")
+    private String appName;
+
     public void sendToolBorrowOverdueEmail(String to, String employeeName, String toolName, int quantity,
                                            LocalDateTime borrowDate, LocalDateTime dueDate, long overdueDays) {
         try {
@@ -25,7 +29,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(to);
-            helper.setSubject("[SCMS] Thông báo quá hạn trả CCDC");
+            helper.setSubject("[" + appName + "] Thông báo quá hạn trả CCDC");
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
             String borrowDateStr = borrowDate != null ? borrowDate.format(formatter) : "";
@@ -45,10 +49,10 @@ public class EmailService {
                             <li><strong style="color: red;">Số ngày quá hạn:</strong> %d ngày</li>
                         </ul>
                         <p><strong>Yêu cầu:</strong> Vui lòng liên hệ thủ kho CCDC để hoàn trả trong thời gian sớm nhất.</p>
-                        <p>Trân trọng,<br>Hệ thống SCMS</p>
+                        <p>Trân trọng,<br>Hệ thống %s</p>
                     </body>
                     </html>
-                    """, employeeName, toolName, quantity, borrowDateStr, dueDateStr, overdueDays);
+                    """, employeeName, toolName, quantity, borrowDateStr, dueDateStr, overdueDays, appName);
 
             helper.setText(htmlContent, true);
             javaMailSender.send(message);
@@ -68,7 +72,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(to);
-            helper.setSubject("[SCMS] Thông báo quá hạn trả CCDC (" + items.size() + " mục)");
+            helper.setSubject("[" + appName + "] Thông báo quá hạn trả CCDC (" + items.size() + " mục)");
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -97,10 +101,10 @@ public class EmailService {
                             %s
                         </ul>
                         <p><strong>Yêu cầu:</strong> Vui lòng liên hệ thủ kho CCDC để hoàn trả trong thời gian sớm nhất.</p>
-                        <p>Trân trọng,<br>Hệ thống SCMS</p>
+                        <p>Trân trọng,<br>Hệ thống %s</p>
                     </body>
                     </html>
-                    """, employeeName, items.size(), itemsHtml.toString());
+                    """, employeeName, items.size(), itemsHtml.toString(), appName);
 
             helper.setText(htmlContent, true);
             javaMailSender.send(message);

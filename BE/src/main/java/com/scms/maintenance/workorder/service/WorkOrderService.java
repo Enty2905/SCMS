@@ -25,7 +25,9 @@ import com.scms.common.service.CloudinaryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +56,10 @@ public class WorkOrderService {
         EmployeeRepository employeeRepository;
         UserRepository userRepository;
         CloudinaryService cloudinaryService;
+
+        @Value("${app.cloudinary-folder.work-orders}")
+        @NonFinal
+        String workOrderCloudinaryFolder;
 
         /**
          * Chức năng 2: Tạo phiếu công tác (PCT) từ một repair request
@@ -470,7 +476,7 @@ public class WorkOrderService {
                 }
 
                 try {
-                        String pdfUrl = cloudinaryService.uploadFile(file, "scms/work-orders");
+                        String pdfUrl = cloudinaryService.uploadFile(file, workOrderCloudinaryFolder);
                         wo.setPdfUrl(pdfUrl);
                         workOrderRepository.save(wo);
                         log.info("Uploaded signed PDF for work order {} to Cloudinary: {}", wo.getOrderNumber(), pdfUrl);

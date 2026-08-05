@@ -174,7 +174,7 @@ export function EquipmentListPage() {
 
       const matchesStatus =
         statusFilter === 'all' ||
-        eq.status?.toLowerCase() === statusFilter.toLowerCase()
+        translateStatus(eq.status || '') === translateStatus(statusFilter)
 
       return matchesKks && matchesName && matchesSystem && matchesType && matchesStatus
     })
@@ -353,6 +353,23 @@ export function EquipmentListPage() {
       console.error(err)
       showToast(err.message || 'Lỗi khi xóa thiết bị.', 'error')
     }
+  }
+
+  // Helper to translate status to Vietnamese
+  function translateStatus(status = '') {
+    const normalized = status.toLowerCase()
+    const statusMap = {
+      'active': 'Hoạt động',
+      'hoạt động': 'Hoạt động',
+      'maintenance': 'Bảo dưỡng',
+      'bảo dưỡng': 'Bảo dưỡng',
+      'broken': 'Sự cố',
+      'hỏng': 'Sự cố',
+      'sự cố': 'Sự cố',
+      'inactive': 'Ngừng hoạt động',
+      'ngừng hoạt động': 'Ngừng hoạt động',
+    }
+    return statusMap[normalized] || status
   }
 
   // Helper for Status Badge styling
@@ -682,7 +699,7 @@ export function EquipmentListPage() {
                   </td>
                   <td className="px-5 py-4">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold border ${getStatusBadgeStyle(eq.status)}`}>
-                      {eq.status}
+                      {translateStatus(eq.status)}
                     </span>
                   </td>
                   <td className="px-5 py-4">
@@ -1314,7 +1331,7 @@ export function EquipmentListPage() {
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái</div>
                     <div className="mt-1">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold border ${getStatusBadgeStyle(viewingEquipment.status)}`}>
-                        {viewingEquipment.status}
+                        {translateStatus(viewingEquipment.status)}
                       </span>
                     </div>
                   </div>

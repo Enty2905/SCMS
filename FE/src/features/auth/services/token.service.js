@@ -1,3 +1,5 @@
+import { env } from '@/shared/config/env.js'
+
 const TOKEN_KEY = 'scms.auth.token'
 const REFRESH_TOKEN_KEY = 'scms.auth.refreshToken'
 
@@ -50,7 +52,7 @@ export function getStoredAuth() {
     return null
   }
 
-  const username = claims.sub || 'SCMS user'
+  const username = claims.sub || `${env.appName} user`
   const refreshToken = globalThis.localStorage.getItem(REFRESH_TOKEN_KEY)
 
   return {
@@ -59,7 +61,7 @@ export function getStoredAuth() {
     user: {
       id: claims.userId,
       name: username,
-      email: `${username}@scms.local`,
+      email: `${username}@${env.emailDomain}`,
       roles: parseScope(claims.scope),
     },
   }
