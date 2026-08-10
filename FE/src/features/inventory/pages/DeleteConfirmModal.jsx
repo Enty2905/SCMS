@@ -12,6 +12,7 @@ export function DeleteConfirmModal({ itemName, onClose, onConfirm }) {
       await onConfirm()
     } catch {
       setDeleting(false)
+      onClose()
     }
   }
 

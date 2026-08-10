@@ -2,6 +2,7 @@ import { Loader2, Plus, Trash2, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { SearchableSelect } from '@/shared/components/ui/SearchableSelect.jsx'
 import { createConsumableImport } from '../services/consumableImport.service.js'
 import { fetchConsumables } from '../services/consumable.service.js'
 
@@ -127,18 +128,16 @@ export function ConsumableImportFormModal({ onClose, onSuccess, initialItem = nu
                 <div key={index} className="flex gap-3 items-start border p-3 rounded-md bg-slate-50">
                   <div className="flex-1">
                     <label className="mb-1 text-xs text-slate-500">Vật tư</label>
-                    <select
-                      className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+                    <SearchableSelect
+                      options={consumablesList.map(c => ({
+                        value: c.consumableId,
+                        label: `${c.code} - ${c.name} (${c.unit})`
+                      }))}
                       value={item.consumableId}
-                      onChange={(e) => handleItemChange(index, 'consumableId', e.target.value)}
-                    >
-                      <option value="">-- Chọn vật tư --</option>
-                      {consumablesList.map((c) => (
-                        <option key={c.consumableId} value={c.consumableId}>
-                          {c.code} - {c.name} ({c.unit})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => handleItemChange(index, 'consumableId', val)}
+                      placeholder="-- Chọn vật tư --"
+                      placement="top"
+                    />
                   </div>
                   <div className="w-24">
                     <label className="mb-1 text-xs text-slate-500">Số lượng</label>

@@ -94,7 +94,7 @@ public class ToolService {
     // ── Cập nhật CCDC ─────────────────────────────────────────
     @Transactional
     public ToolResponse updateTool(UUID toolId, ToolRequest request) {
-        Tool tool = toolRepository.findById(toolId)
+        Tool tool = toolRepository.findByToolIdAndIsDeletedFalse(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
 
         int totalQuantity = request.getTotalQuantity();
@@ -123,8 +123,13 @@ public class ToolService {
     // ── Xóa CCDC (Soft Delete) ────────────────────────────────
     @Transactional
     public void deleteTool(UUID toolId) {
-        Tool tool = toolRepository.findById(toolId)
+        Tool tool = toolRepository.findByToolIdAndIsDeletedFalse(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
+
+        if (tool.getTotalQuantity() > 0) {
+            throw new com.scms.common.exception.BadRequestException("Không thể xóa vì công cụ dụng cụ vẫn còn trong kho hoặc đang cho mượn.");
+        }
+
         toolRepository.delete(tool);
         log.info("Deleted tool: {}", tool.getName());
     }
@@ -132,7 +137,7 @@ public class ToolService {
     // ── Báo hỏng CCDC ────────────────────────────────────────
     @Transactional
     public ToolResponse reportDamaged(UUID toolId, ToolDisposeRequest request) {
-        Tool tool = toolRepository.findById(toolId)
+        Tool tool = toolRepository.findByToolIdAndIsDeletedFalse(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
 
         int damagedQty = request.getQuantity();
@@ -175,7 +180,7 @@ public class ToolService {
     // ── Huỷ CCDC bị hư hỏng ──────────────────────────────────
     @Transactional
     public ToolResponse disposeDamaged(UUID toolId, ToolDisposeRequest request) {
-        Tool tool = toolRepository.findById(toolId)
+        Tool tool = toolRepository.findByToolIdAndIsDeletedFalse(toolId)
                 .orElseThrow(() -> new NotFoundException("Tool", "id", toolId));
 
         int disposeQty = request.getQuantity();

@@ -2,6 +2,7 @@ import { Loader2, Plus, Trash2, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 import { Button } from '@/shared/components/ui/Button.jsx'
+import { SearchableSelect } from '@/shared/components/ui/SearchableSelect.jsx'
 import { sparePartImportService } from '../services/sparePartImport.service.js'
 import { fetchSpareParts } from '../services/sparePart.service.js'
 
@@ -135,18 +136,16 @@ export function SparePartImportFormModal({ onClose, onSuccess, initialItem = nul
                 <div key={index} className="flex gap-3 items-start border p-3 rounded-md bg-slate-50">
                   <div className="flex-1">
                     <label className="mb-1 text-xs text-slate-500">Vật tư thay thế</label>
-                    <select
-                      className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-violet-500"
+                    <SearchableSelect
+                      options={sparePartsList.map(c => ({
+                        value: c.sparePartId,
+                        label: `${c.code} - ${c.name} (${c.unit})`
+                      }))}
                       value={item.sparePartId}
-                      onChange={(e) => handleItemChange(index, 'sparePartId', e.target.value)}
-                    >
-                      <option value="">-- Chọn vật tư thay thế --</option>
-                      {sparePartsList.map((c) => (
-                        <option key={c.sparePartId} value={c.sparePartId}>
-                          {c.code} - {c.name} ({c.unit})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => handleItemChange(index, 'sparePartId', val)}
+                      placeholder="-- Chọn vật tư thay thế --"
+                      placement="top"
+                    />
                   </div>
                   <div className="w-24">
                     <label className="mb-1 text-xs text-slate-500">Số lượng</label>

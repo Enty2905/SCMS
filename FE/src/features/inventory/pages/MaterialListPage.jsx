@@ -16,6 +16,7 @@ import { fetchMaterials, deleteMaterial } from '../store/material.thunks.js'
 import { clearMaterialError } from '../store/material.reducer.js'
 import { MaterialFormModal } from './MaterialFormModal.jsx'
 import { DeleteConfirmModal } from './DeleteConfirmModal.jsx'
+import { ErrorModal } from '@/shared/components/ui/ErrorModal.jsx'
 import { ConsumableImportFormModal } from './ConsumableImportFormModal.jsx'
 import { SparePartImportFormModal } from './SparePartImportFormModal.jsx'
 
@@ -42,6 +43,7 @@ export function MaterialListPage() {
   const [formModal, setFormModal] = useState({ open: false, item: null })
   const [deleteModal, setDeleteModal] = useState({ open: false, item: null })
   const [importModal, setImportModal] = useState({ open: false, item: null })
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState(null)
 
   const loadData = useCallback(() => {
     const params = { tab: activeTab, page: currentPage, size: 10 }
@@ -122,6 +124,8 @@ export function MaterialListPage() {
     const id = activeTab === 'sparepart' ? item.sparePartId : item.consumableId
     await dispatch(deleteMaterial({ tab: activeTab, id })).unwrap()
     closeDeleteModal()
+    setDeleteSuccessMsg('Xóa vật tư thành công!')
+    setTimeout(() => setDeleteSuccessMsg(null), 3500)
     loadData()
   }
 
@@ -130,6 +134,13 @@ export function MaterialListPage() {
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-slate-950">Danh mục vật tư</h1>
       </section>
+
+      {/* Toast thông báo xóa thành công */}
+      {deleteSuccessMsg && (
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
+          ✓ {deleteSuccessMsg}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-5 flex gap-2">
@@ -186,12 +197,12 @@ export function MaterialListPage() {
         </Button>
       </section>
 
-      {/* Error */}
-      {error ? (
-        <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-          {error}
-        </p>
-      ) : null}
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={!!error}
+        message={error}
+        onClose={() => dispatch(clearMaterialError())}
+      />
 
       {/* Table */}
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
