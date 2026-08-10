@@ -26,6 +26,7 @@ import java.util.UUID;
 public class SparePartService {
 
     SparePartRepository sparePartRepository;
+    com.scms.inventory.sparepart.repository.SparePartStockRepository sparePartStockRepository;
 
     // ── Thêm mới vật tư thay thế ──────────────────────────────
     @Transactional
@@ -66,7 +67,7 @@ public class SparePartService {
         if (searchCode != null || searchName != null) {
             sparePartPage = sparePartRepository.searchByCodeAndName(searchCode, searchName, pageable);
         } else {
-            sparePartPage = sparePartRepository.findAll(pageable);
+            sparePartPage = sparePartRepository.findByIsDeletedFalse(pageable);
         }
 
         return PagedResponse.<SparePartResponse>builder()
@@ -91,7 +92,7 @@ public class SparePartService {
     // ── Cập nhật vật tư thay thế ──────────────────────────────
     @Transactional
     public SparePartResponse updateSparePart(UUID sparePartId, SparePartRequest request) {
-        SparePart sparePart = sparePartRepository.findById(sparePartId)
+        SparePart sparePart = sparePartRepository.findBySparePartIdAndIsDeletedFalse(sparePartId)
                 .orElseThrow(() -> new NotFoundException("SparePart", "id", sparePartId));
 
         sparePart.setName(request.getName());
@@ -107,8 +108,21 @@ public class SparePartService {
     // ── Xóa vật tư thay thế ──────────────────────────────────
     @Transactional
     public void deleteSparePart(UUID sparePartId) {
-        SparePart sparePart = sparePartRepository.findById(sparePartId)
+        SparePart sparePart = sparePartRepository.findBySparePartIdAndIsDeletedFalse(sparePartId)
                 .orElseThrow(() -> new NotFoundException("SparePart", "id", sparePartId));
+
+        long imported = sparePartStockRepository.sumImported(sparePartId);
+        long exported = sparePartStockRepository.sumExported(sparePartId.toString());
+        long currentStock = imported - exported;
+
+        if (currentStock > 0) {
+            throw new com.scms.common.exception.BadRequestException("Không thể xóa vì vật tư này vẫn còn tồn kho.");
+        }
+
+        if (sparePartRepository.existsBySparePartIdAndStatusPending(sparePartId)) {
+            throw new com.scms.common.exception.BadRequestException("Không thể xóa vì vật tư này đang có phiếu yêu cầu chờ xử lý.");
+        }
+
         sparePartRepository.delete(sparePart);
         log.info("Deleted spare part: {} - {}", sparePart.getCode(), sparePart.getName());
     }

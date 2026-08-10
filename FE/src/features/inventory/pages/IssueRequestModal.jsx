@@ -141,6 +141,14 @@ export function IssueRequestModal({
     })
   }
 
+  function hasZeroIssue() {
+    return items.some((item) => getDisplayQty(item) === 0)
+  }
+
+  function hasExceedRequestedIssue() {
+    return items.some((item) => getDisplayQty(item) > item.quantityRequested)
+  }
+
   async function handleIssue() {
     if (!onIssue || !request) return
     setError(null)
@@ -372,7 +380,7 @@ export function IssueRequestModal({
                             <td className="px-4 py-3 text-right">
                               {diff < 0 ? (
                                 <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
-                                  Cấp thiếu ({diff})
+                                  Cấp thiếu
                                 </span>
                               ) : diff > 0 ? (
                                 <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
@@ -574,8 +582,11 @@ export function IssueRequestModal({
                       const stock = getStock(item)
                       const qty = getDisplayQty(item)
                       const insufficient = stock !== null && qty > stock
+                      const isZero = qty === 0
+                      const isExceedRequested = qty > item.quantityRequested
+                      const hasError = insufficient || isZero || isExceedRequested
                       return (
-                        <tr key={item.itemId} className={insufficient ? 'bg-rose-50' : 'hover:bg-slate-50/60'}>
+                        <tr key={item.itemId} className={hasError ? 'bg-rose-50' : 'hover:bg-slate-50/60'}>
                           <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.code}</td>
                           <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
                           <td className="px-4 py-3 text-center text-xs font-semibold text-slate-600">{item.unit}</td>
@@ -594,11 +605,11 @@ export function IssueRequestModal({
                           <td className="px-4 py-3 text-right text-slate-600">{item.quantityRequested}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {insufficient && <AlertTriangle className="text-rose-500 shrink-0" size={14} />}
+                              {hasError && <AlertTriangle className="text-rose-500 shrink-0" size={14} />}
                               <input
                                 className={[
                                   'w-20 rounded-lg border px-2 py-1.5 text-sm text-right outline-none transition focus:ring-2',
-                                  insufficient
+                                  hasError
                                     ? 'border-rose-300 bg-rose-50 text-rose-700 focus:ring-rose-200'
                                     : 'border-slate-200 focus:border-violet-500 focus:ring-violet-100',
                                 ].join(' ')}
@@ -612,6 +623,12 @@ export function IssueRequestModal({
                             {insufficient && (
                               <p className="text-[11px] text-rose-500 mt-1 text-right">Vượt tồn kho</p>
                             )}
+                            {isZero && (
+                              <p className="text-[11px] text-rose-500 mt-1 text-right">Phải {'>'} 0</p>
+                            )}
+                            {isExceedRequested && (
+                              <p className="text-[11px] text-rose-500 mt-1 text-right">Vượt yêu cầu</p>
+                            )}
                           </td>
                         </tr>
                       )
@@ -623,7 +640,19 @@ export function IssueRequestModal({
               {hasStockIssue() && (
                 <div className="mt-3 flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-4 py-2.5 text-sm text-rose-700">
                   <AlertTriangle size={16} className="shrink-0" />
-                  Một số vật tư có số lượng cấp vượt quá tồn kho. Vui lòng điều chỉnh lại.
+                  Một số vật tư có số lượng cấp vượt quá tồn kho hiện tại.
+                </div>
+              )}
+              {hasZeroIssue() && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-4 py-2.5 text-sm text-rose-700">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  Số lượng cấp phát phải lớn hơn 0.
+                </div>
+              )}
+              {hasExceedRequestedIssue() && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-4 py-2.5 text-sm text-rose-700">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  Số lượng cấp không được vượt quá số lượng yêu cầu.
                 </div>
               )}
             </div>
@@ -799,7 +828,7 @@ export function IssueRequestModal({
                 <button
                   type="button"
                   className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors cursor-pointer"
-                  disabled={hasStockIssue()}
+                  disabled={hasStockIssue() || hasZeroIssue() || hasExceedRequestedIssue()}
                   onClick={() => setStep(2)}
                 >
                   Tiếp theo

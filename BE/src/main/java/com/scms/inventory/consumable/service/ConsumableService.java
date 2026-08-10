@@ -26,6 +26,7 @@ import java.util.UUID;
 public class ConsumableService {
 
     ConsumableRepository consumableRepository;
+    com.scms.inventory.consumable.repository.ConsumableStockRepository consumableStockRepository;
 
     // ── Thêm mới vật tư tiêu hao ─────────────────────────────
     @Transactional
@@ -66,7 +67,7 @@ public class ConsumableService {
         if (searchCode != null || searchName != null) {
             consumablePage = consumableRepository.searchByCodeAndName(searchCode, searchName, pageable);
         } else {
-            consumablePage = consumableRepository.findAll(pageable);
+            consumablePage = consumableRepository.findByIsDeletedFalse(pageable);
         }
 
         return PagedResponse.<ConsumableResponse>builder()
@@ -91,7 +92,7 @@ public class ConsumableService {
     // ── Cập nhật vật tư tiêu hao ──────────────────────────────
     @Transactional
     public ConsumableResponse updateConsumable(UUID consumableId, ConsumableRequest request) {
-        Consumable consumable = consumableRepository.findById(consumableId)
+        Consumable consumable = consumableRepository.findByConsumableIdAndIsDeletedFalse(consumableId)
                 .orElseThrow(() -> new NotFoundException("Consumable", "id", consumableId));
 
         consumable.setName(request.getName());
@@ -107,8 +108,21 @@ public class ConsumableService {
     // ── Xóa vật tư tiêu hao ──────────────────────────────────
     @Transactional
     public void deleteConsumable(UUID consumableId) {
-        Consumable consumable = consumableRepository.findById(consumableId)
+        Consumable consumable = consumableRepository.findByConsumableIdAndIsDeletedFalse(consumableId)
                 .orElseThrow(() -> new NotFoundException("Consumable", "id", consumableId));
+
+        long imported = consumableStockRepository.sumImported(consumableId);
+        long exported = consumableStockRepository.sumExported(consumableId.toString());
+        long currentStock = imported - exported;
+
+        if (currentStock > 0) {
+            throw new com.scms.common.exception.BadRequestException("Không thể xóa vì vật tư này vẫn còn tồn kho.");
+        }
+
+        if (consumableRepository.existsByConsumableIdAndStatusPending(consumableId)) {
+            throw new com.scms.common.exception.BadRequestException("Không thể xóa vì vật tư này đang có phiếu yêu cầu chờ xử lý.");
+        }
+
         consumableRepository.delete(consumable);
         log.info("Deleted consumable: {} - {}", consumable.getCode(), consumable.getName());
     }

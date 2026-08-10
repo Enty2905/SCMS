@@ -8,12 +8,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ToolRepository extends JpaRepository<Tool, UUID> {
 
-    @Query("SELECT t FROM Tool t WHERE t.totalQuantity > 0 AND " +
+    Optional<Tool> findByToolIdAndIsDeletedFalse(UUID id);
+
+    @Query("SELECT t FROM Tool t WHERE t.isDeleted = false AND t.totalQuantity > 0 AND " +
             "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
             "(:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%')))")
     Page<Tool> searchByKeywordAndCategory(
@@ -31,7 +34,7 @@ public interface ToolRepository extends JpaRepository<Tool, UUID> {
     /**
      * Lấy danh sách CCDC có damagedQuantity > 0 (có hư hỏng).
      */
-    @Query("SELECT t FROM Tool t WHERE t.damagedQuantity > 0 AND " +
+    @Query("SELECT t FROM Tool t WHERE t.isDeleted = false AND t.damagedQuantity > 0 AND " +
             "(:keyword IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
             "(:category IS NULL OR LOWER(t.category) LIKE LOWER(CONCAT('%', :category, '%')))")
     Page<Tool> findDamagedTools(

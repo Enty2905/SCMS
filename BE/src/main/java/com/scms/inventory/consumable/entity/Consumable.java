@@ -4,14 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "consumable")
 @SQLDelete(sql = "UPDATE consumable SET is_deleted = true WHERE consumable_id = ?")
-@SQLRestriction("is_deleted = false")
 @Data
 @Builder
 @NoArgsConstructor

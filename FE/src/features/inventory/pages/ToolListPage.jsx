@@ -17,6 +17,8 @@ import { ToolFormModal } from './ToolFormModal.jsx'
 import { ToolDisposeDamagedModal } from './ToolDisposeDamagedModal.jsx'
 import { ToolDetailModal } from './ToolDetailModal.jsx'
 import { ToolBorrowFormModal } from './ToolBorrowFormModal.jsx'
+import { ErrorModal } from '@/shared/components/ui/ErrorModal.jsx'
+import { clearToolError } from '../store/tool.reducer.js'
 
 // Status badge mapping (giá trị từ BE: 'available' | 'damaged')
 const STATUS_LABELS = {
@@ -109,6 +111,8 @@ export function ToolListPage() {
 
   function handleDisposeSuccess() {
     closeDisposeModal()
+    setDisposeSuccessMsg('Báo hỏng / Thanh lý CCDC thành công!')
+    setTimeout(() => setDisposeSuccessMsg(null), 3500)
     loadData()
   }
 
@@ -141,10 +145,15 @@ export function ToolListPage() {
         <h1 className="text-xl font-bold text-slate-950">Quản lý CCDC</h1>
       </section>
 
-      {/* Toast thông báo mượn thành công */}
+      {/* Toast thông báo mượn/hỏng thành công */}
       {borrowSuccessMsg && (
         <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
           ✓ {borrowSuccessMsg}
+        </div>
+      )}
+      {disposeSuccessMsg && (
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
+          ✓ {disposeSuccessMsg}
         </div>
       )}
 
@@ -193,12 +202,12 @@ export function ToolListPage() {
         </Button>
       </section>
 
-      {/* Error */}
-      {error ? (
-        <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-          {error}
-        </p>
-      ) : null}
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={!!error}
+        message={error}
+        onClose={() => dispatch(clearToolError())}
+      />
 
       {/* Table */}
       <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
